@@ -12,7 +12,7 @@ mod utils;
 
 pub(crate) type ArcString = std::sync::Arc<String>;
 pub(crate) type ArcOsString = std::sync::Arc<std::ffi::OsString>;
-pub(crate) type ArcFile = std::sync::Arc<tokio::fs::File>;
+pub(crate) type ArcFile = std::sync::Arc<tokio::sync::RwLock<tokio::fs::File>>;
 pub(crate) type ArcPathBuf = std::sync::Arc<std::path::PathBuf>;
 
 #[tokio::main]
