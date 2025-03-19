@@ -1,4 +1,11 @@
-use std::{collections::HashMap, env::VarError, ffi::OsString, fmt::Display, io, sync::Arc};
+use std::{
+    collections::{HashMap, LinkedList},
+    env::VarError,
+    ffi::OsString,
+    fmt::Display,
+    io,
+    sync::Arc,
+};
 
 use anyhow::Context;
 use tokio::{
@@ -67,6 +74,28 @@ impl SysCore {
                     CloseFile { path } => {
                         self.files.remove(path.as_ref());
                     }
+                    ReadDir { tx, path } => match tokio::fs::read_dir(path.as_ref()).await {
+                        Ok(mut rd) => {
+                            let mut entries = LinkedList::new();
+                            let res = loop {
+                                match rd.next_entry().await {
+                                    Ok(Some(entry)) => entries.push_back(Arc::new(entry.path())),
+                                    Ok(None) => break Ok(entries),
+                                    Err(e) => break Err(e),
+                                }
+                            };
+
+                            let _ = tx.send(res);
+                        }
+                        Err(e) => {
+                            let _ = tx.send(Err(e));
+                            continue;
+                        }
+                    },
+                    RemoveFile { tx, path } => {
+                        let res = tokio::fs::remove_file(path.as_ref()).await;
+                        let _ = tx.send(res);
+                    }
                 }
             }
         });
@@ -96,6 +125,14 @@ pub enum Message {
     CloseFile {
         path: ArcPathBuf,
     },
+    RemoveFile {
+        tx: tokio::sync::oneshot::Sender<Result<(), tokio::io::Error>>,
+        path: ArcPathBuf,
+    },
+    ReadDir {
+        tx: tokio::sync::oneshot::Sender<Result<LinkedList<ArcPathBuf>, io::Error>>,
+        path: ArcPathBuf,
+    },
 }
 
 /// A mock implementation of the Sys actor, used for testing, this implementation
@@ -108,6 +145,7 @@ pub enum Message {
 pub struct SysMock {
     env: HashMap<ArcOsString, OsString>,
     files: HashMap<ArcPathBuf, ArcFile>,
+    dirs: HashMap<ArcPathBuf, LinkedList<ArcPathBuf>>,
 }
 
 /// The sys actor is responsible for handling OS operations, mainly FS and env
@@ -250,6 +288,54 @@ impl Sys {
             Mock(mutex) => {
                 let mut lock = mutex.lock().await;
                 lock.files.remove(&path);
+            }
+        }
+    }
+
+    /// Removes a file from the filesystem
+    pub async fn remove_file(&self, path: ArcPathBuf) -> Result<(), io::Error> {
+        match self {
+            Actual(sender) => {
+                let (tx, rx) = tokio::sync::oneshot::channel();
+                sender
+                    .send(Message::RemoveFile { tx, path })
+                    .await
+                    .context("Removing file with Sys")
+                    .expect("sys actor died");
+                rx.await
+                    .context("Awaiting response for file removal with Sys")
+                    .expect("sys actor died")
+            }
+            Mock(lock) => {
+                let mut lock = lock.lock().await;
+                lock.files
+                    .remove(&path)
+                    .map(|_| ())
+                    .ok_or_else(|| io::Error::new(io::ErrorKind::NotFound, "file not found"))
+            }
+        }
+    }
+
+    pub async fn read_dir(&self, path: ArcPathBuf) -> Result<LinkedList<ArcPathBuf>, io::Error> {
+        match self {
+            Actual(sender) => {
+                let (tx, rx) = tokio::sync::oneshot::channel();
+                sender
+                    .send(Message::ReadDir { tx, path })
+                    .await
+                    .context("Reading directory with Sys")
+                    .expect("sys actor died");
+                rx.await
+                    .context("Awaiting response for directory read with Sys")
+                    .expect("sys actor died")
+            }
+            Mock(lock) => {
+                let lock = lock.lock().await;
+                let entries = lock.dirs.get(path.as_ref()).ok_or_else(|| {
+                    io::Error::new(io::ErrorKind::NotFound, "directory not found")
+                })?;
+
+                Ok(entries.clone())
             }
         }
     }

@@ -1,11 +1,13 @@
-use std::{ffi::OsString, time::Duration};
+use std::{ffi::OsString, sync::Arc, time::Duration};
 
+use log::{LogCore, LogLevel};
 use sys::SysCore;
 use terminal::TerminalCore;
 use utils::install_panic_hook;
 
 pub(crate) const BUFFER_SIZE: usize = 128;
 
+mod log;
 mod sys;
 mod terminal;
 mod utils;
@@ -20,8 +22,16 @@ async fn main() -> anyhow::Result<()> {
     install_panic_hook()?;
 
     let (sys, _) = SysCore::new().spawn();
-    let (term, _) = TerminalCore::build()?.spawn();
 
+    let level = LogLevel::Info;
+    let max_age = 30;
+    let log_dir = Arc::new("/tmp".into());
+    let (log, _) = LogCore::build(sys.clone(), level, max_age, log_dir)
+        .await?
+        .spawn();
+    let (term, _) = TerminalCore::build(log.clone())?.spawn();
+
+    log.info("Starting patch-hub");
     term.take_over().await?;
     println!(
         "Hello, world! {}",

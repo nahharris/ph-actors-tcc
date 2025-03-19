@@ -1,4 +1,4 @@
-use anyhow::bail;
+use anyhow::{bail, Context};
 use ratatui::{
     crossterm::{
         execute,
@@ -9,10 +9,14 @@ use ratatui::{
 use std::io::{Stdout, stdout};
 use tokio::task::JoinHandle;
 
+use crate::log::Log;
+
 /// The core of a terminal actor, responsible for the low level operations to
 /// manage the terminal (drawing, cursor movement, alternate screen, etc.)
 #[derive(Debug)]
 pub struct TerminalCore {
+    #[allow(dead_code)]
+    log: Log,
     /// Indicates if the terminal has been taken over
     take_over: bool,
     /// The terminal backend
@@ -24,11 +28,12 @@ impl TerminalCore {
     ///
     /// # Errors
     /// Fails if the terminal cannot be created (ratatui)
-    pub fn build() -> anyhow::Result<Self> {
+    pub fn build(log: Log) -> anyhow::Result<Self> {
         let terminal = ratatui::Terminal::new(CrosstermBackend::new(stdout()))?;
         let core = Self {
             take_over: false,
             terminal,
+            log,
         };
 
         Ok(core)
@@ -114,8 +119,8 @@ impl Terminal {
         match self {
             Terminal::Actual(tx) => {
                 let (res_tx, res_rx) = tokio::sync::oneshot::channel();
-                let _ = tx.send(Message::TakeOver(res_tx)).await;
-                res_rx.await?
+                tx.send(Message::TakeOver(res_tx)).await.context("Failed to take over").expect("Terminal actor is dead");
+                res_rx.await.context("Failed to take over").expect("Terminal actor is dead")
             }
             Terminal::Mock => Ok(()),
         }
