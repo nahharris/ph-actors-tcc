@@ -8,27 +8,27 @@ O Modelo de Atores é uma arquitetura pensada para computação concorrente dist
 
 ### Atores
 
-Atores são unidades de computação idenpendentes que gerenciam seu próprio estado, ou seja, não compartilham espaço de memória. Portanto, as interações entre os atores são feitas através de mensagens. Ao receber uma mensagem, um ator pode:
+Atores são unidades de computação independentes que gerenciam seu próprio estado, ou seja, não compartilham espaço de memória. Portanto, as interações entre os atores são feitas através de mensagens. Ao receber uma mensagem, um ator pode:
 
 - Criar novos atores
 - Enviar mensagens para outros atores que ele conheça
 - Determinar o comportamento da próxima mensagem recebida
 
-Por serem unidades independentes, os atores não precisam estar na mesma thread ou na mesma máquina. Logo, devem haver abstrações poderosas o suficiente para permitir as interações entre os atores. 
+Por serem unidades independentes, os atores não precisam estar na mesma thread ou na mesma máquina. Logo, deve haver abstrações poderosas o suficiente para permitir as interações entre os atores. 
 
 ### Mensagens
 
-Mensagens são os dados enviados entre atores e,evidentemente, atores só sabem lidar com alguns tipos de mensagens. Todavia, o comportamento resposta a uma mensagem é não determinístico e isso se dá por uma série de fatores:
+Mensagens são os dados enviados entre atores e, evidentemente, atores só sabem lidar com alguns tipos de mensagens. Todavia, o comportamento resposta a uma mensagem é não determinístico e isso se dá por uma série de fatores:
 
 - Os atores podem modificar o seu comportamento ao receber uma mensagem
 - A ordem de chegada das mensagens não pode ser garantida
-- As mensagens são enviadas de forma assícrona, ou seja, sem garantia de tempo de processamento
+- As mensagens são enviadas de forma assíncrona, ou seja, sem garantia de tempo de processamento
 
 ### Endereços
 
 Endereços são utilizados para identificar os atores e é através de um endereço que um ator consegue se comunicar com outros. Um ator pode ter acesso ao endereço de outros atores por alguns meios:
 
-- Durante sua própria criação (recebendo através de algum tipo de contrutor)
+- Durante sua própria criação (recebendo através de algum tipo de construtor)
 - Como conteúdo de uma mensagem recebida
 - Através da criação de um outro ator
 
@@ -48,11 +48,11 @@ Esse trabalho visa a implementação do Modelo de Atores para a criação de uma
 
 Primeiramente, Rust é uma linguagem compilada que possui gerenciamento automático de memória sem coletor de lixo e, portanto, não possui nenhuma _runtime_, diferentemente de linguagens como Golang. O modelo de atores se apoia fortemente no uso de programação assíncrona e, por isso, precisamos de suporte a isso em Rust.
 
-A famosa biblioteca Tokio fornece uma _runtime_ com suporte a programação assíncrona e _green threads_(chamadas de _tasks_). O suporte a _green threads_ é importante do ponto de vista performático pois permite a execução concorrente de código sem o custo extra do uso de _threads_ a nível de sistema operacional.
+A famosa biblioteca Tokio fornece uma _runtime_ com suporte a programação assíncrona e _green threads_ (chamadas de _tasks_). O suporte a _green threads_ é importante do ponto de vista performático pois permite a execução concorrente de código sem o custo extra do uso de _threads_ a nível de sistema operacional.
 
 ### Atores
 
-Os atores serão traduzidos em _tasks_ Tokio que ficarão aguardando pela chegada de mensagens em um loop. Cada ator terá liberdade para decidir como irá lidar com a fila de mensagens que receber, no sentido que pode decidir: processar a mensagem seguinte apenas quando terminar de processar a mensagem atual ou iniciar o processamento de uma mensagem imeditamente e descarregar ela para uma _task_ própria.
+Os atores serão traduzidos em _tasks_ Tokio que ficarão aguardando pela chegada de mensagens em um loop. Cada ator terá liberdade para decidir como irá lidar com a fila de mensagens que receber, no sentido que pode decidir: processar a mensagem seguinte apenas quando terminar de processar a mensagem atual ou iniciar o processamento de uma mensagem imediatamente e descarregar ela para uma _task_ própria.
 
 ### Mensagens
 
