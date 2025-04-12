@@ -14,7 +14,7 @@ use tokio::{
     task::JoinHandle,
 };
 
-use crate::{ArcFile, ArcOsString, ArcPathBuf, ArcString};
+use crate::{ArcFile, ArcOsStr, ArcPath, ArcStr};
 
 /// The core of the Sys actor, responsible for handling OS operations, mainly
 /// FS and env interactions
@@ -28,7 +28,7 @@ use crate::{ArcFile, ArcOsString, ArcPathBuf, ArcString};
 #[derive(Debug, Default)]
 pub struct SysCore {
     /// The cache of open files
-    files: HashMap<ArcPathBuf, ArcFile>,
+    files: HashMap<ArcPath, ArcFile>,
 }
 
 impl SysCore {
@@ -46,18 +46,18 @@ impl SysCore {
                 use Message::*;
                 match msg {
                     SetEnv { key, value } => unsafe {
-                        std::env::set_var(key.as_os_str(), value.as_os_str());
+                        std::env::set_var(key, value);
                     },
                     UnsetEnv { key } => unsafe {
-                        std::env::remove_var(key.as_os_str());
+                        std::env::remove_var(key);
                     },
                     GetEnv { tx, key } => {
-                        let _ = tx.send(std::env::var(key.as_os_str()).map(Arc::new));
+                        let _ = tx.send(std::env::var(key).map(Arc::from));
                     }
                     OpenFile { tx, path } => {
                         let f = match self.files.get(path.as_ref()) {
                             Some(f) => Arc::clone(f),
-                            None => match OpenOptions::new().read(true).open(path.as_ref()).await {
+                            None => match OpenOptions::new().write(true).create(true).open(path.as_ref()).await {
                                 Ok(f) => {
                                     let f = Arc::new(RwLock::new(f));
                                     self.files.insert(path, Arc::clone(&f));
@@ -79,7 +79,7 @@ impl SysCore {
                             let mut entries = LinkedList::new();
                             let res = loop {
                                 match rd.next_entry().await {
-                                    Ok(Some(entry)) => entries.push_back(Arc::new(entry.path())),
+                                    Ok(Some(entry)) => entries.push_back(Arc::from(entry.path())),
                                     Ok(None) => break Ok(entries),
                                     Err(e) => break Err(e),
                                 }
@@ -108,30 +108,30 @@ impl SysCore {
 #[derive(Debug)]
 pub enum Message {
     SetEnv {
-        key: ArcOsString,
+        key: ArcOsStr,
         value: OsString,
     },
     UnsetEnv {
-        key: ArcOsString,
+        key: ArcOsStr,
     },
     GetEnv {
-        tx: tokio::sync::oneshot::Sender<Result<ArcString, VarError>>,
-        key: ArcOsString,
+        tx: tokio::sync::oneshot::Sender<Result<ArcStr, VarError>>,
+        key: ArcOsStr,
     },
     OpenFile {
         tx: tokio::sync::oneshot::Sender<Result<ArcFile, tokio::io::Error>>,
-        path: ArcPathBuf,
+        path: ArcPath,
     },
     CloseFile {
-        path: ArcPathBuf,
+        path: ArcPath,
     },
     RemoveFile {
         tx: tokio::sync::oneshot::Sender<Result<(), tokio::io::Error>>,
-        path: ArcPathBuf,
+        path: ArcPath,
     },
     ReadDir {
-        tx: tokio::sync::oneshot::Sender<Result<LinkedList<ArcPathBuf>, io::Error>>,
-        path: ArcPathBuf,
+        tx: tokio::sync::oneshot::Sender<Result<LinkedList<ArcPath>, io::Error>>,
+        path: ArcPath,
     },
 }
 
@@ -143,9 +143,9 @@ pub enum Message {
 /// attempt to interact with the filesystem.
 #[derive(Debug, Clone, Default)]
 pub struct SysMock {
-    env: HashMap<ArcOsString, OsString>,
-    files: HashMap<ArcPathBuf, ArcFile>,
-    dirs: HashMap<ArcPathBuf, LinkedList<ArcPathBuf>>,
+    env: HashMap<ArcOsStr, OsString>,
+    files: HashMap<ArcPath, ArcFile>,
+    dirs: HashMap<ArcPath, LinkedList<ArcPath>>,
 }
 
 /// The sys actor is responsible for handling OS operations, mainly FS and env
@@ -175,7 +175,7 @@ impl Sys {
     /// # Important
     /// Mocks cannot open new files, so you need to open your files beforehands
     /// and pass them to the mock
-    pub fn mock(files: HashMap<ArcPathBuf, ArcFile>) -> Self {
+    pub fn mock(files: HashMap<ArcPath, ArcFile>) -> Self {
         let mock = SysMock {
             files,
             ..SysMock::default()
@@ -185,7 +185,7 @@ impl Sys {
     }
 
     /// Sets an environment variable
-    pub async fn set_env<V>(&self, key: ArcOsString, value: V)
+    pub async fn set_env<V>(&self, key: ArcOsStr, value: V)
     where
         V: Display,
     {
@@ -205,7 +205,7 @@ impl Sys {
     }
 
     /// Unsets an environment variable
-    pub async fn unset_env(&self, key: ArcOsString) {
+    pub async fn unset_env(&self, key: ArcOsStr) {
         match self {
             Actual(sender) => sender
                 .send(Message::UnsetEnv { key })
@@ -220,7 +220,7 @@ impl Sys {
     }
 
     /// Gets an environment variable
-    pub async fn get_env(&self, key: ArcOsString) -> Result<ArcString, VarError> {
+    pub async fn env(&self, key: ArcOsStr) -> Result<ArcStr, VarError> {
         match self {
             Actual(sender) => {
                 let (tx, rx) = tokio::sync::oneshot::channel();
@@ -252,7 +252,7 @@ impl Sys {
     ///
     /// If the file cannot be opened, an error is returned, also if a mock is
     /// being using and the file was not previously opened and passed to [`Sys::mock`]
-    pub async fn open_file(&self, path: ArcPathBuf) -> Result<ArcFile, io::Error> {
+    pub async fn open_file(&self, path: ArcPath) -> Result<ArcFile, io::Error> {
         match self {
             Actual(sender) => {
                 let (tx, rx) = tokio::sync::oneshot::channel();
@@ -278,7 +278,7 @@ impl Sys {
     /// Removes a file from the cache, notice that this won't close the file
     /// immediately. Every `Arc` must be dropped before the file is actually
     /// closed.
-    pub async fn close_file(&self, path: ArcPathBuf) {
+    pub async fn close_file(&self, path: ArcPath) {
         match self {
             Actual(sender) => sender
                 .send(Message::CloseFile { path })
@@ -293,7 +293,7 @@ impl Sys {
     }
 
     /// Removes a file from the filesystem
-    pub async fn remove_file(&self, path: ArcPathBuf) -> Result<(), io::Error> {
+    pub async fn remove_file(&self, path: ArcPath) -> Result<(), io::Error> {
         match self {
             Actual(sender) => {
                 let (tx, rx) = tokio::sync::oneshot::channel();
@@ -316,7 +316,7 @@ impl Sys {
         }
     }
 
-    pub async fn read_dir(&self, path: ArcPathBuf) -> Result<LinkedList<ArcPathBuf>, io::Error> {
+    pub async fn read_dir(&self, path: ArcPath) -> Result<LinkedList<ArcPath>, io::Error> {
         match self {
             Actual(sender) => {
                 let (tx, rx) = tokio::sync::oneshot::channel();

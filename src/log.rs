@@ -1,8 +1,10 @@
-use std::fmt::Display;
+use std::{fmt::Display, str::FromStr};
 
+use anyhow::Context;
+use serde::{Deserialize, Serialize};
 use tokio::{io::AsyncWriteExt, sync::mpsc::Sender, task::JoinHandle};
 
-use crate::{ArcFile, ArcPathBuf, sys::Sys};
+use crate::{ArcFile, ArcPath, sys::Sys};
 
 /// Describes the log level of a message
 ///
@@ -10,7 +12,7 @@ use crate::{ArcFile, ArcPathBuf, sys::Sys};
 /// handles it accordingly to the verbosity level.
 ///
 /// The levels severity are: `Info` < `Warning` < `Error`
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 pub enum LogLevel {
     /// The lowest level, dedicated to regular information that is not really
     /// important
@@ -29,6 +31,19 @@ impl Display for LogLevel {
             LogLevel::Info => write!(f, "INFO"),
             LogLevel::Warning => write!(f, "WARN"),
             LogLevel::Error => write!(f, "ERROR"),
+        }
+    }
+}
+
+impl FromStr for LogLevel {
+    type Err = anyhow::Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s.to_lowercase().as_str() {
+            "info" => Ok(LogLevel::Info),
+            "warn" => Ok(LogLevel::Warning),
+            "error" => Ok(LogLevel::Error),
+            _ => Err(anyhow::anyhow!("Invalid log level: {}", s)),
         }
     }
 }
@@ -78,8 +93,8 @@ impl Display for LogMessage {
 #[derive(Debug)]
 pub struct LogCore {
     sys: Sys,
-    log_dir: ArcPathBuf,
-    log_path: ArcPathBuf,
+    log_dir: ArcPath,
+    log_path: ArcPath,
     log_file: ArcFile,
     latest_log_file: ArcFile,
     logs_to_print: Vec<LogMessage>,
@@ -107,15 +122,15 @@ impl LogCore {
         sys: Sys,
         level: LogLevel,
         max_age: usize,
-        log_dir: ArcPathBuf,
+        log_dir: ArcPath,
     ) -> anyhow::Result<Self> {
-        let log_path: ArcPathBuf = log_dir
-            .join(format!("patch-hub_{}.log", chrono::Utc::now().to_rfc3339()))
+        let log_path: ArcPath = log_dir
+            .join(format!("patch-hub_{}.log", chrono::Utc::now().format("%Y-%m-%d-%H-%M-%S")))
             .into();
-        let latest_log_path: ArcPathBuf = log_dir.join("latest.log").into();
+        let latest_log_path: ArcPath = log_dir.join("latest.log").into();
 
-        let log_file = sys.open_file(log_path.clone()).await?;
-        let latest_log_file = sys.open_file(latest_log_path).await?;
+        let log_file = sys.open_file(log_path.clone()).await.context("Failed to create log file")?;
+        let latest_log_file = sys.open_file(latest_log_path).await.context("Failed to create latest log file")?;
 
         Ok(Self {
             sys,
@@ -252,7 +267,7 @@ impl LogCore {
                 self.log(LogMessage {
                     message: format!(
                         "Failed to remove the log file: {}",
-                        log.as_path().to_string_lossy()
+                        log.to_string_lossy()
                     ),
                     level: LogLevel::Warning,
                 })
