@@ -1,14 +1,14 @@
 use std::{path::Path, str::FromStr, sync::Arc};
 
-use serde::{ser::SerializeStruct, Deserialize, Serialize};
+use serde::{Deserialize, Serialize, ser::SerializeStruct};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
-use crate::{log::LogLevel, sys::Sys, ArcPath};
+use crate::{ArcPath, log::LogLevel, sys::Sys};
 
 pub struct ConfigCore {
     data: Data,
     path: ArcPath,
-    sys: Sys
+    sys: Sys,
 }
 
 impl ConfigCore {
@@ -37,7 +37,7 @@ impl ConfigCore {
                     Message::Save(tx) => {
                         let res = self.save().await;
                         let _ = tx.send(res);
-                    },
+                    }
                     Message::GetPath(opt, tx) => {
                         let res = match opt {
                             PathOpts::LogDir => Arc::clone(&self.data.log_dir),
@@ -54,19 +54,15 @@ impl ConfigCore {
                         };
                         let _ = tx.send(res);
                     }
-                    Message::SetPath(opt, path) => {
-                        match opt {
-                            PathOpts::LogDir => self.data.log_dir = path,
-                        }
-                    }
+                    Message::SetPath(opt, path) => match opt {
+                        PathOpts::LogDir => self.data.log_dir = path,
+                    },
                     Message::SetLogLevel(level) => {
                         self.data.log_level = level;
                     }
-                    Message::SetUSize(opt, size) => {
-                        match opt {
-                            USizeOpts::MaxAge => self.data.max_age = size,
-                        }
-                    }
+                    Message::SetUSize(opt, size) => match opt {
+                        USizeOpts::MaxAge => self.data.max_age = size,
+                    },
                 }
             }
         });
@@ -77,9 +73,9 @@ impl ConfigCore {
     async fn load(&mut self) -> anyhow::Result<()> {
         let config = self.sys.open_file(Arc::clone(&self.path)).await?;
         let mut buf = String::new();
-        
+
         config.write().await.read_to_string(&mut buf).await?;
-        
+
         let data: Data = toml::de::from_str(&buf)?;
         self.data = data;
         Ok(())
@@ -93,11 +89,10 @@ impl ConfigCore {
         config.write().await.write_all(buf.as_bytes()).await?;
         config.write().await.flush().await?;
         config.write().await.sync_all().await?;
-        
+
         Ok(())
     }
 }
-
 
 /// The data structure for the configuration
 #[derive(Debug)]
@@ -237,7 +232,7 @@ impl Config {
         if let Self::Actual(sender) = self {
             let (tx, rx) = tokio::sync::oneshot::channel();
             let _ = sender.send(Message::GetLogLevel(tx)).await;
-            return rx.await.expect("Config actor died"); 
+            return rx.await.expect("Config actor died");
         }
 
         unimplemented!()
@@ -253,7 +248,7 @@ impl Config {
         if let Self::Actual(sender) = self {
             let (tx, rx) = tokio::sync::oneshot::channel();
             let _ = sender.send(Message::GetUSize(opt, tx)).await;
-            return rx.await.expect("Config actor died"); 
+            return rx.await.expect("Config actor died");
         }
 
         unimplemented!()
@@ -265,3 +260,4 @@ impl Config {
         }
     }
 }
+

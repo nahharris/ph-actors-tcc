@@ -125,12 +125,21 @@ impl LogCore {
         log_dir: ArcPath,
     ) -> anyhow::Result<Self> {
         let log_path: ArcPath = log_dir
-            .join(format!("patch-hub_{}.log", chrono::Utc::now().format("%Y-%m-%d-%H-%M-%S")))
+            .join(format!(
+                "patch-hub_{}.log",
+                chrono::Utc::now().format("%Y-%m-%d-%H-%M-%S")
+            ))
             .into();
         let latest_log_path: ArcPath = log_dir.join("latest.log").into();
 
-        let log_file = sys.open_file(log_path.clone()).await.context("Failed to create log file")?;
-        let latest_log_file = sys.open_file(latest_log_path).await.context("Failed to create latest log file")?;
+        let log_file = sys
+            .open_file(log_path.clone())
+            .await
+            .context("Failed to create log file")?;
+        let latest_log_file = sys
+            .open_file(latest_log_path)
+            .await
+            .context("Failed to create latest log file")?;
 
         Ok(Self {
             sys,
@@ -265,10 +274,7 @@ impl LogCore {
 
             if age as usize > self.max_age && self.sys.remove_file(log.clone()).await.is_err() {
                 self.log(LogMessage {
-                    message: format!(
-                        "Failed to remove the log file: {}",
-                        log.to_string_lossy()
-                    ),
+                    message: format!("Failed to remove the log file: {}", log.to_string_lossy()),
                     level: LogLevel::Warning,
                 })
                 .await;

@@ -1,4 +1,4 @@
-use anyhow::{bail, Context};
+use anyhow::{Context, bail};
 use ratatui::{
     crossterm::{
         execute,
@@ -119,8 +119,14 @@ impl Terminal {
         match self {
             Terminal::Actual(tx) => {
                 let (res_tx, res_rx) = tokio::sync::oneshot::channel();
-                tx.send(Message::TakeOver(res_tx)).await.context("Failed to take over").expect("Terminal actor is dead");
-                res_rx.await.context("Failed to take over").expect("Terminal actor is dead")
+                tx.send(Message::TakeOver(res_tx))
+                    .await
+                    .context("Failed to take over")
+                    .expect("Terminal actor is dead");
+                res_rx
+                    .await
+                    .context("Failed to take over")
+                    .expect("Terminal actor is dead")
             }
             Terminal::Mock => Ok(()),
         }

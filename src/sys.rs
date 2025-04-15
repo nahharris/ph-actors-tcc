@@ -57,7 +57,12 @@ impl SysCore {
                     OpenFile { tx, path } => {
                         let f = match self.files.get(path.as_ref()) {
                             Some(f) => Arc::clone(f),
-                            None => match OpenOptions::new().write(true).create(true).open(path.as_ref()).await {
+                            None => match OpenOptions::new()
+                                .write(true)
+                                .create(true)
+                                .open(path.as_ref())
+                                .await
+                            {
                                 Ok(f) => {
                                     let f = Arc::new(RwLock::new(f));
                                     self.files.insert(path, Arc::clone(&f));

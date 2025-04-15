@@ -1,7 +1,12 @@
-use std::{ffi::{OsStr, OsString}, path::Path, sync::Arc, time::Duration};
+use std::{
+    ffi::{OsStr, OsString},
+    path::Path,
+    sync::Arc,
+    time::Duration,
+};
 
 use config::{ConfigCore, PathOpts, USizeOpts};
-use log::{LogCore, LogLevel};
+use log::LogCore;
 use sys::SysCore;
 use terminal::TerminalCore;
 use utils::install_panic_hook;
