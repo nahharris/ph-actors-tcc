@@ -15,6 +15,7 @@ pub(crate) const BUFFER_SIZE: usize = 128;
 
 mod config;
 mod log;
+mod net;
 mod sys;
 mod terminal;
 mod utils;
