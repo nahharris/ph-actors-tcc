@@ -1,5 +1,6 @@
 use std::{path::Path, str::FromStr, sync::Arc};
 
+use anyhow::Context;
 use serde::{Deserialize, Serialize, ser::SerializeStruct};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
@@ -26,7 +27,7 @@ impl ConfigCore {
     }
 
     pub fn spawn(mut self) -> (Config, tokio::task::JoinHandle<()>) {
-        let (tx, mut rx) = tokio::sync::mpsc::channel(1);
+        let (tx, mut rx) = tokio::sync::mpsc::channel(32);
         let handle = tokio::spawn(async move {
             while let Some(msg) = rx.recv().await {
                 match msg {
@@ -70,6 +71,8 @@ impl ConfigCore {
     }
 
     /// Loads the configuration from the file
+    ///
+    /// If it fails, it means that either: the config file does not exist, or the file is not a valid TOML file.
     async fn load(&mut self) -> anyhow::Result<()> {
         let config = self.sys.open_file(Arc::clone(&self.path)).await?;
         let mut buf = String::new();
@@ -192,7 +195,10 @@ impl Config {
     pub async fn load(&self) -> anyhow::Result<()> {
         if let Self::Actual(sender) = self {
             let (tx, rx) = tokio::sync::oneshot::channel();
-            sender.send(Message::Load(tx)).await;
+            sender
+                .send(Message::Load(tx))
+                .await
+                .expect("Config actor is dead");
             return rx.await.expect("Config actor is dead");
         }
 
@@ -203,7 +209,10 @@ impl Config {
     pub async fn save(&self) -> anyhow::Result<()> {
         if let Self::Actual(sender) = self {
             let (tx, rx) = tokio::sync::oneshot::channel();
-            sender.send(Message::Save(tx)).await?;
+            sender
+                .send(Message::Save(tx))
+                .await
+                .expect("Config actor is dead");
             return rx.await.expect("Config actor is dead");
         }
 
@@ -214,7 +223,10 @@ impl Config {
     pub async fn path(&self, opt: PathOpts) -> ArcPath {
         if let Self::Actual(sender) = self {
             let (tx, rx) = tokio::sync::oneshot::channel();
-            sender.send(Message::GetPath(opt, tx)).await;
+            sender
+                .send(Message::GetPath(opt, tx))
+                .await
+                .expect("Config actor is dead");
             return rx.await.expect("Config actor is dead");
         }
 
@@ -224,14 +236,20 @@ impl Config {
     /// Sets a config of type path
     pub async fn set_path(&self, opt: PathOpts, path: ArcPath) {
         if let Self::Actual(sender) = self {
-            let _ = sender.send(Message::SetPath(opt, path)).await;
+            sender
+                .send(Message::SetPath(opt, path))
+                .await
+                .expect("Config actor is dead");
         }
     }
 
     pub async fn log_level(&self) -> LogLevel {
         if let Self::Actual(sender) = self {
             let (tx, rx) = tokio::sync::oneshot::channel();
-            let _ = sender.send(Message::GetLogLevel(tx)).await;
+            sender
+                .send(Message::GetLogLevel(tx))
+                .await
+                .expect("Config actor died");
             return rx.await.expect("Config actor died");
         }
 
@@ -247,7 +265,10 @@ impl Config {
     pub async fn usize(&self, opt: USizeOpts) -> usize {
         if let Self::Actual(sender) = self {
             let (tx, rx) = tokio::sync::oneshot::channel();
-            let _ = sender.send(Message::GetUSize(opt, tx)).await;
+            sender
+                .send(Message::GetUSize(opt, tx))
+                .await
+                .expect("Config actor died");
             return rx.await.expect("Config actor died");
         }
 
@@ -260,4 +281,3 @@ impl Config {
         }
     }
 }
-

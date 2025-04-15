@@ -38,6 +38,11 @@ async fn main() -> anyhow::Result<()> {
     let config_path: ArcPath = Arc::from(config_path);
 
     let (config, _) = ConfigCore::new(sys.clone(), config_path).spawn();
+    let res = config.load().await;
+
+    if res.is_err() {
+        config.save().await?;
+    }
 
     let (log, _) = LogCore::build(
         sys.clone(),
