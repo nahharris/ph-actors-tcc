@@ -34,7 +34,7 @@ Podemos entender essas capacidades e recursos como atores e assim dar uma intui�
 
     - `[Set|Unset|Get]Env`: interage com variáveis de ambiente
     - `[Open|Close|Remove]File`: interage com arquivos
-    - `ReadDir`: lê conteúdo de um diretório 
+    - `[Read|Mk|Rm]Dir`: lê conteúdo de um diretório 
 
 - **Terminal**: ator responsável por interações baixo-nível com o terminal
 
@@ -43,7 +43,7 @@ Podemos entender essas capacidades e recursos como atores e assim dar uma intui�
 
 - **Net**: ator responsável por interações baixo-nível com a rede
 
-    - `Send`: envia uma request
+    - `Send`: envia uma request e aguarda a resposta
 
 - **Logger**: faz log dos eventos que acontecem durante a execução
   
