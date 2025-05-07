@@ -1,0 +1,6 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+Data collections like `String`, `Vec` and `PathBuf` will be immutable and must be cheap to copy across threads, so use `Arc<str>`, `Arc<[T]>` and `Arc<Path>` instead.

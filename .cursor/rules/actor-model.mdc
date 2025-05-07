@@ -1,0 +1,10 @@
+---
+description: Creating new actors
+globs: 
+alwaysApply: false
+---
+- Create a `Core` for the actor which must define the creation function, the spawn function and methods to manipulate the data being held by the actor.
+- The creation function must be called `new` if the creation always succeeds or `build` if it might fail (in which it must return a `Result`).
+- The spawn function must take no parameters and take ownership of the core, create a mpsc channel and spawn a task with a loop that will receive and handle messages coming down this channel. It must return the `Addr` for the actor (which will for sure wrap the sending end of the channel created).
+- The messages must be of a private type `Message` which is an enum. Each variant is a different message which the payload must contain the data needed for the message to be processed, and if a response is needed the payload must contain a `oneshot::Sender`. 
+- The `Addr` must not have the `Addr` suffix and must wrap a `mpsc::Sender` in a private way. The `Addr` must provide methods that will produce a message and send it through the channel. If a response is needed, the method must create the oneshot channel and send it with the message.
