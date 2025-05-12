@@ -1,8 +1,7 @@
 use std::{path::Path, str::FromStr, sync::Arc};
 
-use anyhow::Context;
 use serde::{Deserialize, Serialize, ser::SerializeStruct};
-use tokio::io::{AsyncReadExt, AsyncWriteExt};
+use tokio::{io::{AsyncReadExt, AsyncWriteExt}, sync::Mutex};
 
 use crate::{ArcPath, env::Env, fs::Fs, log::LogLevel};
 
@@ -77,39 +76,35 @@ impl ConfigCore {
         let handle = tokio::spawn(async move {
             while let Some(msg) = rx.recv().await {
                 match msg {
-                    Message::Load(tx) => {
+                    Message::Load { tx } => {
                         let res = self.load().await;
                         let _ = tx.send(res);
                     }
-                    Message::Save(tx) => {
+                    Message::Save { tx } => {
                         let res = self.save().await;
                         let _ = tx.send(res);
                     }
-                    Message::GetPath(opt, tx) => {
-                        let res = match opt {
-                            PathOpts::LogDir => Arc::clone(&self.data.log_dir),
-                        };
+                    Message::GetPath { opt, tx } => {
+                        let res = self.data.path(opt);
                         let _ = tx.send(res);
                     }
-                    Message::GetLogLevel(tx) => {
-                        let res = self.data.log_level;
+                    Message::GetLogLevel { tx } => {
+                        let res = self.data.log_level();
                         let _ = tx.send(res);
                     }
-                    Message::GetUSize(opt, tx) => {
-                        let res = match opt {
-                            USizeOpts::MaxAge => self.data.max_age,
-                        };
+                    Message::GetUSize { opt, tx } => {
+                        let res = self.data.usize(opt);
                         let _ = tx.send(res);
                     }
-                    Message::SetPath(opt, path) => match opt {
-                        PathOpts::LogDir => self.data.log_dir = path,
-                    },
-                    Message::SetLogLevel(level) => {
-                        self.data.log_level = level;
+                    Message::SetPath { opt, path } => {
+                        self.data.set_path(opt, path);
                     }
-                    Message::SetUSize(opt, size) => match opt {
-                        USizeOpts::MaxAge => self.data.max_age = size,
-                    },
+                    Message::SetLogLevel { level } => {
+                        self.data.set_log_level(level);
+                    }
+                    Message::SetUSize { opt, size } => {
+                        self.data.set_usize(opt, size);
+                    }
                 }
             }
         });
@@ -166,8 +161,8 @@ impl ConfigCore {
 ///
 /// This struct contains all the configurable options for the application.
 /// It implements serialization and deserialization for TOML format.
-#[derive(Debug)]
-struct Data {
+#[derive(Debug, Clone)]
+pub struct Data {
     /// Directory where log files are stored
     log_dir: ArcPath,
     /// Minimum level of messages to be logged
@@ -226,12 +221,78 @@ impl<'de> Deserialize<'de> for Data {
     }
 }
 
+impl Data {
+    /// Gets a path-based configuration value.
+    ///
+    /// # Arguments
+    /// * `opt` - The path option to retrieve
+    ///
+    /// # Returns
+    /// The requested path value.
+    pub fn path(&self, opt: PathOpt) -> ArcPath {
+        match opt {
+            PathOpt::LogDir => Arc::clone(&self.log_dir),
+        }
+    }
+
+    /// Sets a path-based configuration value.
+    ///
+    /// # Arguments
+    /// * `opt` - The path option to set
+    /// * `path` - The new path value
+    pub fn set_path(&mut self, opt: PathOpt, path: ArcPath) {
+        match opt {
+            PathOpt::LogDir => self.log_dir = path,
+        }
+    }
+
+    /// Gets the current log level.
+    ///
+    /// # Returns
+    /// The current log level.
+    pub fn log_level(&self) -> LogLevel {
+        self.log_level
+    }
+
+    /// Sets the log level.
+    ///
+    /// # Arguments
+    /// * `level` - The new log level value
+    pub fn set_log_level(&mut self, level: LogLevel) {
+        self.log_level = level;
+    }
+
+    /// Gets a numeric configuration value.
+    ///
+    /// # Arguments
+    /// * `opt` - The numeric option to retrieve
+    ///
+    /// # Returns
+    /// The requested numeric value.
+    pub fn usize(&self, opt: USizeOpt) -> usize {
+        match opt {
+            USizeOpt::MaxAge => self.max_age,
+        }
+    }
+
+    /// Sets a numeric configuration value.
+    ///
+    /// # Arguments
+    /// * `opt` - The numeric option to set
+    /// * `value` - The new numeric value
+    pub fn set_usize(&mut self, opt: USizeOpt, value: usize) {
+        match opt {
+            USizeOpt::MaxAge => self.max_age = value,
+        }
+    }
+}
+
 /// Options for path-based configuration values.
 ///
 /// This enum defines the different path-based configuration options
 /// that can be accessed and modified.
 #[derive(Debug, Clone, Copy)]
-pub enum PathOpts {
+pub enum PathOpt {
     /// Directory where log files are stored
     LogDir,
 }
@@ -241,7 +302,7 @@ pub enum PathOpts {
 /// This enum defines the different numeric configuration options
 /// that can be accessed and modified.
 #[derive(Debug, Clone, Copy)]
-pub enum USizeOpts {
+pub enum USizeOpt {
     /// Maximum age of log files in days before they are deleted
     MaxAge,
 }
@@ -253,21 +314,53 @@ pub enum USizeOpts {
 #[derive(Debug)]
 pub enum Message {
     /// Loads the configuration from the file
-    Load(tokio::sync::oneshot::Sender<anyhow::Result<()>>),
+    Load {
+        /// Channel to send the result back to the caller
+        tx: tokio::sync::oneshot::Sender<anyhow::Result<()>>,
+    },
     /// Saves the current configuration to the file
-    Save(tokio::sync::oneshot::Sender<anyhow::Result<()>>),
+    Save {
+        /// Channel to send the result back to the caller
+        tx: tokio::sync::oneshot::Sender<anyhow::Result<()>>,
+    },
     /// Gets a path-based configuration value
-    GetPath(PathOpts, tokio::sync::oneshot::Sender<ArcPath>),
+    GetPath {
+        /// The path option to retrieve
+        opt: PathOpt,
+        /// Channel to send the result back to the caller
+        tx: tokio::sync::oneshot::Sender<ArcPath>,
+    },
     /// Gets the current log level
-    GetLogLevel(tokio::sync::oneshot::Sender<LogLevel>),
+    GetLogLevel {
+        /// Channel to send the result back to the caller
+        tx: tokio::sync::oneshot::Sender<LogLevel>,
+    },
     /// Gets a numeric configuration value
-    GetUSize(USizeOpts, tokio::sync::oneshot::Sender<usize>),
+    GetUSize {
+        /// The numeric option to retrieve
+        opt: USizeOpt,
+        /// Channel to send the result back to the caller
+        tx: tokio::sync::oneshot::Sender<usize>,
+    },
     /// Sets a path-based configuration value
-    SetPath(PathOpts, ArcPath),
+    SetPath {
+        /// The path option to set
+        opt: PathOpt,
+        /// The new path value
+        path: ArcPath,
+    },
     /// Sets the log level
-    SetLogLevel(LogLevel),
+    SetLogLevel {
+        /// The new log level value
+        level: LogLevel,
+    },
     /// Sets a numeric configuration value
-    SetUSize(USizeOpts, usize),
+    SetUSize {
+        /// The numeric option to set
+        opt: USizeOpt,
+        /// The new numeric value
+        size: usize,
+    },
 }
 
 /// The configuration actor that provides a thread-safe interface for configuration operations.
@@ -291,97 +384,180 @@ pub enum Config {
     /// A real configuration actor that reads from and writes to a file
     Actual(tokio::sync::mpsc::Sender<Message>),
     /// A mock implementation for testing that does nothing
-    Mock,
+    Mock(Arc<Mutex<Data>>),
 }
 
 impl Config {
-    /// Loads the configuration
+    /// Creates a new mock configuration instance for testing.
+    ///
+    /// # Arguments
+    /// * `data` - Optional initial configuration data. If None, default values will be used.
+    ///
+    /// # Returns
+    /// A new mock configuration instance that stores data in memory.
+    pub fn mock(data: Option<Data>) -> Self {
+        Self::Mock(Arc::new(Mutex::new(data.unwrap_or_default())))
+    }
+
+    /// Loads the configuration from the file.
+    ///
+    /// For the mock implementation, this is a no-op that always succeeds.
+    ///
+    /// # Returns
+    /// `Ok(())` for mock implementation.
     pub async fn load(&self) -> anyhow::Result<()> {
-        if let Self::Actual(sender) = self {
-            let (tx, rx) = tokio::sync::oneshot::channel();
-            sender
-                .send(Message::Load(tx))
-                .await
-                .expect("Config actor is dead");
-            return rx.await.expect("Config actor is dead");
+        match self {
+            Self::Actual(sender) => {
+                let (tx, rx) = tokio::sync::oneshot::channel();
+                sender
+                    .send(Message::Load { tx })
+                    .await
+                    .expect("Config actor is dead");
+                rx.await.expect("Config actor is dead")
+            }
+            Self::Mock(_) => Ok(()),
         }
-
-        Ok(())
     }
 
-    /// Saves the configuration
+    /// Saves the current configuration to the file.
+    ///
+    /// For the mock implementation, this is a no-op that always succeeds.
+    ///
+    /// # Returns
+    /// `Ok(())` for mock implementation.
     pub async fn save(&self) -> anyhow::Result<()> {
-        if let Self::Actual(sender) = self {
-            let (tx, rx) = tokio::sync::oneshot::channel();
-            sender
-                .send(Message::Save(tx))
-                .await
-                .expect("Config actor is dead");
-            return rx.await.expect("Config actor is dead");
-        }
-
-        Ok(())
-    }
-
-    /// Gets a config of type path
-    pub async fn path(&self, opt: PathOpts) -> ArcPath {
-        if let Self::Actual(sender) = self {
-            let (tx, rx) = tokio::sync::oneshot::channel();
-            sender
-                .send(Message::GetPath(opt, tx))
-                .await
-                .expect("Config actor is dead");
-            return rx.await.expect("Config actor is dead");
-        }
-
-        unimplemented!()
-    }
-
-    /// Sets a config of type path
-    pub async fn set_path(&self, opt: PathOpts, path: ArcPath) {
-        if let Self::Actual(sender) = self {
-            sender
-                .send(Message::SetPath(opt, path))
-                .await
-                .expect("Config actor is dead");
+        match self {
+            Self::Actual(sender) => {
+                let (tx, rx) = tokio::sync::oneshot::channel();
+                sender
+                    .send(Message::Save { tx })
+                    .await
+                    .expect("Config actor is dead");
+                rx.await.expect("Config actor is dead")
+            }
+            Self::Mock(_) => Ok(()),
         }
     }
 
+    /// Gets a path-based configuration value.
+    ///
+    /// # Arguments
+    /// * `opt` - The path option to retrieve
+    ///
+    /// # Returns
+    /// The requested path value.
+    pub async fn path(&self, opt: PathOpt) -> ArcPath {
+        match self {
+            Self::Actual(sender) => {
+                let (tx, rx) = tokio::sync::oneshot::channel();
+                sender
+                    .send(Message::GetPath { opt, tx })
+                    .await
+                    .expect("Config actor is dead");
+                rx.await.expect("Config actor is dead")
+            }
+            Self::Mock(data) => {
+                let data = data.lock().await;
+                data.path(opt)
+            }
+        }
+    }
+
+    /// Sets a path-based configuration value.
+    ///
+    /// # Arguments
+    /// * `opt` - The path option to set
+    /// * `path` - The new path value
+    pub async fn set_path(&self, opt: PathOpt, path: ArcPath) {
+        match self {
+            Self::Actual(sender) => {
+                sender
+                    .send(Message::SetPath { opt, path })
+                    .await
+                    .expect("Config actor is dead");
+            }
+            Self::Mock(data) => {
+                let mut data = data.lock().await;
+                data.set_path(opt, path);
+            }
+        }
+    }
+
+    /// Gets the current log level.
+    ///
+    /// # Returns
+    /// The current log level.
     pub async fn log_level(&self) -> LogLevel {
-        if let Self::Actual(sender) = self {
-            let (tx, rx) = tokio::sync::oneshot::channel();
-            sender
-                .send(Message::GetLogLevel(tx))
-                .await
-                .expect("Config actor died");
-            return rx.await.expect("Config actor died");
+        match self {
+            Self::Actual(sender) => {
+                let (tx, rx) = tokio::sync::oneshot::channel();
+                sender
+                    .send(Message::GetLogLevel { tx })
+                    .await
+                    .expect("Config actor died");
+                rx.await.expect("Config actor died")
+            }
+            Self::Mock(data) => {
+                let data = data.lock().await;
+                data.log_level()
+            }
         }
-
-        unimplemented!()
     }
 
+    /// Sets the log level.
+    ///
+    /// # Arguments
+    /// * `level` - The new log level value
     pub async fn set_log_level(&self, level: LogLevel) {
-        if let Self::Actual(sender) = self {
-            let _ = sender.send(Message::SetLogLevel(level)).await;
+        match self {
+            Self::Actual(sender) => {
+                let _ = sender.send(Message::SetLogLevel { level }).await;
+            }
+            Self::Mock(data) => {
+                let mut data = data.lock().await;
+                data.set_log_level(level);
+            }
         }
     }
 
-    pub async fn usize(&self, opt: USizeOpts) -> usize {
-        if let Self::Actual(sender) = self {
-            let (tx, rx) = tokio::sync::oneshot::channel();
-            sender
-                .send(Message::GetUSize(opt, tx))
-                .await
-                .expect("Config actor died");
-            return rx.await.expect("Config actor died");
+    /// Gets a numeric configuration value.
+    ///
+    /// # Arguments
+    /// * `opt` - The numeric option to retrieve
+    ///
+    /// # Returns
+    /// The requested numeric value.
+    pub async fn usize(&self, opt: USizeOpt) -> usize {
+        match self {
+            Self::Actual(sender) => {
+                let (tx, rx) = tokio::sync::oneshot::channel();
+                sender
+                    .send(Message::GetUSize { opt, tx })
+                    .await
+                    .expect("Config actor died");
+                rx.await.expect("Config actor died")
+            }
+            Self::Mock(data) => {
+                let data = data.lock().await;
+                data.usize(opt)
+            }
         }
-
-        unimplemented!()
     }
 
-    pub async fn set_usize(&self, opt: USizeOpts, value: usize) {
-        if let Self::Actual(sender) = self {
-            let _ = sender.send(Message::SetUSize(opt, value)).await;
+    /// Sets a numeric configuration value.
+    ///
+    /// # Arguments
+    /// * `opt` - The numeric option to set
+    /// * `value` - The new numeric value
+    pub async fn set_usize(&self, opt: USizeOpt, value: usize) {
+        match self {
+            Self::Actual(sender) => {
+                let _ = sender.send(Message::SetUSize { opt, size: value }).await;
+            }
+            Self::Mock(data) => {
+                let mut data = data.lock().await;
+                data.set_usize(opt, value);
+            }
         }
     }
 }

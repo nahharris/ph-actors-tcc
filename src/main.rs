@@ -5,7 +5,7 @@ use std::{
     time::Duration,
 };
 
-use config::{ConfigCore, PathOpts, USizeOpts};
+use config::{ConfigCore, PathOpt, USizeOpt};
 use env::EnvCore;
 use fs::FsCore;
 use log::LogCore;
@@ -84,8 +84,8 @@ async fn main() -> anyhow::Result<()> {
     let (log, _) = LogCore::build(
         fs.clone(),
         config.log_level().await,
-        config.usize(USizeOpts::MaxAge).await,
-        config.path(PathOpts::LogDir).await,
+        config.usize(USizeOpt::MaxAge).await,
+        config.path(PathOpt::LogDir).await,
     )
     .await?
     .spawn();
