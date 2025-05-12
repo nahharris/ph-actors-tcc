@@ -12,26 +12,49 @@ use tokio::{
 
 use crate::{ArcFile, ArcPath};
 
-/// The core of the Fs actor, responsible for handling filesystem operations
+/// The core of the Fs actor, responsible for handling filesystem operations.
 ///
-/// Filesystem operations are done through tokio and are async. We also cache open
-/// files to avoid opening the same file multiple times. Open files are shared
-/// using `Arc` to avoid cloning the file descriptor.
+/// This struct provides thread-safe access to filesystem operations through an actor pattern.
+/// It wraps tokio's filesystem functions and provides a safe interface for concurrent access.
+/// Files are cached to avoid repeated opening of the same file.
 ///
-/// This struct is not meant to be used directly, but rather through [`Fs`]
+/// # Examples
+/// ```
+/// let (fs, _) = FsCore::new().spawn();
+/// let path = Arc::from(Path::new("example.txt"));
+/// let file = fs.open_file(path).await?;
+/// ```
+///
+/// # Thread Safety
+/// This type is designed to be safely shared between threads. File handles are shared
+/// using `Arc` to avoid cloning file descriptors.
 #[derive(Debug, Default)]
 pub struct FsCore {
-    /// The cache of open files
+    /// The cache of open files, mapping paths to their file handles
     files: HashMap<ArcPath, ArcFile>,
 }
 
 impl FsCore {
-    /// Creates a new Fs core
+    /// Creates a new Fs core instance.
+    ///
+    /// # Returns
+    /// A new instance of `FsCore` with an empty file cache.
     pub fn new() -> Self {
         Default::default()
     }
 
-    /// Transforms an instance of [`FsCore`] into an actor ready to receive messages
+    /// Transforms an instance of [`FsCore`] into an actor ready to receive messages.
+    ///
+    /// This method spawns a new task that will handle filesystem operations
+    /// asynchronously through a message channel.
+    ///
+    /// # Returns
+    /// A tuple containing:
+    /// - A [`Fs`] instance that can be used to send messages to the actor
+    /// - A join handle for the spawned task
+    ///
+    /// # Panics
+    /// This function will panic if the underlying task fails to spawn.
     pub fn spawn(mut self) -> (Fs, tokio::task::JoinHandle<()>) {
         let (tx, mut rx) = tokio::sync::mpsc::channel(crate::BUFFER_SIZE);
         let handle = tokio::spawn(async move {
@@ -51,9 +74,18 @@ impl FsCore {
         (Fs::Actual(tx), handle)
     }
 
-    /// Opens a file or returns a cached file handle if one exists
-    /// The file is opened with write and create permissions
-    /// The result is sent through the provided channel
+    /// Opens a file or returns a cached file handle if one exists.
+    ///
+    /// The file is opened with write and create permissions. If the file is already
+    /// open, a reference to the existing handle is returned.
+    ///
+    /// # Arguments
+    /// * `tx` - A oneshot channel sender to receive the result
+    /// * `path` - The path to the file to open
+    ///
+    /// # Errors
+    /// The function will return an error if the file cannot be opened or if there
+    /// are any issues with the channel communication.
     async fn open_file(
         &mut self,
         tx: tokio::sync::oneshot::Sender<Result<ArcFile, tokio::io::Error>>,
@@ -81,13 +113,26 @@ impl FsCore {
         let _ = tx.send(Ok(f));
     }
 
-    /// Removes a file handle from the cache
-    /// This doesn't close the file immediately - all Arc references must be dropped first
+    /// Removes a file handle from the cache.
+    ///
+    /// This doesn't close the file immediately - all `Arc` references must be dropped
+    /// before the file is actually closed.
+    ///
+    /// # Arguments
+    /// * `path` - The path of the file to remove from the cache
     fn close_file(&mut self, path: ArcPath) {
         self.files.remove(path.as_ref());
     }
 
-    /// Removes a file from the filesystem and sends the result through the provided channel
+    /// Removes a file from the filesystem.
+    ///
+    /// # Arguments
+    /// * `tx` - A oneshot channel sender to receive the result
+    /// * `path` - The path of the file to remove
+    ///
+    /// # Errors
+    /// The function will return an error if the file cannot be removed or if there
+    /// are any issues with the channel communication.
     async fn remove_file(
         &self,
         tx: tokio::sync::oneshot::Sender<Result<(), tokio::io::Error>>,
@@ -97,8 +142,17 @@ impl FsCore {
         let _ = tx.send(res);
     }
 
-    /// Reads the contents of a directory and sends the list of entries through the provided channel
-    /// Each entry is wrapped in an Arc
+    /// Reads the contents of a directory.
+    ///
+    /// Returns a list of paths to all entries in the directory, each wrapped in an `Arc`.
+    ///
+    /// # Arguments
+    /// * `tx` - A oneshot channel sender to receive the result
+    /// * `path` - The path of the directory to read
+    ///
+    /// # Errors
+    /// The function will return an error if the directory cannot be read or if there
+    /// are any issues with the channel communication.
     async fn read_dir(
         &self,
         tx: tokio::sync::oneshot::Sender<Result<LinkedList<ArcPath>, io::Error>>,
@@ -123,70 +177,129 @@ impl FsCore {
         }
     }
 
-    /// Creates a directory and all its parent directories if they don't exist
-    /// Sends the result through the provided channel
+    /// Creates a directory and all its parent directories if they don't exist.
+    ///
+    /// # Arguments
+    /// * `tx` - A oneshot channel sender to receive the result
+    /// * `path` - The path of the directory to create
+    ///
+    /// # Errors
+    /// The function will return an error if the directory cannot be created or if there
+    /// are any issues with the channel communication.
     async fn mkdir(&self, tx: tokio::sync::oneshot::Sender<Result<(), io::Error>>, path: ArcPath) {
         let res = tokio::fs::create_dir_all(path.as_ref()).await;
         let _ = tx.send(res);
     }
 
-    /// Removes a directory and all its contents recursively
-    /// Sends the result through the provided channel
+    /// Removes a directory and all its contents recursively.
+    ///
+    /// # Arguments
+    /// * `tx` - A oneshot channel sender to receive the result
+    /// * `path` - The path of the directory to remove
+    ///
+    /// # Errors
+    /// The function will return an error if the directory cannot be removed or if there
+    /// are any issues with the channel communication.
     async fn rmdir(&self, tx: tokio::sync::oneshot::Sender<Result<(), io::Error>>, path: ArcPath) {
         let res = tokio::fs::remove_dir_all(path.as_ref()).await;
         let _ = tx.send(res);
     }
 }
 
-/// Messages that can be sent to a [`FsCore`]
+/// Messages that can be sent to a [`FsCore`] actor.
+///
+/// This enum defines the different types of filesystem operations that can be performed
+/// through the actor system.
 #[derive(Debug)]
 pub enum Message {
+    /// Opens a file and returns its handle
     OpenFile {
+        /// Channel to send the result back to the caller
         tx: tokio::sync::oneshot::Sender<Result<ArcFile, tokio::io::Error>>,
+        /// The path of the file to open
         path: ArcPath,
     },
+    /// Removes a file handle from the cache
     CloseFile {
+        /// The path of the file to remove from cache
         path: ArcPath,
     },
+    /// Removes a file from the filesystem
     RemoveFile {
+        /// Channel to send the result back to the caller
         tx: tokio::sync::oneshot::Sender<Result<(), tokio::io::Error>>,
+        /// The path of the file to remove
         path: ArcPath,
     },
+    /// Reads the contents of a directory
     ReadDir {
+        /// Channel to send the result back to the caller
         tx: tokio::sync::oneshot::Sender<Result<LinkedList<ArcPath>, io::Error>>,
+        /// The path of the directory to read
         path: ArcPath,
     },
+    /// Creates a directory and its parents
     MkDir {
+        /// Channel to send the result back to the caller
         tx: tokio::sync::oneshot::Sender<Result<(), io::Error>>,
+        /// The path of the directory to create
         path: ArcPath,
     },
+    /// Removes a directory and its contents
     RmDir {
+        /// Channel to send the result back to the caller
         tx: tokio::sync::oneshot::Sender<Result<(), io::Error>>,
+        /// The path of the directory to remove
         path: ArcPath,
     },
 }
 
-/// A mock implementation of the Fs actor, used for testing
-/// This implementation won't actually interact with the OS, but rather store
-/// the state in memory.
+/// A mock implementation of the Fs actor, used for testing.
 ///
-/// Files should be opened before being used, since it won't attempt to interact
-/// with the filesystem.
+/// This implementation stores files and directories in memory instead of
+/// interacting with the actual filesystem.
+///
+/// # Important
+/// Files must be opened before being used, as this implementation won't attempt
+/// to interact with the filesystem.
+///
+/// # Examples
+/// ```
+/// let mut files = HashMap::new();
+/// let path = Arc::from(Path::new("test.txt"));
+/// let file = Arc::new(RwLock::new(File::create("test.txt").await?));
+/// files.insert(path.clone(), file);
+/// let fs = Fs::mock(files);
+/// ```
 #[derive(Debug, Clone, Default)]
 pub struct FsMock {
+    /// In-memory storage for open files
     files: HashMap<ArcPath, ArcFile>,
+    /// In-memory storage for directory contents
     dirs: HashMap<ArcPath, LinkedList<ArcPath>>,
 }
 
-/// The fs actor is responsible for handling filesystem operations
-/// This is a transmitter to a running actor, and can be used to send messages
+/// The fs actor is responsible for handling filesystem operations.
 ///
-/// Cloning this actor is cheap, since it's just a transmitter
+/// This enum represents either a real filesystem actor or a mock implementation
+/// for testing purposes. It provides a unified interface for filesystem operations
+/// regardless of the underlying implementation.
 ///
-/// Instantiate a new fs actor with [`FsCore::spawn`]
+/// # Examples
+/// ```
+/// let (fs, _) = FsCore::new().spawn();
+/// let path = Arc::from(Path::new("example.txt"));
+/// let file = fs.open_file(path).await?;
+/// ```
+///
+/// # Thread Safety
+/// This type is designed to be safely shared between threads. Cloning is cheap as it only
+/// copies the channel sender or mock reference.
 #[derive(Debug, Clone)]
 pub enum Fs {
+    /// A real filesystem actor that interacts with the system
     Actual(Sender<Message>),
+    /// A mock implementation for testing
     Mock(Arc<tokio::sync::Mutex<FsMock>>),
 }
 

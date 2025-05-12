@@ -6,22 +6,30 @@ use tokio::{io::AsyncWriteExt, sync::mpsc::Sender, task::JoinHandle};
 
 use crate::{ArcFile, ArcPath, env::Env, fs::Fs};
 
-/// Describes the log level of a message
+/// Describes the log level of a message.
 ///
-/// This is used to determine the severity of a log message so the logger
-/// handles it accordingly to the verbosity level.
+/// This enum is used to determine the severity of a log message so the logger
+/// can handle it according to the configured verbosity level.
 ///
-/// The levels severity are: `Info` < `Warning` < `Error`
+/// # Ordering
+/// The levels are ordered by severity: `Info` < `Warning` < `Error`
+///
+/// # Examples
+/// ```
+/// let level = LogLevel::Info;
+/// assert!(level < LogLevel::Warning);
+/// assert!(level < LogLevel::Error);
+/// ```
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 pub enum LogLevel {
-    /// The lowest level, dedicated to regular information that is not really
-    /// important
+    /// The lowest level, dedicated to regular information that is not critical.
+    /// Used for general operational messages and debugging information.
     Info,
     /// Mid level, used to indicate when something went wrong but it's not
-    /// critical
+    /// critical. Used for recoverable errors or potential issues.
     Warning,
-    /// The highest level, used to indicate critical errors. But not enought to
-    /// crash the program
+    /// The highest level, used to indicate critical errors that require attention
+    /// but are not severe enough to crash the program.
     Error,
 }
 
@@ -48,12 +56,23 @@ impl FromStr for LogLevel {
     }
 }
 
-/// Describes a message to be logged
+/// Describes a message to be logged.
 ///
-/// Contains the message constent itself as a [`String`] and its [`LogLevel`]
+/// Contains both the message content and its associated log level.
+/// This struct is used internally by the logger to manage log entries.
+///
+/// # Examples
+/// ```
+/// let msg = LogMessage {
+///     level: LogLevel::Info,
+///     message: "Application started".to_string(),
+/// };
+/// ```
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct LogMessage {
+    /// The severity level of the message
     level: LogLevel,
+    /// The actual message content
     message: String,
 }
 
@@ -63,61 +82,68 @@ impl Display for LogMessage {
     }
 }
 
-/// The Log manages logging to [`stderr`] (log buffer) and a log file.
-/// The messages are written to the log file immediatly,
-/// but the messages to the `stderr` are written only after the TUI is closed,
-/// so they are kept in memory.
+/// The core of the logging system that manages logging to both stderr and log files.
 ///
-/// The logger also has a log level that can be set to filter the messages that
-/// are written to the log file.
-/// Only messages with a level equal or higher than the log level are written
-/// to the log file.
+/// This struct provides thread-safe logging capabilities through an actor pattern.
+/// It handles writing messages to both a timestamped log file and a "latest" log file,
+/// while also maintaining a buffer of messages to be printed to stderr when requested.
 ///
-/// You're not supossed to use an instance of this directly, but use
-/// [`Log`] instead by calling [`spawn`] as soon as this struct is built.
+/// # Features
+/// - Concurrent logging through an actor pattern
+/// - Dual logging to files (timestamped and latest)
+/// - Configurable log levels
+/// - Automatic log file rotation and cleanup
+/// - Buffered stderr output
 ///
-/// The expected flow is:
-///  - Instantiate the logger with [`build`]
-///  - Spawn the actor with [`spawn`]
-///  - Log with [`info`], [`warn`] or [`error`]
-///  - Flush the log buffer to the stderr and finish the logger with [`flush`]
+/// # Examples
+/// ```
+/// let (log, _) = LogCore::build(fs, LogLevel::Info, 7, log_dir).await?.spawn();
+/// log.info("Application started");
+/// ```
 ///
-/// [`Config`]: super::config::Config
-/// [`info`]: Log::info
-/// [`warn`]: Log::warn
-/// [`error`]: Log::error
-/// [`flush`]: Log::flush
-/// [`stderr`]: std::io::stderr
-/// [`spawn`]: LogCore::spawn
-/// [`build`]: LogCore::build
+/// # Thread Safety
+/// This type is designed to be safely shared between threads through the actor pattern.
+/// All logging operations are handled sequentially to ensure consistency.
 #[derive(Debug)]
 pub struct LogCore {
+    /// Filesystem interface for file operations
     fs: Fs,
+    /// Directory where log files are stored
     log_dir: ArcPath,
+    /// Path to the current timestamped log file
     log_path: ArcPath,
+    /// Handle to the current log file
     log_file: ArcFile,
+    /// Handle to the "latest" log file
     latest_log_file: ArcFile,
+    /// Buffer of messages to be printed to stderr
     logs_to_print: Vec<LogMessage>,
-    print_level: LogLevel, // TODO: Add a log level configuration
+    /// Minimum level of messages to be printed to stderr
+    print_level: LogLevel,
+    /// Maximum age of log files in days before they are deleted
     max_age: usize,
 }
 
 impl LogCore {
-    /// Creates a new logger instance. The parameters are the [dir] where the
-    /// log files will be stored, [level] of log messages, and [max_age] of the
-    /// log files in days.
+    /// Creates a new logger instance with the specified configuration.
     ///
-    /// You're supposed to call [`spawn`] immediately after this method to
-    /// transform the logger instance into an actor.
+    /// # Arguments
+    /// * `fs` - Filesystem interface for file operations
+    /// * `level` - Minimum log level for messages to be printed to stderr
+    /// * `max_age` - Maximum age of log files in days before they are deleted
+    /// * `log_dir` - Directory where log files will be stored
+    ///
+    /// # Returns
+    /// A new instance of `LogCore` ready to be spawned as an actor.
     ///
     /// # Errors
+    /// Returns an error if either the timestamped log file or the latest log file
+    /// cannot be created.
     ///
-    /// If either the latest log file or the log file cannot be created, an
-    /// error is returned.
-    ///
-    /// [`level`]: LogLevel
-    /// [`flush`]: LogTx::flush
-    /// [`spawn`]: Log::spawn
+    /// # Examples
+    /// ```
+    /// let log = LogCore::build(fs, LogLevel::Info, 7, log_dir).await?;
+    /// ```
     pub async fn build(
         fs: Fs,
         level: LogLevel,
@@ -153,15 +179,21 @@ impl LogCore {
         })
     }
 
-    /// Transforms the logger core instance into an actor. This method returns a
-    /// [`Log`] and a [`JoinHandle`] that can be used to send commands to the
-    /// logger or await for it to finish (when a [`flush`] is performed, for
-    /// instance).
+    /// Transforms the logger core instance into an actor.
     ///
-    /// The handling of the commandds received is done sequentially, so a
-    /// command is only processed once the previous one is finished.
+    /// This method spawns a new task that will handle logging operations
+    /// asynchronously through a message channel. Commands are processed
+    /// sequentially to ensure consistency.
     ///
-    /// [`flush`]: Log::flush
+    /// # Returns
+    /// A tuple containing:
+    /// - A [`Log`] instance that can be used to send messages to the actor
+    /// - A join handle for the spawned task
+    ///
+    /// # Examples
+    /// ```
+    /// let (log, handle) = log_core.spawn();
+    /// ```
     pub fn spawn(mut self) -> (Log, JoinHandle<()>) {
         let (tx, mut rx) = tokio::sync::mpsc::channel(100);
         let handle = tokio::spawn(async move {
@@ -184,12 +216,18 @@ impl LogCore {
 
         (Log::Actual(tx), handle)
     }
-    /// Given a [`LogMessage`] object, writes it to the current and latest log
-    /// files. If the message level is high enough, it is also stored in the log
-    /// buffer to be printed to [`stderr`] when a [`flush`] is performed.
+
+    /// Writes a log message to both log files and potentially to the stderr buffer.
     ///
-    /// [`stderr`]: std::io::stderr
-    /// [`flush`]: Log::flush
+    /// The message is written to both the timestamped log file and the latest log file.
+    /// If the message's level is equal to or higher than the configured print level,
+    /// it is also added to the stderr buffer.
+    ///
+    /// # Arguments
+    /// * `message` - The log message to write
+    ///
+    /// # Panics
+    /// This function will panic if it fails to write to either log file.
     async fn log(&mut self, message: LogMessage) {
         let mut lock = self.log_file.write().await;
         lock.write_all(format!("{}\n", &message).as_bytes())
@@ -214,12 +252,14 @@ impl LogCore {
         }
     }
 
-    /// Writes the log messages to the [`stderr`] if their level is equal or
-    /// higher than the print level set in the logger.
+    /// Writes buffered log messages to stderr and destroys the logger.
     ///
-    /// **The logger is destroyed after this method is called.**
+    /// This method prints all buffered messages to stderr and then destroys
+    /// the logger instance. It should be called when the application is shutting down.
     ///
-    /// [`stderr`]: std::io::stderr
+    /// # Note
+    /// The logger is destroyed after this method is called. Any subsequent
+    /// logging attempts will fail.
     fn flush(self) {
         for message in &self.logs_to_print {
             eprintln!("{}", message);
@@ -232,11 +272,12 @@ impl LogCore {
 
     /// Runs the garbage collector to delete old log files.
     ///
-    /// A log file is a file in the [`log_dir`] and it will be deleted if its
-    /// older than [`max_age`] days.
+    /// This method scans the log directory and deletes any log files that are
+    /// older than the configured maximum age. If max_age is 0, no files are deleted.
     ///
-    /// [`log_dir`]: LogCore::log_dir
-    /// [`max_age`]: LogCore::max_age
+    /// # Errors
+    /// If the log directory cannot be read, an error message is logged but
+    /// the function continues execution.
     async fn collect_garbage(&mut self) {
         if self.max_age == 0 {
             return;
@@ -283,45 +324,40 @@ impl LogCore {
     }
 }
 
-/// The possible commands to be handled by the logger actor. They will be
-/// executed synchronously in the same order that they were sent through the
-/// channel
-#[derive(Debug, Clone, PartialEq, Eq)]
-#[allow(dead_code)]
+/// Messages that can be sent to a [`LogCore`] actor.
+///
+/// This enum defines the different types of operations that can be performed
+/// through the logging actor system.
+#[derive(Debug)]
 pub enum Message {
-    /// Logs the payload message
+    /// Logs a message with the specified level and content
     Log(LogMessage),
-    /// Flushes the logger by closing the log file, printing critical errors to
-    /// the stdout and destroying the logger instance
+    /// Flushes the logger by writing buffered messages to stderr and destroying the instance
     Flush,
-    /// Runs the log garbage collector deleting old files according with the
-    /// configured in the logger
+    /// Runs the log garbage collector to delete old log files
     CollectGarbage,
 }
 
-/// The transmitter that sends messages down to a logger actor. This is what
-/// you're supossed to use accross the code to log messages, not LogCore.
-/// Cloning it is cheap so do not feel afraid to pass it around.
+/// The logging actor that provides a thread-safe interface for logging operations.
 ///
-/// The transmitter is obtained by calling [`spawn`] on a [`LogCore`]
-/// instance, consuming it and creating a dedicated task for it. Use the methods
-/// of this struct to interact with the logger.
+/// This enum represents either a real logging actor or a mock implementation
+/// for testing purposes. It provides a unified interface for logging operations
+/// regardless of the underlying implementation.
 ///
-/// The intended usage is:
-/// - Instantiate the logger with [`LogCore::build`]
-/// - Spawn the logger actor with [`LogCore::spawn`]
-/// - Use the methods of this struct to log messages
-/// - Use the method [`flush`] to print the log messages to [`stderr`]
-///     and finish the logger
+/// # Examples
+/// ```
+/// let (log, _) = LogCore::build(fs, LogLevel::Info, 7, log_dir).await?.spawn();
+/// log.info("Application started");
+/// ```
 ///
-/// [`spawn`]: LogCore::spawn
-/// [`flush`]: Log::flush
-/// [`stderr`]: std::io::stderr
+/// # Thread Safety
+/// This type is designed to be safely shared between threads. Cloning is cheap as it only
+/// copies the channel sender.
 #[derive(Debug, Clone)]
 pub enum Log {
-    /// The default version (produced by [`LogCore::spawn`])
+    /// A real logging actor that writes to files and stderr
     Actual(Sender<Message>),
-    /// The mock version of this logger which won't do nothing at all
+    /// A mock implementation for testing that does nothing
     #[allow(dead_code)]
     Mock,
 }
