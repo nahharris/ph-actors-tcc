@@ -1,0 +1,9 @@
+---
+description: 
+globs: *.rs
+alwaysApply: false
+---
+- Look at [Cargo.toml](mdc:Cargo.toml) to check if a given dependecy is installed, if it's not and you absolutely need to install it, run `cargo add needed_dependency` to install it- 
+- Run `cargo fmt` before finishing to make sure the code you wrote is properly formatted, it will auto fix it
+- Run `cargo test` to check if your implementation is not breaking the program
+- Always add documentation to the functions, data structures and modules you create. But avoid adding other kind of comments to not polute the view, only add for unusual pieces of code
