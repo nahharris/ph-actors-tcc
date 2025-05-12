@@ -4,7 +4,7 @@ use anyhow::Context;
 use serde::{Deserialize, Serialize};
 use tokio::{io::AsyncWriteExt, sync::mpsc::Sender, task::JoinHandle};
 
-use crate::{ArcFile, ArcPath, env::Env, fs::Fs};
+use crate::{ArcFile, ArcPath, fs::Fs};
 
 /// Describes the log level of a message.
 ///
@@ -20,8 +20,9 @@ use crate::{ArcFile, ArcPath, env::Env, fs::Fs};
 /// assert!(level < LogLevel::Warning);
 /// assert!(level < LogLevel::Error);
 /// ```
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize, Default)]
 pub enum LogLevel {
+    #[default]
     /// The lowest level, dedicated to regular information that is not critical.
     /// Used for general operational messages and debugging information.
     Info,
@@ -150,13 +151,11 @@ impl LogCore {
         max_age: usize,
         log_dir: ArcPath,
     ) -> anyhow::Result<Self> {
-        let log_path: ArcPath = log_dir
-            .join(format!(
-                "patch-hub_{}.log",
-                chrono::Utc::now().format("%Y-%m-%d-%H-%M-%S")
-            ))
-            .into();
-        let latest_log_path: ArcPath = log_dir.join("latest.log").into();
+        let log_path = ArcPath::from(&log_dir.join(format!(
+            "patch-hub_{}.log",
+            chrono::Utc::now().format("%Y-%m-%d-%H-%M-%S")
+        )));
+        let latest_log_path = ArcPath::from(&log_dir.join("latest.log"));
 
         let log_file = fs
             .open_file(log_path.clone())

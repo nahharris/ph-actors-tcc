@@ -1,9 +1,19 @@
-use std::{path::Path, str::FromStr, sync::Arc};
+mod core;
+mod data;
+mod message;
+
+use std::{str::FromStr, sync::Arc};
 
 use serde::{Deserialize, Serialize, ser::SerializeStruct};
-use tokio::{io::{AsyncReadExt, AsyncWriteExt}, sync::Mutex};
+use tokio::{
+    io::{AsyncReadExt, AsyncWriteExt},
+    sync::Mutex,
+};
 
 use crate::{ArcPath, env::Env, fs::Fs, log::LogLevel};
+
+pub use data::{PathOpt, USizeOpt};
+pub use message::Message;
 
 /// The core of the configuration system that manages application settings.
 ///
@@ -124,7 +134,7 @@ impl ConfigCore {
     /// - The file cannot be read
     /// - The configuration data is invalid
     async fn load(&mut self) -> anyhow::Result<()> {
-        let config = self.fs.open_file(Arc::clone(&self.path)).await?;
+        let config = self.fs.open_file(self.path.clone()).await?;
         let mut buf = String::new();
 
         config.write().await.read_to_string(&mut buf).await?;
@@ -146,7 +156,7 @@ impl ConfigCore {
     /// - The configuration data cannot be serialized
     /// - The file cannot be written
     async fn save(&self) -> anyhow::Result<()> {
-        let config = self.fs.open_file(Arc::clone(&self.path)).await?;
+        let config = self.fs.open_file(self.path.clone()).await?;
         let buf = toml::ser::to_string_pretty(&self.data)?;
 
         config.write().await.write_all(buf.as_bytes()).await?;
@@ -174,7 +184,7 @@ pub struct Data {
 impl Default for Data {
     fn default() -> Self {
         Self {
-            log_dir: Arc::from(Path::new("/tmp")),
+            log_dir: ArcPath::from("/tmp"),
             log_level: LogLevel::Warning,
             max_age: 30,
         }
@@ -204,7 +214,7 @@ impl<'de> Deserialize<'de> for Data {
         let map = toml::Value::deserialize(deserializer)?;
         if let Some(log_dir) = map.get("log_dir") {
             if let Some(log_dir) = log_dir.as_str() {
-                data.log_dir = Arc::from(Path::new(log_dir));
+                data.log_dir = ArcPath::from(log_dir);
             }
         }
         if let Some(log_level) = map.get("log_level") {
@@ -231,7 +241,7 @@ impl Data {
     /// The requested path value.
     pub fn path(&self, opt: PathOpt) -> ArcPath {
         match opt {
-            PathOpt::LogDir => Arc::clone(&self.log_dir),
+            PathOpt::LogDir => self.log_dir.clone(),
         }
     }
 
@@ -287,82 +297,6 @@ impl Data {
     }
 }
 
-/// Options for path-based configuration values.
-///
-/// This enum defines the different path-based configuration options
-/// that can be accessed and modified.
-#[derive(Debug, Clone, Copy)]
-pub enum PathOpt {
-    /// Directory where log files are stored
-    LogDir,
-}
-
-/// Options for numeric configuration values.
-///
-/// This enum defines the different numeric configuration options
-/// that can be accessed and modified.
-#[derive(Debug, Clone, Copy)]
-pub enum USizeOpt {
-    /// Maximum age of log files in days before they are deleted
-    MaxAge,
-}
-
-/// Messages that can be sent to a [`ConfigCore`] actor.
-///
-/// This enum defines the different types of operations that can be performed
-/// through the configuration actor system.
-#[derive(Debug)]
-pub enum Message {
-    /// Loads the configuration from the file
-    Load {
-        /// Channel to send the result back to the caller
-        tx: tokio::sync::oneshot::Sender<anyhow::Result<()>>,
-    },
-    /// Saves the current configuration to the file
-    Save {
-        /// Channel to send the result back to the caller
-        tx: tokio::sync::oneshot::Sender<anyhow::Result<()>>,
-    },
-    /// Gets a path-based configuration value
-    GetPath {
-        /// The path option to retrieve
-        opt: PathOpt,
-        /// Channel to send the result back to the caller
-        tx: tokio::sync::oneshot::Sender<ArcPath>,
-    },
-    /// Gets the current log level
-    GetLogLevel {
-        /// Channel to send the result back to the caller
-        tx: tokio::sync::oneshot::Sender<LogLevel>,
-    },
-    /// Gets a numeric configuration value
-    GetUSize {
-        /// The numeric option to retrieve
-        opt: USizeOpt,
-        /// Channel to send the result back to the caller
-        tx: tokio::sync::oneshot::Sender<usize>,
-    },
-    /// Sets a path-based configuration value
-    SetPath {
-        /// The path option to set
-        opt: PathOpt,
-        /// The new path value
-        path: ArcPath,
-    },
-    /// Sets the log level
-    SetLogLevel {
-        /// The new log level value
-        level: LogLevel,
-    },
-    /// Sets a numeric configuration value
-    SetUSize {
-        /// The numeric option to set
-        opt: USizeOpt,
-        /// The new numeric value
-        size: usize,
-    },
-}
-
 /// The configuration actor that provides a thread-safe interface for configuration operations.
 ///
 /// This enum represents either a real configuration actor or a mock implementation
@@ -371,9 +305,9 @@ pub enum Message {
 ///
 /// # Examples
 /// ```
-/// let (config, _) = ConfigCore::new(env, fs, config_path).spawn();
+/// let config = Config::spawn(env, fs, config_path);
 /// config.load().await?;
-/// let log_dir = config.path(PathOpts::LogDir).await;
+/// let log_dir = config.path(PathOpt::LogDir).await;
 /// ```
 ///
 /// # Thread Safety
@@ -388,6 +322,20 @@ pub enum Config {
 }
 
 impl Config {
+    /// Creates a new configuration instance and spawns its actor.
+    ///
+    /// # Arguments
+    /// * `env` - The environment actor for system operations
+    /// * `fs` - The filesystem actor for file operations
+    /// * `path` - The path to the configuration file
+    ///
+    /// # Returns
+    /// A new configuration instance with a spawned actor.
+    pub fn spawn(env: Env, fs: Fs, path: ArcPath) -> Self {
+        let (config, _) = core::Core::new(env, fs, path).spawn();
+        config
+    }
+
     /// Creates a new mock configuration instance for testing.
     ///
     /// # Arguments

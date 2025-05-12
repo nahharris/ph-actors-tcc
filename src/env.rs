@@ -101,7 +101,7 @@ impl EnvCore {
     /// The function will return an error if the environment variable is not found
     /// or if there are any issues with the channel communication.
     fn get_env(&self, tx: tokio::sync::oneshot::Sender<Result<ArcStr, VarError>>, key: ArcOsStr) {
-        let _ = tx.send(std::env::var(key).map(Arc::from));
+        let _ = tx.send(std::env::var(key).map(|s| ArcStr::from(&s)));
     }
 }
 
@@ -241,7 +241,7 @@ impl Env {
                 let lock = lock.lock().await;
                 lock.env
                     .get(&key)
-                    .map(|s| s.to_string_lossy().to_string().into())
+                    .map(|s| ArcStr::from(&s.to_string_lossy()))
                     .ok_or(VarError::NotPresent)
             }
         }
@@ -250,24 +250,26 @@ impl Env {
 
 #[cfg(test)]
 mod tests {
+    use std::ops::Deref;
+
     use super::*;
 
     #[tokio::test]
     async fn test_env_set_get() {
         let (env, _) = EnvCore::new().spawn();
-        let key: ArcOsStr = Arc::from(OsString::from("TEST_ENV_SET_GET"));
+        let key = ArcOsStr::from("TEST_ENV_SET_GET");
         let value = "test_value";
 
         // Remove env var if it exists
         unsafe { std::env::remove_var(key.as_ref()) };
-        
+
         // Verify it's not set in std::env
         assert!(std::env::var(key.as_ref()).is_err());
 
         // Set and verify through our Env actor
         env.set_env(key.clone(), value).await;
         let result = env.env(key.clone()).await.unwrap();
-        assert_eq!(result.as_ref(), value);
+        assert_eq!(result.deref(), value);
 
         // Verify it's also set in std::env
         let std_result = std::env::var(key.as_ref()).unwrap();
@@ -277,7 +279,7 @@ mod tests {
     #[tokio::test]
     async fn test_env_unset() {
         let env: Env = EnvCore::new().into();
-        let key: ArcOsStr = Arc::from(OsString::from("TEST_ENV_UNSET"));
+        let key = ArcOsStr::from("TEST_ENV_UNSET");
         let value = "test_value";
 
         unsafe { std::env::set_var(key.as_ref(), value) };

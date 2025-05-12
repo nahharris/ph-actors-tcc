@@ -5,10 +5,7 @@ use std::{
 };
 
 use anyhow::Context;
-use tokio::{
-    fs::OpenOptions,
-    sync::{RwLock, mpsc::Sender},
-};
+use tokio::{fs::OpenOptions, sync::mpsc::Sender};
 
 use crate::{ArcFile, ArcPath};
 
@@ -91,17 +88,17 @@ impl FsCore {
         tx: tokio::sync::oneshot::Sender<Result<ArcFile, tokio::io::Error>>,
         path: ArcPath,
     ) {
-        let f = match self.files.get(path.as_ref()) {
-            Some(f) => Arc::clone(f),
+        let f = match self.files.get(&path) {
+            Some(f) => f.clone(),
             None => match OpenOptions::new()
                 .write(true)
                 .create(true)
-                .open(path.as_ref())
+                .open(&path)
                 .await
             {
                 Ok(f) => {
-                    let f = Arc::new(RwLock::new(f));
-                    self.files.insert(path, Arc::clone(&f));
+                    let f = ArcFile::from(f);
+                    self.files.insert(path, f.clone());
                     f
                 }
                 Err(e) => {
@@ -121,7 +118,7 @@ impl FsCore {
     /// # Arguments
     /// * `path` - The path of the file to remove from the cache
     fn close_file(&mut self, path: ArcPath) {
-        self.files.remove(path.as_ref());
+        self.files.remove(&path);
     }
 
     /// Removes a file from the filesystem.
@@ -138,7 +135,7 @@ impl FsCore {
         tx: tokio::sync::oneshot::Sender<Result<(), tokio::io::Error>>,
         path: ArcPath,
     ) {
-        let res = tokio::fs::remove_file(path.as_ref()).await;
+        let res = tokio::fs::remove_file(&path).await;
         let _ = tx.send(res);
     }
 
@@ -158,12 +155,12 @@ impl FsCore {
         tx: tokio::sync::oneshot::Sender<Result<LinkedList<ArcPath>, io::Error>>,
         path: ArcPath,
     ) {
-        match tokio::fs::read_dir(path.as_ref()).await {
+        match tokio::fs::read_dir(&path).await {
             Ok(mut rd) => {
                 let mut entries = LinkedList::new();
                 let res = loop {
                     match rd.next_entry().await {
-                        Ok(Some(entry)) => entries.push_back(Arc::from(entry.path())),
+                        Ok(Some(entry)) => entries.push_back(ArcPath::from(&entry.path())),
                         Ok(None) => break Ok(entries),
                         Err(e) => break Err(e),
                     }
@@ -187,7 +184,7 @@ impl FsCore {
     /// The function will return an error if the directory cannot be created or if there
     /// are any issues with the channel communication.
     async fn mkdir(&self, tx: tokio::sync::oneshot::Sender<Result<(), io::Error>>, path: ArcPath) {
-        let res = tokio::fs::create_dir_all(path.as_ref()).await;
+        let res = tokio::fs::create_dir_all(&path).await;
         let _ = tx.send(res);
     }
 
@@ -201,7 +198,7 @@ impl FsCore {
     /// The function will return an error if the directory cannot be removed or if there
     /// are any issues with the channel communication.
     async fn rmdir(&self, tx: tokio::sync::oneshot::Sender<Result<(), io::Error>>, path: ArcPath) {
-        let res = tokio::fs::remove_dir_all(path.as_ref()).await;
+        let res = tokio::fs::remove_dir_all(&path).await;
         let _ = tx.send(res);
     }
 }
@@ -353,7 +350,7 @@ impl Fs {
                 let lock = lock.lock().await;
                 lock.files
                     .get(&path)
-                    .map(Arc::clone)
+                    .map(ArcFile::clone)
                     .ok_or_else(|| io::Error::new(io::ErrorKind::NotFound, "file not found"))
             }
         }
@@ -416,7 +413,7 @@ impl Fs {
             }
             Mock(lock) => {
                 let lock = lock.lock().await;
-                let entries = lock.dirs.get(path.as_ref()).ok_or_else(|| {
+                let entries = lock.dirs.get(&path).ok_or_else(|| {
                     io::Error::new(io::ErrorKind::NotFound, "directory not found")
                 })?;
 
@@ -479,20 +476,20 @@ mod tests {
     async fn test_fs_open_close() {
         let temp_dir = tempfile::tempdir().unwrap();
         let file_path = temp_dir.path().join("test_fs_open_close.txt");
-        
+
         // Create the actual filesystem handler
         let (fs, _) = FsCore::new().spawn();
-        let path: ArcPath = Arc::from(file_path.clone());
+        let path = ArcPath::from(&file_path);
 
         // Create and write to file
         let file = File::create(&file_path).await.unwrap();
         drop(file);
 
         fs.open_file(path.clone()).await.unwrap();
-        fs.close_file(path).await;
+        fs.close_file(path.clone()).await;
 
         // Cleanup
-        fs.remove_file(Arc::from(file_path)).await.unwrap();
+        fs.remove_file(path).await.unwrap();
         temp_dir.close().unwrap();
     }
 
@@ -500,7 +497,7 @@ mod tests {
     async fn test_fs_mkdir_rmdir() {
         let temp_dir = tempfile::tempdir().unwrap();
         let dir_path = temp_dir.path().join("test_fs_mkdir_rmdir");
-        let path: ArcPath = Arc::from(dir_path.clone());
+        let path = ArcPath::from(&dir_path);
 
         let (fs, _) = FsCore::new().spawn();
 
@@ -521,9 +518,9 @@ mod tests {
         let temp_dir = tempfile::tempdir().unwrap();
         let dir_path = temp_dir.path().join("test_fs_remove_file");
         let file_path = dir_path.join("test_fs_remove_file.txt");
-        
-        let dir_path: ArcPath = Arc::from(dir_path);
-        let file_path: ArcPath = Arc::from(file_path);
+
+        let dir_path = ArcPath::from(&dir_path);
+        let file_path = ArcPath::from(&file_path);
 
         let (fs, _) = FsCore::new().spawn();
 
