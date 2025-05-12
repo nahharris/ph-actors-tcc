@@ -22,7 +22,13 @@ impl NetCore {
 
     pub fn spawn(mut self) -> anyhow::Result<(Self, tokio::task::JoinHandle<anyhow::Result<()>>)> {
         let handle = tokio::spawn(async move {
-            self.log.info("NetCore spawned");
+            while let Some(message) = self.receiver.recv().await {
+                match message {
+                    Message::Get(url) => {
+                        let response = self.client.get(url).send().await?;
+                    }
+                }
+            }
             Ok(())
         });
         Ok((self, handle))

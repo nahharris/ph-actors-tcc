@@ -12,6 +12,7 @@ ratatui = { version = "0.29.0", features = ["all-widgets", "serde", "scrolling-r
 regex = "1.11.1"
 reqwest = { version = "0.12.15", features = ["json", "rustls-tls"] }
 serde = { version = "1.0.219", features = ["derive"] }
+tempfile = "3.19.1"
 thiserror = "2.0.12"
 tokio = { version = "1.44.1", features = ["full"] }
 toml = "0.8.20"

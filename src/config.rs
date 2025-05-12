@@ -4,25 +4,28 @@ use anyhow::Context;
 use serde::{Deserialize, Serialize, ser::SerializeStruct};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
-use crate::{ArcPath, log::LogLevel, sys::Sys};
+use crate::{ArcPath, env::Env, fs::Fs, log::LogLevel};
 
 pub struct ConfigCore {
     data: Data,
     path: ArcPath,
-    sys: Sys,
+    env: Env,
+    fs: Fs,
 }
 
 impl ConfigCore {
     /// Creates a new instance of [`ConfigCore`]
     ///
     /// # Arguments
-    /// * `sys` - The system core
+    /// * `env` - The environment actor
+    /// * `fs` - The filesystem actor
     /// * `path` - The path to the configuration file
-    pub fn new(sys: Sys, path: ArcPath) -> Self {
+    pub fn new(env: Env, fs: Fs, path: ArcPath) -> Self {
         Self {
             data: Data::default(),
             path,
-            sys,
+            env,
+            fs,
         }
     }
 
@@ -74,7 +77,7 @@ impl ConfigCore {
     ///
     /// If it fails, it means that either: the config file does not exist, or the file is not a valid TOML file.
     async fn load(&mut self) -> anyhow::Result<()> {
-        let config = self.sys.open_file(Arc::clone(&self.path)).await?;
+        let config = self.fs.open_file(Arc::clone(&self.path)).await?;
         let mut buf = String::new();
 
         config.write().await.read_to_string(&mut buf).await?;
@@ -86,7 +89,7 @@ impl ConfigCore {
 
     /// Saves the configuration to the file
     async fn save(&self) -> anyhow::Result<()> {
-        let config = self.sys.open_file(Arc::clone(&self.path)).await?;
+        let config = self.fs.open_file(Arc::clone(&self.path)).await?;
         let buf = toml::ser::to_string_pretty(&self.data)?;
 
         config.write().await.write_all(buf.as_bytes()).await?;

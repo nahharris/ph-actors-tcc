@@ -6,17 +6,18 @@ use std::{
 };
 
 use config::{ConfigCore, PathOpts, USizeOpts};
+use env::EnvCore;
+use fs::FsCore;
 use log::LogCore;
-use sys::SysCore;
 use terminal::TerminalCore;
 use utils::install_panic_hook;
 
 pub(crate) const BUFFER_SIZE: usize = 128;
 
 mod config;
+mod env;
+mod fs;
 mod log;
-mod net;
-mod sys;
 mod terminal;
 mod utils;
 
@@ -29,16 +30,17 @@ pub(crate) type ArcPath = std::sync::Arc<std::path::Path>;
 async fn main() -> anyhow::Result<()> {
     install_panic_hook()?;
 
-    let (sys, _) = SysCore::new().spawn();
+    let (env, _) = EnvCore::new().spawn();
+    let (fs, _) = FsCore::new().spawn();
 
-    let config_path = sys.env(OsString::from("HOME").into()).await?;
+    let config_path = env.env(OsString::from("HOME").into()).await?;
     let config_path = Path::new(config_path.as_ref())
         .join(".config")
         .join("patch-hub")
         .join("config.toml");
     let config_path: ArcPath = Arc::from(config_path);
 
-    let (config, _) = ConfigCore::new(sys.clone(), config_path).spawn();
+    let (config, _) = ConfigCore::new(env.clone(), fs.clone(), config_path).spawn();
     let res = config.load().await;
 
     if res.is_err() {
@@ -46,7 +48,7 @@ async fn main() -> anyhow::Result<()> {
     }
 
     let (log, _) = LogCore::build(
-        sys.clone(),
+        fs.clone(),
         config.log_level().await,
         config.usize(USizeOpts::MaxAge).await,
         config.path(PathOpts::LogDir).await,
@@ -59,7 +61,7 @@ async fn main() -> anyhow::Result<()> {
     term.take_over().await?;
     println!(
         "Hello, world! {}",
-        sys.env(OsStr::new("HOME").into()).await.unwrap()
+        env.env(OsStr::new("HOME").into()).await.unwrap()
     );
     tokio::time::sleep(Duration::from_secs(2)).await;
 

@@ -4,7 +4,7 @@ use anyhow::Context;
 use serde::{Deserialize, Serialize};
 use tokio::{io::AsyncWriteExt, sync::mpsc::Sender, task::JoinHandle};
 
-use crate::{ArcFile, ArcPath, sys::Sys};
+use crate::{ArcFile, ArcPath, env::Env, fs::Fs};
 
 /// Describes the log level of a message
 ///
@@ -92,7 +92,7 @@ impl Display for LogMessage {
 /// [`build`]: LogCore::build
 #[derive(Debug)]
 pub struct LogCore {
-    sys: Sys,
+    fs: Fs,
     log_dir: ArcPath,
     log_path: ArcPath,
     log_file: ArcFile,
@@ -119,7 +119,7 @@ impl LogCore {
     /// [`flush`]: LogTx::flush
     /// [`spawn`]: Log::spawn
     pub async fn build(
-        sys: Sys,
+        fs: Fs,
         level: LogLevel,
         max_age: usize,
         log_dir: ArcPath,
@@ -132,17 +132,17 @@ impl LogCore {
             .into();
         let latest_log_path: ArcPath = log_dir.join("latest.log").into();
 
-        let log_file = sys
+        let log_file = fs
             .open_file(log_path.clone())
             .await
             .context("Failed to create log file")?;
-        let latest_log_file = sys
+        let latest_log_file = fs
             .open_file(latest_log_path)
             .await
             .context("Failed to create latest log file")?;
 
         Ok(Self {
-            sys,
+            fs,
             log_dir,
             log_path,
             log_file,
@@ -244,7 +244,7 @@ impl LogCore {
 
         let now = std::time::SystemTime::now();
 
-        let Ok(logs) = self.sys.read_dir(self.log_dir.clone()).await else {
+        let Ok(logs) = self.fs.read_dir(self.log_dir.clone()).await else {
             self.log(LogMessage {
                 level: LogLevel::Error,
                 message: "Failed to read the logs directory during garbage collection".into(),
@@ -272,7 +272,7 @@ impl LogCore {
             };
             let age = age.as_secs() / 60 / 60 / 24;
 
-            if age as usize > self.max_age && self.sys.remove_file(log.clone()).await.is_err() {
+            if age as usize > self.max_age && self.fs.remove_file(log.clone()).await.is_err() {
                 self.log(LogMessage {
                     message: format!("Failed to remove the log file: {}", log.to_string_lossy()),
                     level: LogLevel::Warning,
