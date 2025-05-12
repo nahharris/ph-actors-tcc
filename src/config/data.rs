@@ -98,3 +98,49 @@ impl Data {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_data_default_values() {
+        let data = Data::default();
+        assert_eq!(data.log_level(), LogLevel::Warning);
+        assert_eq!(data.path(PathOpt::LogDir).to_str().unwrap(), "/tmp");
+        assert_eq!(data.usize(USizeOpt::MaxAge), 30);
+    }
+
+    #[test]
+    fn test_data_setters_and_getters() {
+        let mut data = Data::default();
+
+        // Test log level
+        data.set_log_level(LogLevel::Info);
+        assert_eq!(data.log_level(), LogLevel::Info);
+
+        // Test path
+        let new_path = ArcPath::from("/var/log");
+        data.set_path(PathOpt::LogDir, new_path.clone());
+        assert_eq!(data.path(PathOpt::LogDir), new_path);
+
+        // Test max age
+        data.set_usize(USizeOpt::MaxAge, 60);
+        assert_eq!(data.usize(USizeOpt::MaxAge), 60);
+    }
+
+    #[test]
+    fn test_data_serialization() {
+        let mut data = Data::default();
+        data.set_log_level(LogLevel::Error);
+        data.set_path(PathOpt::LogDir, ArcPath::from("/custom/log"));
+        data.set_usize(USizeOpt::MaxAge, 45);
+
+        let toml = toml::to_string_pretty(&data).unwrap();
+        let deserialized: Data = toml::from_str(&toml).unwrap();
+
+        assert_eq!(data.log_level(), deserialized.log_level());
+        assert_eq!(data.path(PathOpt::LogDir), deserialized.path(PathOpt::LogDir));
+        assert_eq!(data.usize(USizeOpt::MaxAge), deserialized.usize(USizeOpt::MaxAge));
+    }
+}
