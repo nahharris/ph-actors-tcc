@@ -23,14 +23,24 @@ pub enum USizeOpt {
 ///
 /// # Thread Safety
 /// This type is designed to be safely shared between threads when wrapped in an `Arc<Mutex<>>`.
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub(crate) struct Data {
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Data {
     /// Directory where log files are stored
     log_dir: ArcPath,
     /// Current log level
     log_level: LogLevel,
     /// Maximum age of log files in days before they are deleted
     max_age: usize,
+}
+
+impl Default for Data {
+    fn default() -> Self {
+        Self {
+            log_dir: ArcPath::from("/tmp/patch-hub/logs"),
+            log_level: LogLevel::Warning,
+            max_age: 0,
+        }
+    }
 }
 
 impl Data {
@@ -41,7 +51,7 @@ impl Data {
     ///
     /// # Returns
     /// The requested path value.
-    pub(crate) fn path(&self, opt: PathOpt) -> ArcPath {
+    pub fn path(&self, opt: PathOpt) -> ArcPath {
         match opt {
             PathOpt::LogDir => self.log_dir.clone(),
         }
@@ -52,7 +62,7 @@ impl Data {
     /// # Arguments
     /// * `opt` - The path option to set
     /// * `path` - The new path value
-    pub(crate) fn set_path(&mut self, opt: PathOpt, path: ArcPath) {
+    pub fn set_path(&mut self, opt: PathOpt, path: ArcPath) {
         match opt {
             PathOpt::LogDir => self.log_dir = path,
         }
@@ -62,7 +72,7 @@ impl Data {
     ///
     /// # Returns
     /// The current log level.
-    pub(crate) fn log_level(&self) -> LogLevel {
+    pub fn log_level(&self) -> LogLevel {
         self.log_level
     }
 
@@ -70,7 +80,7 @@ impl Data {
     ///
     /// # Arguments
     /// * `level` - The new log level value
-    pub(crate) fn set_log_level(&mut self, level: LogLevel) {
+    pub fn set_log_level(&mut self, level: LogLevel) {
         self.log_level = level;
     }
 
@@ -81,7 +91,7 @@ impl Data {
     ///
     /// # Returns
     /// The requested numeric value.
-    pub(crate) fn usize(&self, opt: USizeOpt) -> usize {
+    pub fn usize(&self, opt: USizeOpt) -> usize {
         match opt {
             USizeOpt::MaxAge => self.max_age,
         }
@@ -92,7 +102,7 @@ impl Data {
     /// # Arguments
     /// * `opt` - The numeric option to set
     /// * `value` - The new numeric value
-    pub(crate) fn set_usize(&mut self, opt: USizeOpt, value: usize) {
+    pub fn set_usize(&mut self, opt: USizeOpt, value: usize) {
         match opt {
             USizeOpt::MaxAge => self.max_age = value,
         }
@@ -107,8 +117,11 @@ mod tests {
     fn test_data_default_values() {
         let data = Data::default();
         assert_eq!(data.log_level(), LogLevel::Warning);
-        assert_eq!(data.path(PathOpt::LogDir).to_str().unwrap(), "/tmp");
-        assert_eq!(data.usize(USizeOpt::MaxAge), 30);
+        assert_eq!(
+            data.path(PathOpt::LogDir).to_str().unwrap(),
+            "/tmp/patch-hub/logs"
+        );
+        assert_eq!(data.usize(USizeOpt::MaxAge), 0);
     }
 
     #[test]
@@ -140,7 +153,13 @@ mod tests {
         let deserialized: Data = toml::from_str(&toml).unwrap();
 
         assert_eq!(data.log_level(), deserialized.log_level());
-        assert_eq!(data.path(PathOpt::LogDir), deserialized.path(PathOpt::LogDir));
-        assert_eq!(data.usize(USizeOpt::MaxAge), deserialized.usize(USizeOpt::MaxAge));
+        assert_eq!(
+            data.path(PathOpt::LogDir),
+            deserialized.path(PathOpt::LogDir)
+        );
+        assert_eq!(
+            data.usize(USizeOpt::MaxAge),
+            deserialized.usize(USizeOpt::MaxAge)
+        );
     }
 }

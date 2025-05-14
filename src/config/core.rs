@@ -1,5 +1,4 @@
-use std::sync::Arc;
-use tokio::{io::{AsyncReadExt, AsyncWriteExt}, sync::Mutex};
+use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
 use crate::{ArcPath, env::Env, fs::Fs};
 
@@ -14,7 +13,7 @@ use super::{data::Data, message::Message};
 ///
 /// # Thread Safety
 /// This type is designed to be safely shared between threads through its message-based interface.
-pub(crate) struct Core {
+pub struct Core {
     /// The environment actor for system operations
     env: Env,
     /// The filesystem actor for file operations
@@ -22,7 +21,7 @@ pub(crate) struct Core {
     /// The path to the configuration file
     path: ArcPath,
     /// The current configuration data
-    data: Arc<Mutex<Data>>,
+    data: Data,
 }
 
 impl Core {
@@ -35,12 +34,12 @@ impl Core {
     ///
     /// # Returns
     /// A new configuration core instance.
-    pub(crate) fn new(env: Env, fs: Fs, path: ArcPath) -> Self {
+    pub fn new(env: Env, fs: Fs, path: ArcPath) -> Self {
         Self {
             env,
             fs,
             path,
-            data: Arc::new(Mutex::new(Data::default())),
+            data: Data::default(),
         }
     }
 
@@ -48,7 +47,7 @@ impl Core {
     ///
     /// # Returns
     /// A tuple containing the configuration actor and its task handle.
-    pub(crate) fn spawn(mut self) -> (super::Config, tokio::task::JoinHandle<()>) {
+    pub fn spawn(mut self) -> (super::Config, tokio::task::JoinHandle<()>) {
         let (tx, mut rx) = tokio::sync::mpsc::channel(32);
         let handle = tokio::spawn(async move {
             while let Some(msg) = rx.recv().await {
@@ -62,25 +61,25 @@ impl Core {
                         let _ = tx.send(res);
                     }
                     Message::GetPath { opt, tx } => {
-                        let res = self.data.lock().await.path(opt);
+                        let res = self.data.path(opt);
                         let _ = tx.send(res);
                     }
                     Message::GetLogLevel { tx } => {
-                        let res = self.data.lock().await.log_level();
+                        let res = self.data.log_level();
                         let _ = tx.send(res);
                     }
                     Message::GetUSize { opt, tx } => {
-                        let res = self.data.lock().await.usize(opt);
+                        let res = self.data.usize(opt);
                         let _ = tx.send(res);
                     }
                     Message::SetPath { opt, path } => {
-                        self.data.lock().await.set_path(opt, path);
+                        self.data.set_path(opt, path);
                     }
                     Message::SetLogLevel { level } => {
-                        self.data.lock().await.set_log_level(level);
+                        self.data.set_log_level(level);
                     }
                     Message::SetUSize { opt, size } => {
-                        self.data.lock().await.set_usize(opt, size);
+                        self.data.set_usize(opt, size);
                     }
                 }
             }
@@ -97,7 +96,7 @@ impl Core {
         let mut contents = String::new();
         file.write().await.read_to_string(&mut contents).await?;
         let data = toml::from_str(&contents)?;
-        *self.data.lock().await = data;
+        self.data = data;
         Ok(())
     }
 
@@ -106,8 +105,7 @@ impl Core {
     /// # Returns
     /// `Ok(())` if the configuration was saved successfully.
     async fn save(&self) -> anyhow::Result<()> {
-        let data = self.data.lock().await;
-        let contents = toml::to_string(&*data)?;
+        let contents = toml::to_string(&self.data)?;
         let file = self.fs.open_file(self.path.clone()).await?;
         file.write().await.write_all(contents.as_bytes()).await?;
         Ok(())

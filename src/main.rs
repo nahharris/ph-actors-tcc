@@ -1,6 +1,6 @@
 use std::{path::Path, time::Duration};
 
-use config::{ConfigCore, PathOpt, USizeOpt};
+use config::{Config, PathOpt, USizeOpt};
 use env::EnvCore;
 use fs::FsCore;
 use log::LogCore;
@@ -34,7 +34,7 @@ async fn main() -> anyhow::Result<()> {
         .join("config.toml");
     let config_path = ArcPath::from(&config_path);
 
-    let (config, _) = ConfigCore::new(env.clone(), fs.clone(), config_path).spawn();
+    let config = Config::spawn(env.clone(), fs.clone(), config_path);
     let res = config.load().await;
 
     if res.is_err() {
