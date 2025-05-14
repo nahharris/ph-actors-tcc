@@ -1,8 +1,8 @@
 use std::{path::Path, time::Duration};
 
 use config::{Config, PathOpt, USizeOpt};
-use env::EnvCore;
-use fs::FsCore;
+use env::Env;
+use fs::Fs;
 use log::LogCore;
 use terminal::TerminalCore;
 use utils::install_panic_hook;
@@ -24,8 +24,8 @@ mod utils;
 async fn main() -> anyhow::Result<()> {
     install_panic_hook()?;
 
-    let (env, _) = EnvCore::new().spawn();
-    let (fs, _) = FsCore::new().spawn();
+    let env = Env::spawn();
+    let fs = Fs::spawn();
 
     let config_path = env.env(ArcOsStr::from("HOME")).await?;
     let config_path = Path::new(&config_path)

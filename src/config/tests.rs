@@ -1,7 +1,11 @@
 use std::collections::HashMap;
 
 use crate::{
-    config::{data::Data, Config, PathOpt, USizeOpt}, env::Env, fs::{Fs, FsCore}, log::LogLevel, ArcFile, ArcPath
+    ArcFile, ArcPath,
+    config::{Config, PathOpt, USizeOpt, data::Data},
+    env::Env,
+    fs::Fs,
+    log::LogLevel,
 };
 use anyhow::Result;
 
@@ -86,7 +90,6 @@ async fn test_mock_config_load_save() -> Result<()> {
     Ok(())
 }
 
-
 #[tokio::test]
 async fn test_actual_config_path_operations() {
     let env = Env::mock();
@@ -164,12 +167,14 @@ async fn test_actual_config_save() -> Result<()> {
     let config_path = ArcPath::from(&config_path);
 
     // Use the real filesystem actor
-    let (fs, _) = FsCore::new().spawn();
+    let fs = Fs::spawn();
     let env = Env::mock();
     let config = Config::spawn(env, fs.clone(), config_path.clone());
 
     // Set some values
-    config.set_path(PathOpt::LogDir, ArcPath::from("/custom/logs")).await;
+    config
+        .set_path(PathOpt::LogDir, ArcPath::from("/custom/logs"))
+        .await;
     config.set_log_level(LogLevel::Info).await;
     config.set_usize(USizeOpt::MaxAge, 30).await;
 
@@ -180,7 +185,10 @@ async fn test_actual_config_save() -> Result<()> {
     let contents = tokio::fs::read_to_string(&config_path).await?;
     let saved_data: Data = toml::from_str(&contents)?;
 
-    assert_eq!(saved_data.path(PathOpt::LogDir).to_str().unwrap(), "/custom/logs");
+    assert_eq!(
+        saved_data.path(PathOpt::LogDir).to_str().unwrap(),
+        "/custom/logs"
+    );
     assert_eq!(saved_data.log_level(), LogLevel::Info);
     assert_eq!(saved_data.usize(USizeOpt::MaxAge), 30);
 
