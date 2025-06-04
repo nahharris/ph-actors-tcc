@@ -1,4 +1,4 @@
-use std::{env::VarError, ffi::OsString, sync::Arc};
+use std::{env::VarError, ffi::OsString};
 
 use tokio::sync::oneshot;
 

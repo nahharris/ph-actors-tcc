@@ -1,6 +1,6 @@
 use std::ops::Deref;
 
-use crate::{ArcOsStr, ArcStr};
+use crate::ArcOsStr;
 
 use super::{core::Core, Env};
 
