@@ -50,4 +50,4 @@ pub enum Message {
         /// The path of the directory to remove
         path: ArcPath,
     },
-} 
+}

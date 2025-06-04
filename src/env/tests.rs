@@ -2,7 +2,7 @@ use std::ops::Deref;
 
 use crate::ArcOsStr;
 
-use super::{core::Core, Env};
+use super::{Env, core::Core};
 
 #[tokio::test]
 async fn test_mock_env_creation() {

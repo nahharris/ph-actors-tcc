@@ -1,4 +1,7 @@
-use std::{collections::{HashMap, LinkedList}, io};
+use std::{
+    collections::{HashMap, LinkedList},
+    io,
+};
 
 use tokio::{fs::OpenOptions, sync::mpsc};
 
@@ -187,4 +190,4 @@ impl Core {
         let res = tokio::fs::remove_dir_all(&path).await;
         let _ = tx.send(res);
     }
-} 
+}

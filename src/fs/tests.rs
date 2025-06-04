@@ -109,4 +109,4 @@ async fn test_fs_mock() {
         fs.rmdir(ArcPath::from("test")).await,
         Err(e) if e.kind() == std::io::ErrorKind::Unsupported
     ));
-} 
+}

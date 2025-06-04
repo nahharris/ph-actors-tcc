@@ -90,7 +90,11 @@ impl Core {
     /// # Errors
     /// The function will return an error if the environment variable is not found
     /// or if there are any issues with the channel communication.
-    pub fn get_env(&self, tx: tokio::sync::oneshot::Sender<Result<ArcStr, VarError>>, key: ArcOsStr) {
+    pub fn get_env(
+        &self,
+        tx: tokio::sync::oneshot::Sender<Result<ArcStr, VarError>>,
+        key: ArcOsStr,
+    ) {
         let _ = tx.send(std::env::var(key).map(|s| ArcStr::from(&s)));
     }
 }
