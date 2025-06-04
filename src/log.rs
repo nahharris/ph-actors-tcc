@@ -157,14 +157,20 @@ impl LogCore {
         )));
         let latest_log_path = ArcPath::from(&log_dir.join("latest.log"));
 
+        fs.mkdir(log_dir.clone())
+            .await
+            .with_context(|| format!("Failed to create log directory: {}", log_dir.display()))?;
+
         let log_file = fs
             .open_file(log_path.clone())
             .await
-            .context("Failed to create log file")?;
+            .with_context(|| format!("Failed to create log file: {}", log_path.display()))?;
+        
+        let latest_log_path_clone = latest_log_path.clone();
         let latest_log_file = fs
             .open_file(latest_log_path)
             .await
-            .context("Failed to create latest log file")?;
+            .with_context(|| format!("Failed to create latest log file: {}", latest_log_path_clone.display()))?;
 
         Ok(Self {
             fs,
