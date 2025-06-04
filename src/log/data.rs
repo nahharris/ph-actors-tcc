@@ -69,9 +69,54 @@ impl FromStr for LogLevel {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s.to_lowercase().as_str() {
             "info" => Ok(LogLevel::Info),
-            "warn" => Ok(LogLevel::Warning),
+            "warn" | "warning" => Ok(LogLevel::Warning),
             "error" => Ok(LogLevel::Error),
             _ => Err(anyhow::anyhow!("Invalid log level: {}", s)),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_log_level_ordering() {
+        assert!(LogLevel::Info < LogLevel::Warning);
+        assert!(LogLevel::Warning < LogLevel::Error);
+        assert!(LogLevel::Info < LogLevel::Error);
+        assert_eq!(LogLevel::Info, LogLevel::Info);
+    }
+
+    #[test]
+    fn test_log_level_display() {
+        assert_eq!(LogLevel::Info.to_string(), "INFO");
+        assert_eq!(LogLevel::Warning.to_string(), "WARN");
+        assert_eq!(LogLevel::Error.to_string(), "ERROR");
+    }
+
+    #[test]
+    fn test_log_level_from_str() {
+        assert_eq!(LogLevel::from_str("info").unwrap(), LogLevel::Info);
+        assert_eq!(LogLevel::from_str("INFO").unwrap(), LogLevel::Info);
+        assert_eq!(LogLevel::from_str("warn").unwrap(), LogLevel::Warning);
+        assert_eq!(LogLevel::from_str("warning").unwrap(), LogLevel::Warning);
+        assert_eq!(LogLevel::from_str("error").unwrap(), LogLevel::Error);
+        assert!(LogLevel::from_str("notalevel").is_err());
+    }
+
+    #[test]
+    fn test_log_message_display() {
+        let msg = LogMessage { level: LogLevel::Error, message: "fail".to_string() };
+        assert_eq!(msg.to_string(), "[ERROR] fail");
+    }
+
+    #[test]
+    fn test_log_message_ordering_and_equality() {
+        let a = LogMessage { level: LogLevel::Info, message: "a".to_string() };
+        let b = LogMessage { level: LogLevel::Warning, message: "b".to_string() };
+        let c = LogMessage { level: LogLevel::Info, message: "a".to_string() };
+        assert!(a < b);
+        assert_eq!(a, c);
     }
 }

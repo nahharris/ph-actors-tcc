@@ -1,8 +1,8 @@
 mod core;
 mod data;
 mod message;
-// #[cfg(test)]
-// mod tests;
+#[cfg(test)]
+mod tests;
 
 pub use core::LogCore;
 pub use data::LogLevel;

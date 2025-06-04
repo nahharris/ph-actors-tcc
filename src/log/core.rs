@@ -183,3 +183,71 @@ impl LogCore {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::fs::Fs;
+    use crate::ArcPath;
+    use crate::log::data::{LogLevel, LogMessage};
+    use std::collections::HashMap;
+    use std::sync::Arc;
+    use tokio::sync::RwLock;
+    use tokio::runtime::Runtime;
+
+    fn mock_fs() -> Fs {
+        Fs::mock(HashMap::new())
+    }
+
+    fn temp_log_dir() -> ArcPath {
+        ArcPath::from("/tmp/test-logs")
+    }
+
+    #[tokio::test]
+    #[ignore]
+    async fn test_build_and_spawn() {
+        let fs = mock_fs();
+        let log_dir = temp_log_dir();
+        let log_core = LogCore::build(fs, LogLevel::Info, 1, log_dir).await;
+        assert!(log_core.is_ok());
+        let log_core = log_core.unwrap();
+        let (_log, handle) = log_core.spawn();
+        handle.abort(); // Clean up
+    }
+
+    #[tokio::test]
+    #[ignore]
+    async fn test_log_and_flush() {
+        let fs = mock_fs();
+        let log_dir = temp_log_dir();
+        let mut log_core = LogCore::build(fs, LogLevel::Info, 1, log_dir).await.unwrap();
+        let msg = LogMessage { level: LogLevel::Info, message: "test".to_string() };
+        log_core.log(msg.clone()).await;
+        assert_eq!(log_core.logs_to_print.len(), 1);
+        log_core.flush();
+    }
+
+    #[tokio::test]
+    #[ignore]
+    async fn test_log_level_filtering() {
+        let fs = mock_fs();
+        let log_dir = temp_log_dir();
+        let mut log_core = LogCore::build(fs, LogLevel::Warning, 1, log_dir).await.unwrap();
+        let msg = LogMessage { level: LogLevel::Info, message: "info".to_string() };
+        log_core.log(msg.clone()).await;
+        assert!(log_core.logs_to_print.is_empty());
+        let msg2 = LogMessage { level: LogLevel::Warning, message: "warn".to_string() };
+        log_core.log(msg2.clone()).await;
+        assert_eq!(log_core.logs_to_print.len(), 1);
+    }
+
+    #[tokio::test]
+    #[ignore]
+    async fn test_collect_garbage_noop_when_max_age_zero() {
+        let fs = mock_fs();
+        let log_dir = temp_log_dir();
+        let mut log_core = LogCore::build(fs, LogLevel::Info, 0, log_dir).await.unwrap();
+        log_core.collect_garbage().await;
+        // Should not panic or do anything
+    }
+}
