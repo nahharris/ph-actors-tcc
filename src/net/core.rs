@@ -1,5 +1,6 @@
 use anyhow::Context;
 use reqwest::Client;
+use tokio::task::JoinHandle;
 
 use crate::{config::Config, log::Log, net::{message::Message, Net}, ArcStr};
 
@@ -16,15 +17,15 @@ use crate::{config::Config, log::Log, net::{message::Message, Net}, ArcStr};
 ///
 /// # Examples
 /// ```
-/// let net = NetCore::new(config, log);
-/// let (net, _) = net.spawn()?;
+/// let core = Core::new(config, log);
+/// let (net, _) = core.spawn();
 /// ```
 ///
 /// # Thread Safety
 /// This type is designed to be safely shared between threads through the actor pattern.
 /// All network operations are handled sequentially to ensure consistency.
 #[derive(Debug)]
-pub struct NetCore {
+pub struct Core {
     /// Configuration interface for settings
     config: Config,
     /// Logging interface for operation logging
@@ -33,7 +34,7 @@ pub struct NetCore {
     client: Client,
 }
 
-impl NetCore {
+impl Core {
     /// Creates a new networking instance.
     ///
     /// # Arguments
@@ -41,7 +42,7 @@ impl NetCore {
     /// * `log` - The logging actor for operation logging
     ///
     /// # Returns
-    /// A new instance of `NetCore` with a fresh HTTP client.
+    /// A new instance of `Core` with a fresh HTTP client.
     pub fn new(config: Config, log: Log) -> Self {
         let client = Client::new();
 
@@ -60,15 +61,12 @@ impl NetCore {
     ///
     /// # Returns
     /// A tuple containing:
-    /// - The `NetCore` instance
+    /// - The `Net` interface
     /// - A join handle for the spawned task
-    ///
-    /// # Errors
-    /// Returns an error if the task fails to spawn.
     ///
     /// # Panics
     /// This function will panic if the underlying task fails to spawn.
-    pub fn spawn(self) -> anyhow::Result<(Net, tokio::task::JoinHandle<anyhow::Result<()>>)> {
+    pub fn spawn(self) -> (Net, JoinHandle<()>) {
         let (tx, mut rx) = tokio::sync::mpsc::channel(100);
         
         let handle = tokio::spawn(async move {
@@ -78,19 +76,24 @@ impl NetCore {
                         let response = self.client.get::<&str>(url.as_ref())
                             .send()
                             .await
-                            .context("Sending GET request")?;
+                            .context("Sending GET request");
 
-                        let body = response.text()
-                            .await
-                            .context("Reading response body")?;
+                        let result = match response {
+                            Ok(response) => {
+                                response.text()
+                                    .await
+                                    .context("Reading response body")
+                                    .map(|text| ArcStr::from(&text))
+                            }
+                            Err(e) => Err(e),
+                        };
                         
-                        tx.send(Ok(ArcStr::from(&body)));
+                        let _ = tx.send(result);
                     }
                 }
             }
-            Ok(())
         });
 
-        Ok((Net::Actual(tx), handle))
+        (Net::Actual(tx), handle)
     }
 }
