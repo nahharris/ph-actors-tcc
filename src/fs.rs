@@ -165,7 +165,10 @@ impl Fs {
                     .context("Awaiting response for directory creation with Fs")
                     .expect("fs actor died")
             }
-            Self::Mock(_) => Ok(()),
+            Self::Mock(_) => Err(io::Error::new(
+                io::ErrorKind::Unsupported,
+                "mkdir not supported in mock",
+            )),
         }
     }
 
@@ -183,7 +186,10 @@ impl Fs {
                     .context("Awaiting response for directory removal with Fs")
                     .expect("fs actor died")
             }
-            Self::Mock(_) => Ok(()),
+            Self::Mock(_) => Err(io::Error::new(
+                io::ErrorKind::Unsupported,
+                "rmdir not supported in mock",
+            )),
         }
     }
 }
