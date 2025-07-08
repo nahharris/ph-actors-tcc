@@ -3,8 +3,8 @@ use std::{path::Path, time::Duration};
 use config::{Config, PathOpt, USizeOpt};
 use env::Env;
 use fs::Fs;
-use log::LogCore;
-use terminal::TerminalCore;
+use log::Log;
+use terminal::Terminal;
 use utils::install_panic_hook;
 
 pub(crate) use utils::{ArcFile, ArcOsStr, ArcPath, ArcStr};
@@ -42,15 +42,14 @@ async fn main() -> anyhow::Result<()> {
         config.save().await?;
     }
 
-    let (log, _) = LogCore::build(
+    let log = Log::spawn(
         fs.clone(),
         config.log_level().await,
         config.usize(USizeOpt::MaxAge).await,
         config.path(PathOpt::LogDir).await,
     )
-    .await?
-    .spawn();
-    let (term, _) = TerminalCore::build(log.clone())?.spawn();
+    .await?;
+    let term = Terminal::spawn(log.clone())?;
 
     log.info("Starting patch-hub");
     term.take_over().await?;
