@@ -11,6 +11,9 @@ use data::LogMessage;
 use std::fmt::Display;
 use tokio::sync::mpsc::Sender;
 use tokio::task::JoinHandle;
+use std::sync::Arc;
+use tokio::sync::Mutex;
+use std::collections::VecDeque;
 
 /// The logging actor that provides a thread-safe interface for logging operations.
 ///
@@ -20,44 +23,75 @@ use tokio::task::JoinHandle;
 ///
 /// # Examples
 /// ```
-/// let (log, _) = LogCore::build(fs, LogLevel::Info, 7, log_dir).await?.spawn();
+/// let log = Log::spawn(fs, LogLevel::Info, 7, log_dir).await?;
 /// log.info("Application started");
 /// ```
 ///
 /// # Thread Safety
 /// This type is designed to be safely shared between threads. Cloning is cheap as it only
-/// copies the channel sender.
+/// copies the channel sender or mock reference.
 #[derive(Debug, Clone)]
 pub enum Log {
     /// A real logging actor that writes to files and stderr
     Actual(Sender<message::Message>),
-    /// A mock implementation for testing that does nothing
-    #[allow(dead_code)]
-    Mock,
+    /// A mock implementation for testing that stores messages in memory
+    Mock(Arc<Mutex<VecDeque<LogMessage>>>),
 }
 
-impl From<core::LogCore> for Log {
-    fn from(value: core::LogCore) -> Self {
-        value.spawn().0
-    }
-}
-
-#[allow(dead_code)]
 impl Log {
+    /// Creates a new logging instance and spawns its actor.
+    ///
+    /// # Arguments
+    /// * `fs` - The filesystem actor for file operations
+    /// * `level` - The minimum log level to print to stderr
+    /// * `max_age` - Maximum age of log files in days before deletion
+    /// * `log_dir` - Directory where log files are stored
+    ///
+    /// # Returns
+    /// A new logging instance with a spawned actor.
+    pub async fn spawn(
+        fs: crate::fs::Fs,
+        level: LogLevel,
+        max_age: usize,
+        log_dir: crate::ArcPath,
+    ) -> anyhow::Result<Self> {
+        let (log, _) = LogCore::build(fs, level, max_age, log_dir).await?.spawn();
+        Ok(log)
+    }
+
+    /// Creates a new mock logging instance for testing.
+    ///
+    /// # Returns
+    /// A new mock logging instance that stores messages in memory.
+    pub fn mock() -> Self {
+        Self::Mock(Arc::new(Mutex::new(VecDeque::new())))
+    }
+
     fn log(&self, message: String, level: LogLevel) {
-        let sender = match self {
-            Log::Mock => return,
-            Log::Actual(sender) => sender.clone(),
-        };
-        tokio::spawn(async move {
-            sender
-                .send(message::Message::Log(LogMessage {
-                    level,
-                    message: message.to_string(),
-                }))
-                .await
-                .expect("Attempt to use logger after a flush");
-        });
+        match self {
+            Log::Actual(sender) => {
+                let sender = sender.clone();
+                tokio::spawn(async move {
+                    sender
+                        .send(message::Message::Log(LogMessage {
+                            level,
+                            message: message.to_string(),
+                        }))
+                        .await
+                        .expect("Attempt to use logger after a flush");
+                });
+            }
+            Log::Mock(messages) => {
+                let messages = messages.clone();
+                tokio::spawn(async move {
+                    let mut lock = messages.lock().await;
+                    lock.push_back(LogMessage {
+                        level,
+                        message: message.to_string(),
+                    });
+                });
+            }
+        }
     }
 
     /// Log a message with the `INFO` level
@@ -117,26 +151,54 @@ impl Log {
     /// the log file. After this method is called, the logger is destroyed and
     /// any attempt to use it will panic.
     pub fn flush(self) -> JoinHandle<()> {
-        let Self::Actual(sender) = self else {
-            return tokio::spawn(async {});
-        };
-        tokio::spawn(async move {
-            sender
-                .send(message::Message::Flush)
-                .await
-                .expect("Flushing a logger twice");
-        })
+        match self {
+            Self::Actual(sender) => {
+                tokio::spawn(async move {
+                    sender
+                        .send(message::Message::Flush)
+                        .await
+                        .expect("Flushing a logger twice");
+                })
+            }
+            Self::Mock(messages) => {
+                tokio::spawn(async move {
+                    let lock = messages.lock().await;
+                    for message in lock.iter() {
+                        eprintln!("{}", message);
+                    }
+                })
+            }
+        }
     }
 
     /// Collects the garbage from the logs directory. Garbage logs are the ones
     /// older than the [`max_age`] set during the logger [`build`].
     pub async fn collect_garbage(&self) {
-        let Self::Actual(sender) = self else {
-            return;
-        };
-        sender
-            .send(message::Message::CollectGarbage)
-            .await
-            .expect("Attempt to use logger after a flush")
+        match self {
+            Self::Actual(sender) => {
+                sender
+                    .send(message::Message::CollectGarbage)
+                    .await
+                    .expect("Attempt to use logger after a flush")
+            }
+            Self::Mock(_) => {
+                // Mock implementation does nothing for garbage collection
+            }
+        }
+    }
+
+    /// Gets all logged messages from the mock implementation.
+    /// This method is only available for mock instances and is useful for testing.
+    ///
+    /// # Returns
+    /// A vector of all logged messages, or None if this is not a mock instance.
+    pub async fn get_messages(&self) -> Option<Vec<LogMessage>> {
+        match self {
+            Self::Mock(messages) => {
+                let lock = messages.lock().await;
+                Some(lock.iter().cloned().collect())
+            }
+            Self::Actual(_) => None,
+        }
     }
 }
