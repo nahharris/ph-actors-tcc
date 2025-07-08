@@ -1,10 +1,147 @@
 ---
-description: Creating new actors
+description: Apply for implementation of actors
 globs: 
 alwaysApply: false
 ---
-- Create a `Core` for the actor which must define the creation function, the spawn function and methods to manipulate the data being held by the actor.
-- The creation function must be called `new` if the creation always succeeds or `build` if it might fail (in which it must return a `Result`).
-- The spawn function must take no parameters and take ownership of the core, create a mpsc channel and spawn a task with a loop that will receive and handle messages coming down this channel. It must return the `Addr` for the actor (which will for sure wrap the sending end of the channel created).
-- The messages must be of a private type `Message` which is an enum. Each variant is a different message which the payload must contain the data needed for the message to be processed, and if a response is needed the payload must contain a `oneshot::Sender`. 
-- The `Addr` must not have the `Addr` suffix and must wrap a `mpsc::Sender` in a private way. The `Addr` must provide methods that will produce a message and send it through the channel. If a response is needed, the method must create the oneshot channel and send it with the message.
+# Creating New Actors
+
+This rule defines the pattern for creating actors that provide thread-safe interfaces to system operations.
+
+## Architecture Components
+
+Each actor must consist of three main components:
+
+1. **Core** (`something/core.rs`) - Internal implementation and state management
+2. **Message** (`something/message.rs`) - Message types for actor communication  
+3. **Public Interface** (main module `something.rs`) - Unified API with real and mock implementations
+
+## Core Component (`core.rs`)
+
+- Create a `Core` struct that holds the actor's internal state and dependencies
+- The creation function must be called `new` if creation always succeeds or `build` if it might fail (returning `Result`)
+- The `spawn` function must:
+  - Take ownership of the core (`self`)
+  - Create an `mpsc` channel with appropriate buffer size
+  - Spawn a Tokio task with a message handling loop
+  - Return a tuple: `(PublicInterface::Actual(sender), JoinHandle<()>)`
+  - Handle all message variants in the loop using pattern matching
+
+```rust
+pub struct Core {
+    // Internal state and dependencies
+}
+
+impl Core {
+    pub fn new() -> Self { /* ... */ }
+    // or
+    pub async fn build() -> Result<Self, Error> { /* ... */ }
+    
+    pub fn spawn(self) -> (PublicInterface, JoinHandle<()>) {
+        let (tx, mut rx) = tokio::sync::mpsc::channel(BUFFER_SIZE);
+        let handle = tokio::spawn(async move {
+            while let Some(message) = rx.recv().await {
+                match message {
+                    // Handle all message variants
+                }
+            }
+        });
+        (PublicInterface::Actual(tx), handle)
+    }
+}
+```
+
+## Message Types (`message.rs`)
+
+- Create a private `Message` enum that defines all operations
+- Each variant must contain the data needed for processing
+- For operations that return values, include a `oneshot::Sender` in the payload
+- Use `tokio::sync::oneshot::Sender<Result<T, E>>` for response channels
+- Document each message variant clearly
+
+```rust
+pub enum Message {
+    /// Operation that returns a value
+    GetValue {
+        tx: oneshot::Sender<Result<Value, Error>>,
+        // ... other parameters
+    },
+    /// Operation that doesn't return a value
+    SetValue {
+        // ... parameters
+    },
+}
+```
+
+## Public Interface (main module)
+
+- Create a public enum with `Actual` and `Mock` variants
+- `Actual` variant wraps `mpsc::Sender<Message>` 
+- `Mock` variant wraps `Arc<Mutex<MockData>>` for testing
+- Implement `Debug` and `Clone` traits
+- Provide `spawn()` method for real actors
+- Provide `mock()` method for testing
+- All public methods must be `async`
+- Handle both real and mock implementations in each method
+
+```rust
+#[derive(Debug, Clone)]
+pub enum PublicInterface {
+    Actual(Sender<Message>),
+    Mock(Arc<Mutex<MockData>>),
+}
+
+impl PublicInterface {
+    pub fn spawn() -> Self {
+        let (interface, _) = Core::new().spawn();
+        interface
+    }
+    
+    pub fn mock(data: MockData) -> Self {
+        Self::Mock(Arc::new(Mutex::new(data)))
+    }
+    
+    pub async fn operation(&self, params: Params) -> Result<Value, Error> {
+        match self {
+            Self::Actual(sender) => {
+                let (tx, rx) = tokio::sync::oneshot::channel();
+                sender.send(Message::Operation { tx, params }).await?;
+                rx.await?
+            }
+            Self::Mock(data) => {
+                // Mock implementation
+            }
+        }
+    }
+}
+```
+
+## Thread Safety Requirements
+
+- All state must be managed internally within the actor
+- Never share mutable state between threads
+- Use message passing for all communication
+- Process messages sequentially within the actor
+- Handle channel send failures gracefully (actor death detection)
+
+## Error Handling
+
+- Use `anyhow::Result` for error propagation
+- Handle channel communication errors in public methods
+- Provide meaningful error context using `anyhow::Context`
+- Detect actor death through channel send failures
+
+## Testing Support
+
+- Always provide a mock implementation
+- Mock implementations should be deterministic and fast
+- Use in-memory storage for mock state (`Arc<Mutex<T>>`)
+- Mock methods should have the same signature as real methods
+- Consider providing a `Mock` variant that does nothing for simple cases
+
+## Dependencies
+
+- Use `tokio::sync::mpsc` for main message channel
+- Use `tokio::sync::oneshot` for response channels  
+- Use `tokio::task` for spawning actor tasks
+- Use `tokio::sync::Mutex` for mock shared state
+- Use `anyhow` for error handling and context
