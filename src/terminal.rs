@@ -25,8 +25,7 @@ use crate::log::Log;
 ///
 /// # Examples
 /// ```
-/// let terminal = TerminalCore::build(log)?;
-/// let (terminal, _) = terminal.spawn();
+/// let terminal = Terminal::spawn(log)?;
 /// terminal.take_over().await?;
 /// ```
 ///
@@ -166,14 +165,14 @@ pub enum Message {
 ///
 /// # Examples
 /// ```
-/// let (terminal, _) = TerminalCore::build(log)?.spawn();
+/// let terminal = Terminal::spawn(log)?;
 /// terminal.take_over().await?;
 /// ```
 ///
 /// # Thread Safety
 /// This type is designed to be safely shared between threads. Cloning is cheap as it only
 /// copies the channel sender.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Terminal {
     /// A real terminal actor that manages the terminal screen
     Actual(tokio::sync::mpsc::Sender<Message>),
@@ -182,8 +181,22 @@ pub enum Terminal {
     Mock,
 }
 
-#[allow(dead_code)]
 impl Terminal {
+    /// Creates a new terminal instance and spawns its actor.
+    ///
+    /// # Arguments
+    /// * `log` - The logging actor for operation logging
+    ///
+    /// # Returns
+    /// A new terminal instance with a spawned actor.
+    ///
+    /// # Errors
+    /// Returns an error if the terminal cannot be created or initialized.
+    pub fn spawn(log: Log) -> anyhow::Result<Self> {
+        let (terminal, _) = TerminalCore::build(log)?.spawn();
+        Ok(terminal)
+    }
+
     /// Creates a new mock terminal instance for testing.
     ///
     /// This implementation does nothing and always succeeds, making it suitable
@@ -223,7 +236,7 @@ impl Terminal {
         }
     }
 
-    /// Releases the terminal by leaving alternate screen and disabling raw mode.
+    /// Releases the terminal by leaving the alternate screen and disabling raw mode.
     ///
     /// # Returns
     /// `Ok(())` if the terminal was successfully released.
