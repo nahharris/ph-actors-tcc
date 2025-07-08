@@ -1,6 +1,4 @@
 use super::*;
-use crate::log::data::{LogLevel, LogMessage};
-use std::fmt::Display;
 
 #[tokio::test]
 async fn test_log_info_warn_error() {

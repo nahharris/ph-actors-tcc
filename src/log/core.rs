@@ -191,9 +191,6 @@ mod tests {
     use crate::ArcPath;
     use crate::log::data::{LogLevel, LogMessage};
     use std::collections::HashMap;
-    use std::sync::Arc;
-    use tokio::sync::RwLock;
-    use tokio::runtime::Runtime;
 
     fn mock_fs() -> Fs {
         Fs::mock(HashMap::new())

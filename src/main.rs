@@ -17,6 +17,7 @@ mod config;
 mod env;
 mod fs;
 mod log;
+mod net;
 mod terminal;
 mod utils;
 
