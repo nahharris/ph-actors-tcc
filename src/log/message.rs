@@ -21,7 +21,10 @@ mod tests {
 
     #[test]
     fn test_message_log_variant() {
-        let msg = LogMessage { level: LogLevel::Info, message: "test".to_string() };
+        let msg = LogMessage {
+            level: LogLevel::Info,
+            message: "test".to_string(),
+        };
         let m = Message::Log(msg.clone());
         match m {
             Message::Log(inner) => assert_eq!(inner, msg),

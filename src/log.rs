@@ -8,12 +8,12 @@ pub use core::LogCore;
 pub use data::LogLevel;
 use data::LogMessage;
 
+use std::collections::VecDeque;
 use std::fmt::Display;
-use tokio::sync::mpsc::Sender;
-use tokio::task::JoinHandle;
 use std::sync::Arc;
 use tokio::sync::Mutex;
-use std::collections::VecDeque;
+use tokio::sync::mpsc::Sender;
+use tokio::task::JoinHandle;
 
 /// The logging actor that provides a thread-safe interface for logging operations.
 ///
@@ -152,22 +152,18 @@ impl Log {
     /// any attempt to use it will panic.
     pub fn flush(self) -> JoinHandle<()> {
         match self {
-            Self::Actual(sender) => {
-                tokio::spawn(async move {
-                    sender
-                        .send(message::Message::Flush)
-                        .await
-                        .expect("Flushing a logger twice");
-                })
-            }
-            Self::Mock(messages) => {
-                tokio::spawn(async move {
-                    let lock = messages.lock().await;
-                    for message in lock.iter() {
-                        eprintln!("{}", message);
-                    }
-                })
-            }
+            Self::Actual(sender) => tokio::spawn(async move {
+                sender
+                    .send(message::Message::Flush)
+                    .await
+                    .expect("Flushing a logger twice");
+            }),
+            Self::Mock(messages) => tokio::spawn(async move {
+                let lock = messages.lock().await;
+                for message in lock.iter() {
+                    eprintln!("{}", message);
+                }
+            }),
         }
     }
 
@@ -175,12 +171,10 @@ impl Log {
     /// older than the [`max_age`] set during the logger [`build`].
     pub async fn collect_garbage(&self) {
         match self {
-            Self::Actual(sender) => {
-                sender
-                    .send(message::Message::CollectGarbage)
-                    .await
-                    .expect("Attempt to use logger after a flush")
-            }
+            Self::Actual(sender) => sender
+                .send(message::Message::CollectGarbage)
+                .await
+                .expect("Attempt to use logger after a flush"),
             Self::Mock(_) => {
                 // Mock implementation does nothing for garbage collection
             }

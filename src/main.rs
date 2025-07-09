@@ -13,6 +13,7 @@ pub(crate) use utils::{ArcFile, ArcOsStr, ArcPath, ArcStr};
 /// This constant defines the size of buffers used for reading and writing operations.
 pub(crate) const BUFFER_SIZE: usize = 128;
 
+mod api;
 mod config;
 mod env;
 mod fs;

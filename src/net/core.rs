@@ -1,8 +1,14 @@
 use anyhow::Context;
 use reqwest::Client;
+use std::collections::HashMap;
 use tokio::task::JoinHandle;
 
-use crate::{config::Config, log::Log, net::{message::Message, Net}, ArcStr};
+use crate::{
+    ArcStr,
+    config::Config,
+    log::Log,
+    net::{Net, message::Message},
+};
 
 /// The core of the networking system that handles HTTP requests.
 ///
@@ -68,32 +74,141 @@ impl Core {
     /// This function will panic if the underlying task fails to spawn.
     pub fn spawn(self) -> (Net, JoinHandle<()>) {
         let (tx, mut rx) = tokio::sync::mpsc::channel(100);
-        
+
         let handle = tokio::spawn(async move {
             while let Some(message) = rx.recv().await {
                 match message {
-                    Message::Get{url, tx} => {
-                        let response = self.client.get::<&str>(url.as_ref())
-                            .send()
-                            .await
-                            .context("Sending GET request");
-
-                        let result = match response {
-                            Ok(response) => {
-                                response.text()
-                                    .await
-                                    .context("Reading response body")
-                                    .map(|text| ArcStr::from(&text))
-                            }
-                            Err(e) => Err(e),
-                        };
-                        
-                        let _ = tx.send(result);
+                    Message::Get { url, headers, tx } => {
+                        let response = self.handle_get_request(url.clone(), headers).await
+                            .with_context(|| format!("GET request failed for URL: {}", url));
+                        let _ = tx.send(response);
+                    }
+                    Message::Post {
+                        url,
+                        headers,
+                        body,
+                        tx,
+                    } => {
+                        let response = self.handle_post_request(url.clone(), headers, body).await
+                            .with_context(|| format!("POST request failed for URL: {}", url));
+                        let _ = tx.send(response);
+                    }
+                    Message::Put {
+                        url,
+                        headers,
+                        body,
+                        tx,
+                    } => {
+                        let response = self.handle_put_request(url.clone(), headers, body).await
+                            .with_context(|| format!("PUT request failed for URL: {}", url));
+                        let _ = tx.send(response);
+                    }
+                    Message::Delete { url, headers, tx } => {
+                        let response = self.handle_delete_request(url.clone(), headers).await
+                            .with_context(|| format!("DELETE request failed for URL: {}", url));
+                        let _ = tx.send(response);
+                    }
+                    Message::Patch {
+                        url,
+                        headers,
+                        body,
+                        tx,
+                    } => {
+                        let response = self.handle_patch_request(url.clone(), headers, body).await
+                            .with_context(|| format!("PATCH request failed for URL: {}", url));
+                        let _ = tx.send(response);
                     }
                 }
             }
         });
 
         (Net::Actual(tx), handle)
+    }
+
+    /// Handles GET requests with optional headers
+    async fn handle_get_request(&self, url: ArcStr, headers: Option<HashMap<ArcStr, ArcStr>>) -> anyhow::Result<ArcStr> {
+        let mut request = self.client.get::<&str>(url.as_ref());
+        
+        if let Some(headers) = headers {
+            for (key, value) in headers {
+                request = request.header(<ArcStr as AsRef<str>>::as_ref(&key), <ArcStr as AsRef<str>>::as_ref(&value));
+            }
+        }
+
+        let response = request.send().await.context("Sending GET request")?;
+        let text = response.text().await.context("Reading response body")?;
+        Ok(ArcStr::from(&text))
+    }
+
+    /// Handles POST requests with optional headers and body
+    async fn handle_post_request(&self, url: ArcStr, headers: Option<HashMap<ArcStr, ArcStr>>, body: Option<ArcStr>) -> anyhow::Result<ArcStr> {
+        let mut request = self.client.post::<&str>(url.as_ref());
+        
+        if let Some(headers) = headers {
+            for (key, value) in headers {
+                request = request.header(<ArcStr as AsRef<str>>::as_ref(&key), <ArcStr as AsRef<str>>::as_ref(&value));
+            }
+        }
+
+        if let Some(body) = body {
+            request = request.body(<ArcStr as AsRef<str>>::as_ref(&body).to_string());
+        }
+
+        let response = request.send().await.context("Sending POST request")?;
+        let text = response.text().await.context("Reading response body")?;
+        Ok(ArcStr::from(&text))
+    }
+
+    /// Handles PUT requests with optional headers and body
+    async fn handle_put_request(&self, url: ArcStr, headers: Option<HashMap<ArcStr, ArcStr>>, body: Option<ArcStr>) -> anyhow::Result<ArcStr> {
+        let mut request = self.client.put::<&str>(url.as_ref());
+        
+        if let Some(headers) = headers {
+            for (key, value) in headers {
+                request = request.header(<ArcStr as AsRef<str>>::as_ref(&key), <ArcStr as AsRef<str>>::as_ref(&value));
+            }
+        }
+
+        if let Some(body) = body {
+            request = request.body(<ArcStr as AsRef<str>>::as_ref(&body).to_string());
+        }
+
+        let response = request.send().await.context("Sending PUT request")?;
+        let text = response.text().await.context("Reading response body")?;
+        Ok(ArcStr::from(&text))
+    }
+
+    /// Handles DELETE requests with optional headers
+    async fn handle_delete_request(&self, url: ArcStr, headers: Option<HashMap<ArcStr, ArcStr>>) -> anyhow::Result<ArcStr> {
+        let mut request = self.client.delete::<&str>(url.as_ref());
+        
+        if let Some(headers) = headers {
+            for (key, value) in headers {
+                request = request.header(<ArcStr as AsRef<str>>::as_ref(&key), <ArcStr as AsRef<str>>::as_ref(&value));
+            }
+        }
+
+        let response = request.send().await.context("Sending DELETE request")?;
+        let text = response.text().await.context("Reading response body")?;
+        Ok(ArcStr::from(&text))
+    }
+
+    /// Handles PATCH requests with optional headers and body
+    async fn handle_patch_request(&self, url: ArcStr, headers: Option<HashMap<ArcStr, ArcStr>>, body: Option<ArcStr>) -> anyhow::Result<ArcStr> {
+        let mut request = self.client.patch::<&str>(url.as_ref());
+        
+        if let Some(headers) = headers {
+            for (key, value) in headers {
+                request = request.header(<ArcStr as AsRef<str>>::as_ref(&key), <ArcStr as AsRef<str>>::as_ref(&value));
+            }
+        }
+
+        if let Some(body) = body {
+            request = request.body(<ArcStr as AsRef<str>>::as_ref(&body).to_string());
+        }
+
+        let response = request.send().await.context("Sending PATCH request")?;
+        let text = response.text().await.context("Reading response body")?;
+        Ok(ArcStr::from(&text))
     }
 }

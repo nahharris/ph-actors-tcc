@@ -1,0 +1,47 @@
+---
+description: Generate a commit message.
+alwaysApply: false
+---
+
+Generate a Git commit message for the staged changes, adhering strictly to the Conventional Commits specification.
+
+The message structure is: `type(scope): subject`
+
+**1. Type:** Choose one of the following:
+- `feat`: A new feature
+- `fix`: A bug fix
+- `docs`: Documentation only changes
+- `style`: Code style changes (formatting, etc.)
+- `refactor`: A code change that neither fixes a bug nor adds a feature
+- `perf`: A code change that improves performance
+- `test`: Adding or correcting tests
+- `build`: Changes that affect the build system or external dependencies
+- `ci`: Changes to CI configuration and scripts
+- `chore`: Other changes that don't modify src or test files
+
+**2. Scope (Optional):**
+- A noun in lowercase describing the section of the codebase affected (e.g., `api`, `auth`, `ui`).
+
+**3. Subject:**
+- Use the imperative, present tense (e.g., "add" not "added").
+- Do not capitalize the first letter.
+- No period (.) at the end.
+- Keep it under 50 characters.
+
+**4. Body (Optional):**
+- Provide more context after a blank line. Explain the 'what' and 'why'.
+
+**5. Footer (Optional):**
+- Reference issues (e.g., `Closes #123`).
+- For breaking changes, start a new paragraph with `BREAKING CHANGE:`.
+
+**Example:**
+
+```
+feat(api): add user registration endpoint
+
+Implement the POST /users/register route to allow new user sign-ups.
+The endpoint validates input and hashes the password before storage.
+
+Closes #24
+```

@@ -107,15 +107,27 @@ mod tests {
 
     #[test]
     fn test_log_message_display() {
-        let msg = LogMessage { level: LogLevel::Error, message: "fail".to_string() };
+        let msg = LogMessage {
+            level: LogLevel::Error,
+            message: "fail".to_string(),
+        };
         assert_eq!(msg.to_string(), "[ERROR] fail");
     }
 
     #[test]
     fn test_log_message_ordering_and_equality() {
-        let a = LogMessage { level: LogLevel::Info, message: "a".to_string() };
-        let b = LogMessage { level: LogLevel::Warning, message: "b".to_string() };
-        let c = LogMessage { level: LogLevel::Info, message: "a".to_string() };
+        let a = LogMessage {
+            level: LogLevel::Info,
+            message: "a".to_string(),
+        };
+        let b = LogMessage {
+            level: LogLevel::Warning,
+            message: "b".to_string(),
+        };
+        let c = LogMessage {
+            level: LogLevel::Info,
+            message: "a".to_string(),
+        };
         assert!(a < b);
         assert_eq!(a, c);
     }

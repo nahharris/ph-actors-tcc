@@ -55,10 +55,10 @@ async fn test_log_get_messages() {
     let log = Log::mock();
     log.info("test message");
     log.warn("warning message");
-    
+
     // Give some time for async operations to complete
     tokio::time::sleep(tokio::time::Duration::from_millis(10)).await;
-    
+
     let messages = log.get_messages().await;
     assert!(messages.is_some());
     let messages = messages.unwrap();

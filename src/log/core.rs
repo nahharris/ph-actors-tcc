@@ -187,8 +187,8 @@ impl LogCore {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::fs::Fs;
     use crate::ArcPath;
+    use crate::fs::Fs;
     use crate::log::data::{LogLevel, LogMessage};
     use std::collections::HashMap;
 
@@ -217,8 +217,13 @@ mod tests {
     async fn test_log_and_flush() {
         let fs = mock_fs();
         let log_dir = temp_log_dir();
-        let mut log_core = LogCore::build(fs, LogLevel::Info, 1, log_dir).await.unwrap();
-        let msg = LogMessage { level: LogLevel::Info, message: "test".to_string() };
+        let mut log_core = LogCore::build(fs, LogLevel::Info, 1, log_dir)
+            .await
+            .unwrap();
+        let msg = LogMessage {
+            level: LogLevel::Info,
+            message: "test".to_string(),
+        };
         log_core.log(msg.clone()).await;
         assert_eq!(log_core.logs_to_print.len(), 1);
         log_core.flush();
@@ -229,11 +234,19 @@ mod tests {
     async fn test_log_level_filtering() {
         let fs = mock_fs();
         let log_dir = temp_log_dir();
-        let mut log_core = LogCore::build(fs, LogLevel::Warning, 1, log_dir).await.unwrap();
-        let msg = LogMessage { level: LogLevel::Info, message: "info".to_string() };
+        let mut log_core = LogCore::build(fs, LogLevel::Warning, 1, log_dir)
+            .await
+            .unwrap();
+        let msg = LogMessage {
+            level: LogLevel::Info,
+            message: "info".to_string(),
+        };
         log_core.log(msg.clone()).await;
         assert!(log_core.logs_to_print.is_empty());
-        let msg2 = LogMessage { level: LogLevel::Warning, message: "warn".to_string() };
+        let msg2 = LogMessage {
+            level: LogLevel::Warning,
+            message: "warn".to_string(),
+        };
         log_core.log(msg2.clone()).await;
         assert_eq!(log_core.logs_to_print.len(), 1);
     }
@@ -243,7 +256,9 @@ mod tests {
     async fn test_collect_garbage_noop_when_max_age_zero() {
         let fs = mock_fs();
         let log_dir = temp_log_dir();
-        let mut log_core = LogCore::build(fs, LogLevel::Info, 0, log_dir).await.unwrap();
+        let mut log_core = LogCore::build(fs, LogLevel::Info, 0, log_dir)
+            .await
+            .unwrap();
         log_core.collect_garbage().await;
         // Should not panic or do anything
     }
