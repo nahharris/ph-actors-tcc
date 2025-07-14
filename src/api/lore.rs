@@ -1,7 +1,7 @@
 use anyhow::Context;
 use std::collections::HashMap;
 use std::sync::Arc;
-use tokio::sync::{mpsc::Sender, Mutex, oneshot};
+use tokio::sync::{Mutex, mpsc::Sender, oneshot};
 
 use crate::{ArcStr, net::Net};
 
@@ -116,10 +116,9 @@ impl LoreApi {
             LoreApi::Mock(responses) => {
                 let responses = responses.lock().await;
                 let key = format!("patch_feed_{}_{}", target_list, min_index);
-                responses
-                    .get(&key)
-                    .map(ArcStr::clone)
-                    .ok_or_else(|| anyhow::anyhow!("Patch feed not found in mock responses: {}", key))
+                responses.get(&key).map(ArcStr::clone).ok_or_else(|| {
+                    anyhow::anyhow!("Patch feed not found in mock responses: {}", key)
+                })
             }
         }
     }
@@ -152,10 +151,9 @@ impl LoreApi {
             LoreApi::Mock(responses) => {
                 let responses = responses.lock().await;
                 let key = format!("available_lists_{}", min_index);
-                responses
-                    .get(&key)
-                    .map(ArcStr::clone)
-                    .ok_or_else(|| anyhow::anyhow!("Available lists not found in mock responses: {}", key))
+                responses.get(&key).map(ArcStr::clone).ok_or_else(|| {
+                    anyhow::anyhow!("Available lists not found in mock responses: {}", key)
+                })
             }
         }
     }
@@ -197,10 +195,9 @@ impl LoreApi {
             LoreApi::Mock(responses) => {
                 let responses = responses.lock().await;
                 let key = format!("patch_html_{}_{}", target_list, message_id);
-                responses
-                    .get(&key)
-                    .map(ArcStr::clone)
-                    .ok_or_else(|| anyhow::anyhow!("Patch HTML not found in mock responses: {}", key))
+                responses.get(&key).map(ArcStr::clone).ok_or_else(|| {
+                    anyhow::anyhow!("Patch HTML not found in mock responses: {}", key)
+                })
             }
         }
     }
@@ -242,10 +239,9 @@ impl LoreApi {
             LoreApi::Mock(responses) => {
                 let responses = responses.lock().await;
                 let key = format!("raw_patch_{}_{}", target_list, message_id);
-                responses
-                    .get(&key)
-                    .map(ArcStr::clone)
-                    .ok_or_else(|| anyhow::anyhow!("Raw patch not found in mock responses: {}", key))
+                responses.get(&key).map(ArcStr::clone).ok_or_else(|| {
+                    anyhow::anyhow!("Raw patch not found in mock responses: {}", key)
+                })
             }
         }
     }
@@ -287,10 +283,9 @@ impl LoreApi {
             LoreApi::Mock(responses) => {
                 let responses = responses.lock().await;
                 let key = format!("patch_metadata_{}_{}", target_list, message_id);
-                responses
-                    .get(&key)
-                    .map(ArcStr::clone)
-                    .ok_or_else(|| anyhow::anyhow!("Patch metadata not found in mock responses: {}", key))
+                responses.get(&key).map(ArcStr::clone).ok_or_else(|| {
+                    anyhow::anyhow!("Patch metadata not found in mock responses: {}", key)
+                })
             }
         }
     }
@@ -305,7 +300,7 @@ mod tests {
     async fn test_lore_api_creation() {
         let net = Net::mock_empty();
         let lore_api = LoreApi::spawn(net);
-        
+
         // Test that we can create the actor successfully
         assert!(matches!(lore_api, LoreApi::Actual(_)));
     }
@@ -315,7 +310,7 @@ mod tests {
         let net = Net::mock_empty();
         let custom_domain = ArcStr::from("https://custom.lore.kernel.org");
         let lore_api = LoreApi::spawn_with_domain(net, custom_domain);
-        
+
         // Test that we can create the actor with custom domain successfully
         assert!(matches!(lore_api, LoreApi::Actual(_)));
     }
@@ -324,7 +319,7 @@ mod tests {
     async fn test_get_patch_feed_url_construction() {
         let net = Net::mock_empty();
         let lore_api = LoreApi::spawn(net);
-        
+
         // This test verifies the URL construction logic
         // The actual request will fail with mock, but we can verify the structure
         let result = lore_api.get_patch_feed("test-list", 100).await;
@@ -335,7 +330,7 @@ mod tests {
     async fn test_get_available_lists_url_construction() {
         let net = Net::mock_empty();
         let lore_api = LoreApi::spawn(net);
-        
+
         let result = lore_api.get_available_lists(200).await;
         assert!(result.is_err()); // Expected with mock
     }
@@ -344,8 +339,10 @@ mod tests {
     async fn test_get_patch_html_url_construction() {
         let net = Net::mock_empty();
         let lore_api = LoreApi::spawn(net);
-        
-        let result = lore_api.get_patch_html("test-list", "test-message-id").await;
+
+        let result = lore_api
+            .get_patch_html("test-list", "test-message-id")
+            .await;
         assert!(result.is_err()); // Expected with mock
     }
 
@@ -353,11 +350,11 @@ mod tests {
     async fn test_mock_with_typed_keys() {
         let mut responses = HashMap::new();
         let test_response = ArcStr::from("<feed>test response</feed>");
-        
+
         responses.insert("patch_feed_test-list_0".to_string(), test_response.clone());
-        
+
         let lore_api = LoreApi::mock(responses);
-        
+
         // This should now work with the mock
         let result = lore_api.get_patch_feed("test-list", 0).await;
         assert!(result.is_ok());
@@ -367,7 +364,7 @@ mod tests {
     #[tokio::test]
     async fn test_mock_empty() {
         let lore_api = LoreApi::mock_empty();
-        
+
         // Test that mock_empty creates an empty mock
         let result = lore_api.get_patch_feed("test-list", 0).await;
         assert!(result.is_err()); // Expected with empty mock

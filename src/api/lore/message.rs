@@ -99,4 +99,4 @@ impl LoreApiResponse {
             LoreApiResponse::Error(error) => Err(anyhow::anyhow!(error)),
         }
     }
-} 
+}

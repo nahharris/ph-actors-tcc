@@ -79,7 +79,9 @@ impl Core {
             while let Some(message) = rx.recv().await {
                 match message {
                     Message::Get { url, headers, tx } => {
-                        let response = self.handle_get_request(url.clone(), headers).await
+                        let response = self
+                            .handle_get_request(url.clone(), headers)
+                            .await
                             .with_context(|| format!("GET request failed for URL: {}", url));
                         let _ = tx.send(response);
                     }
@@ -89,7 +91,9 @@ impl Core {
                         body,
                         tx,
                     } => {
-                        let response = self.handle_post_request(url.clone(), headers, body).await
+                        let response = self
+                            .handle_post_request(url.clone(), headers, body)
+                            .await
                             .with_context(|| format!("POST request failed for URL: {}", url));
                         let _ = tx.send(response);
                     }
@@ -99,12 +103,16 @@ impl Core {
                         body,
                         tx,
                     } => {
-                        let response = self.handle_put_request(url.clone(), headers, body).await
+                        let response = self
+                            .handle_put_request(url.clone(), headers, body)
+                            .await
                             .with_context(|| format!("PUT request failed for URL: {}", url));
                         let _ = tx.send(response);
                     }
                     Message::Delete { url, headers, tx } => {
-                        let response = self.handle_delete_request(url.clone(), headers).await
+                        let response = self
+                            .handle_delete_request(url.clone(), headers)
+                            .await
                             .with_context(|| format!("DELETE request failed for URL: {}", url));
                         let _ = tx.send(response);
                     }
@@ -114,7 +122,9 @@ impl Core {
                         body,
                         tx,
                     } => {
-                        let response = self.handle_patch_request(url.clone(), headers, body).await
+                        let response = self
+                            .handle_patch_request(url.clone(), headers, body)
+                            .await
                             .with_context(|| format!("PATCH request failed for URL: {}", url));
                         let _ = tx.send(response);
                     }
@@ -126,12 +136,19 @@ impl Core {
     }
 
     /// Handles GET requests with optional headers
-    async fn handle_get_request(&self, url: ArcStr, headers: Option<HashMap<ArcStr, ArcStr>>) -> anyhow::Result<ArcStr> {
+    async fn handle_get_request(
+        &self,
+        url: ArcStr,
+        headers: Option<HashMap<ArcStr, ArcStr>>,
+    ) -> anyhow::Result<ArcStr> {
         let mut request = self.client.get::<&str>(url.as_ref());
-        
+
         if let Some(headers) = headers {
             for (key, value) in headers {
-                request = request.header(<ArcStr as AsRef<str>>::as_ref(&key), <ArcStr as AsRef<str>>::as_ref(&value));
+                request = request.header(
+                    <ArcStr as AsRef<str>>::as_ref(&key),
+                    <ArcStr as AsRef<str>>::as_ref(&value),
+                );
             }
         }
 
@@ -141,12 +158,20 @@ impl Core {
     }
 
     /// Handles POST requests with optional headers and body
-    async fn handle_post_request(&self, url: ArcStr, headers: Option<HashMap<ArcStr, ArcStr>>, body: Option<ArcStr>) -> anyhow::Result<ArcStr> {
+    async fn handle_post_request(
+        &self,
+        url: ArcStr,
+        headers: Option<HashMap<ArcStr, ArcStr>>,
+        body: Option<ArcStr>,
+    ) -> anyhow::Result<ArcStr> {
         let mut request = self.client.post::<&str>(url.as_ref());
-        
+
         if let Some(headers) = headers {
             for (key, value) in headers {
-                request = request.header(<ArcStr as AsRef<str>>::as_ref(&key), <ArcStr as AsRef<str>>::as_ref(&value));
+                request = request.header(
+                    <ArcStr as AsRef<str>>::as_ref(&key),
+                    <ArcStr as AsRef<str>>::as_ref(&value),
+                );
             }
         }
 
@@ -160,12 +185,20 @@ impl Core {
     }
 
     /// Handles PUT requests with optional headers and body
-    async fn handle_put_request(&self, url: ArcStr, headers: Option<HashMap<ArcStr, ArcStr>>, body: Option<ArcStr>) -> anyhow::Result<ArcStr> {
+    async fn handle_put_request(
+        &self,
+        url: ArcStr,
+        headers: Option<HashMap<ArcStr, ArcStr>>,
+        body: Option<ArcStr>,
+    ) -> anyhow::Result<ArcStr> {
         let mut request = self.client.put::<&str>(url.as_ref());
-        
+
         if let Some(headers) = headers {
             for (key, value) in headers {
-                request = request.header(<ArcStr as AsRef<str>>::as_ref(&key), <ArcStr as AsRef<str>>::as_ref(&value));
+                request = request.header(
+                    <ArcStr as AsRef<str>>::as_ref(&key),
+                    <ArcStr as AsRef<str>>::as_ref(&value),
+                );
             }
         }
 
@@ -179,12 +212,19 @@ impl Core {
     }
 
     /// Handles DELETE requests with optional headers
-    async fn handle_delete_request(&self, url: ArcStr, headers: Option<HashMap<ArcStr, ArcStr>>) -> anyhow::Result<ArcStr> {
+    async fn handle_delete_request(
+        &self,
+        url: ArcStr,
+        headers: Option<HashMap<ArcStr, ArcStr>>,
+    ) -> anyhow::Result<ArcStr> {
         let mut request = self.client.delete::<&str>(url.as_ref());
-        
+
         if let Some(headers) = headers {
             for (key, value) in headers {
-                request = request.header(<ArcStr as AsRef<str>>::as_ref(&key), <ArcStr as AsRef<str>>::as_ref(&value));
+                request = request.header(
+                    <ArcStr as AsRef<str>>::as_ref(&key),
+                    <ArcStr as AsRef<str>>::as_ref(&value),
+                );
             }
         }
 
@@ -194,12 +234,20 @@ impl Core {
     }
 
     /// Handles PATCH requests with optional headers and body
-    async fn handle_patch_request(&self, url: ArcStr, headers: Option<HashMap<ArcStr, ArcStr>>, body: Option<ArcStr>) -> anyhow::Result<ArcStr> {
+    async fn handle_patch_request(
+        &self,
+        url: ArcStr,
+        headers: Option<HashMap<ArcStr, ArcStr>>,
+        body: Option<ArcStr>,
+    ) -> anyhow::Result<ArcStr> {
         let mut request = self.client.patch::<&str>(url.as_ref());
-        
+
         if let Some(headers) = headers {
             for (key, value) in headers {
-                request = request.header(<ArcStr as AsRef<str>>::as_ref(&key), <ArcStr as AsRef<str>>::as_ref(&value));
+                request = request.header(
+                    <ArcStr as AsRef<str>>::as_ref(&key),
+                    <ArcStr as AsRef<str>>::as_ref(&value),
+                );
             }
         }
 

@@ -1,26 +1,13 @@
 use std::{path::Path, time::Duration};
 
-use config::{Config, PathOpt, USizeOpt};
-use env::Env;
-use fs::Fs;
-use log::Log;
-use terminal::Terminal;
-use utils::install_panic_hook;
+use ph::config::{Config, PathOpt, USizeOpt};
+use ph::env::Env;
+use ph::fs::Fs;
+use ph::log::Log;
+use ph::terminal::Terminal;
+use ph::utils::install_panic_hook;
 
-pub(crate) use utils::{ArcFile, ArcOsStr, ArcPath, ArcStr};
-
-/// Default buffer size used for various operations in the application.
-/// This constant defines the size of buffers used for reading and writing operations.
-pub(crate) const BUFFER_SIZE: usize = 128;
-
-mod api;
-mod config;
-mod env;
-mod fs;
-mod log;
-mod net;
-mod terminal;
-mod utils;
+use ph::{ArcOsStr, ArcPath};
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {

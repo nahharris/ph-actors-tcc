@@ -2,7 +2,7 @@ use anyhow::Context;
 use std::collections::HashMap;
 use tokio::task::JoinHandle;
 
-use crate::{ArcStr, net::Net, api::lore::message::LoreApiMessage};
+use crate::{ArcStr, api::lore::message::LoreApiMessage, net::Net};
 
 /// The core of the Lore API system that handles Lore-specific HTTP requests.
 ///
@@ -87,14 +87,18 @@ impl Core {
                         let response = self
                             .handle_get_patch_feed(&target_list, min_index)
                             .await
-                            .with_context(|| format!("GET patch feed failed for list: {}", target_list));
+                            .with_context(|| {
+                                format!("GET patch feed failed for list: {}", target_list)
+                            });
                         let _ = tx.send(response);
                     }
                     LoreApiMessage::GetAvailableLists { min_index, tx } => {
                         let response = self
                             .handle_get_available_lists(min_index)
                             .await
-                            .with_context(|| format!("GET available lists failed for index: {}", min_index));
+                            .with_context(|| {
+                                format!("GET available lists failed for index: {}", min_index)
+                            });
                         let _ = tx.send(response);
                     }
                     LoreApiMessage::GetPatchHtml {
@@ -153,7 +157,11 @@ impl Core {
     }
 
     /// Handles GET patch feed requests
-    async fn handle_get_patch_feed(&self, target_list: &str, min_index: usize) -> anyhow::Result<ArcStr> {
+    async fn handle_get_patch_feed(
+        &self,
+        target_list: &str,
+        min_index: usize,
+    ) -> anyhow::Result<ArcStr> {
         let url = format!(
             "{}/{}/?x=A&q=((s:patch+OR+s:rfc)+AND+NOT+s:re:)&o={}",
             self.domain, target_list, min_index
@@ -189,7 +197,11 @@ impl Core {
     }
 
     /// Handles GET patch HTML requests
-    async fn handle_get_patch_html(&self, target_list: &str, message_id: &str) -> anyhow::Result<ArcStr> {
+    async fn handle_get_patch_html(
+        &self,
+        target_list: &str,
+        message_id: &str,
+    ) -> anyhow::Result<ArcStr> {
         let url = format!("{}/{}/{}/", self.domain, target_list, message_id);
 
         let mut headers = HashMap::new();
@@ -202,7 +214,11 @@ impl Core {
     }
 
     /// Handles GET raw patch requests
-    async fn handle_get_raw_patch(&self, target_list: &str, message_id: &str) -> anyhow::Result<ArcStr> {
+    async fn handle_get_raw_patch(
+        &self,
+        target_list: &str,
+        message_id: &str,
+    ) -> anyhow::Result<ArcStr> {
         let url = format!("{}/{}/{}/raw", self.domain, target_list, message_id);
 
         let mut headers = HashMap::new();
@@ -212,7 +228,11 @@ impl Core {
     }
 
     /// Handles GET patch metadata requests
-    async fn handle_get_patch_metadata(&self, target_list: &str, message_id: &str) -> anyhow::Result<ArcStr> {
+    async fn handle_get_patch_metadata(
+        &self,
+        target_list: &str,
+        message_id: &str,
+    ) -> anyhow::Result<ArcStr> {
         let url = format!("{}/{}/{}/json", self.domain, target_list, message_id);
 
         let mut headers = HashMap::new();
@@ -220,4 +240,4 @@ impl Core {
 
         self.net.get(ArcStr::from(&url), Some(headers)).await
     }
-} 
+}

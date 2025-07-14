@@ -1,7 +1,7 @@
-use tokio::sync::oneshot::Sender;
 use std::collections::HashMap;
 use std::fmt::Display;
 use std::str::FromStr;
+use tokio::sync::oneshot::Sender;
 
 use crate::ArcStr;
 

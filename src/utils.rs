@@ -240,3 +240,169 @@ impl Deref for ArcFile {
         &self.0
     }
 }
+
+/// A thread-safe, reference-counted, fixed-size slice type.
+///
+/// `ArcSlice<T>` wraps an `Arc<[T]>`, allowing immutable slices to be cheaply and safely shared across threads.
+/// This is useful for sharing read-only collections without copying the underlying data.
+///
+/// # Thread Safety
+/// Like `Arc<[T]>`, this type is `Send` and `Sync` if `T` is `Send` and `Sync`.
+///
+/// # Examples
+/// ```no_run
+/// use your_crate::utils::ArcSlice;
+/// let shared_slice = ArcSlice::from(&[1, 2, 3][..]);
+/// assert_eq!(shared_slice.len(), 3);
+/// ```
+#[derive(Debug, Clone, Eq, PartialEq, Ord, PartialOrd, Hash)]
+pub struct ArcSlice<T>(Arc<[T]>);
+
+impl<T> ArcSlice<T> {
+    /// Returns the length of the slice.
+    pub fn len(&self) -> usize {
+        self.0.len()
+    }
+    /// Returns true if the slice has a length of 0.
+    pub fn is_empty(&self) -> bool {
+        self.0.is_empty()
+    }
+}
+
+impl<T> Default for ArcSlice<T> {
+    fn default() -> Self {
+        Self(Arc::from([] as [T; 0]))
+    }
+}
+
+impl<T> From<&[T]> for ArcSlice<T>
+where
+    T: Clone,
+{
+    fn from(slice: &[T]) -> Self {
+        Self(Arc::from(slice))
+    }
+}
+
+impl<T> Deref for ArcSlice<T> {
+    type Target = [T];
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl<T> AsRef<[T]> for ArcSlice<T> {
+    fn as_ref(&self) -> &[T] {
+        &self.0
+    }
+}
+
+impl<T> Serialize for ArcSlice<T>
+where
+    T: Serialize,
+{
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        self.0.as_ref().serialize(serializer)
+    }
+}
+
+impl<'de, T> Deserialize<'de> for ArcSlice<T>
+where
+    T: Deserialize<'de> + Clone,
+{
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let v = Vec::<T>::deserialize(deserializer)?;
+        Ok(Self(Arc::from(v)))
+    }
+}
+
+/// A thread-safe, reference-counted, resizable vector type.
+///
+/// `ArcVec<T>` wraps an `Arc<Vec<T>>`, allowing a vector to be shared across threads.
+/// This is useful for sharing collections that may need to be mutated by replacing the entire vector (not in-place mutation).
+///
+/// # Thread Safety
+/// Like `Arc<Vec<T>>`, this type is `Send` and `Sync` if `T` is `Send` and `Sync`.
+///
+/// # Examples
+/// ```no_run
+/// use your_crate::utils::ArcVec;
+/// let shared_vec = ArcVec::from(vec![1, 2, 3]);
+/// assert_eq!(shared_vec.len(), 3);
+/// ```
+#[derive(Debug, Clone, Eq, PartialEq, Ord, PartialOrd, Hash)]
+pub struct ArcVec<T>(Arc<Vec<T>>);
+
+impl<T> ArcVec<T> {
+    /// Returns the length of the vector.
+    pub fn len(&self) -> usize {
+        self.0.len()
+    }
+    /// Returns true if the vector has a length of 0.
+    pub fn is_empty(&self) -> bool {
+        self.0.is_empty()
+    }
+    /// Returns a reference to the underlying vector.
+    pub fn as_vec(&self) -> &Vec<T> {
+        &self.0
+    }
+}
+
+impl<T> Default for ArcVec<T> {
+    fn default() -> Self {
+        Self(Arc::new(Vec::new()))
+    }
+}
+
+impl<T, V> From<V> for ArcVec<T>
+where
+    V: Into<Vec<T>>,
+{
+    fn from(vec: V) -> Self {
+        Self(Arc::new(vec.into()))
+    }
+}
+
+impl<T> Deref for ArcVec<T> {
+    type Target = Vec<T>;
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl<T> AsRef<Vec<T>> for ArcVec<T> {
+    fn as_ref(&self) -> &Vec<T> {
+        &self.0
+    }
+}
+
+impl<T> Serialize for ArcVec<T>
+where
+    T: Serialize,
+{
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        self.0.as_ref().serialize(serializer)
+    }
+}
+
+impl<'de, T> Deserialize<'de> for ArcVec<T>
+where
+    T: Deserialize<'de>,
+{
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let v = Vec::<T>::deserialize(deserializer)?;
+        Ok(Self(Arc::new(v)))
+    }
+}
