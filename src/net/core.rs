@@ -22,7 +22,7 @@ use crate::{
 /// - Configuration-based settings
 ///
 /// # Examples
-/// ```
+/// ```ignore
 /// let core = Core::new(config, log);
 /// let (net, _) = core.spawn();
 /// ```

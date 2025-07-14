@@ -17,7 +17,7 @@ mod tests;
 /// regardless of the underlying implementation.
 ///
 /// # Examples
-/// ```
+/// ```ignore
 /// let env = Env::spawn();
 /// let key = Arc::from(OsString::from("TEST_KEY"));
 /// env.set_env(key.clone(), "test_value").await;

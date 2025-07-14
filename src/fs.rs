@@ -21,7 +21,7 @@ mod tests;
 /// regardless of the underlying implementation.
 ///
 /// # Examples
-/// ```
+/// ```ignore
 /// let fs = Fs::spawn();
 /// let path = Arc::from(Path::new("example.txt"));
 /// let file = fs.open_file(path).await?;

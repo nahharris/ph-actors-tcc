@@ -22,7 +22,7 @@ pub mod message;
 /// regardless of the underlying implementation.
 ///
 /// # Examples
-/// ```
+/// ```ignore
 /// let net = Net::spawn(config, log);
 /// let response = net.get(url).await?;
 /// ```

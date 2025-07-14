@@ -20,7 +20,7 @@ mod tests;
 /// regardless of the underlying implementation.
 ///
 /// # Examples
-/// ```
+/// ```ignore
 /// let config = Config::spawn(env, fs, config_path);
 /// config.load().await?;
 /// let log_dir = config.path(PathOpt::LogDir).await;

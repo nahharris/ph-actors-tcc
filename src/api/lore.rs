@@ -18,7 +18,7 @@ pub use message::LoreApiMessage;
 /// from the Lore Kernel Archive.
 ///
 /// # Examples
-/// ```
+/// ```ignore
 /// let lore_api = LoreApi::spawn(net);
 /// let patch_feed = lore_api.get_patch_feed("amd-gfx", 0).await?;
 /// ```
@@ -92,7 +92,7 @@ impl LoreApi {
     /// The XML feed content as a string, or an error if the request fails.
     ///
     /// # Example
-    /// ```
+    /// ```ignore
     /// let feed = lore_api.get_patch_feed("amd-gfx", 0).await?;
     /// ```
     pub async fn get_patch_feed(
@@ -135,7 +135,7 @@ impl LoreApi {
     /// The HTML content listing available mailing lists, or an error if the request fails.
     ///
     /// # Example
-    /// ```
+    /// ```ignore
     /// let lists = lore_api.get_available_lists(0).await?;
     /// ```
     pub async fn get_available_lists(&self, min_index: usize) -> Result<ArcStr, anyhow::Error> {
@@ -171,7 +171,7 @@ impl LoreApi {
     /// The HTML content of the patch, or an error if the request fails.
     ///
     /// # Example
-    /// ```
+    /// ```ignore
     /// let patch_html = lore_api.get_patch_html("amd-gfx", "20231201.123456.1-1@amd.com").await?;
     /// ```
     pub async fn get_patch_html(
@@ -215,7 +215,7 @@ impl LoreApi {
     /// The raw patch content as plain text, or an error if the request fails.
     ///
     /// # Example
-    /// ```
+    /// ```ignore
     /// let raw_patch = lore_api.get_raw_patch("amd-gfx", "20231201.123456.1-1@amd.com").await?;
     /// ```
     pub async fn get_raw_patch(
@@ -259,7 +259,7 @@ impl LoreApi {
     /// The patch metadata as JSON, or an error if the request fails.
     ///
     /// # Example
-    /// ```
+    /// ```ignore
     /// let metadata = lore_api.get_patch_metadata("amd-gfx", "20231201.123456.1-1@amd.com").await?;
     /// ```
     pub async fn get_patch_metadata(

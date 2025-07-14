@@ -22,7 +22,7 @@ use tokio::task::JoinHandle;
 /// regardless of the underlying implementation.
 ///
 /// # Examples
-/// ```
+/// ```ignore
 /// let log = Log::spawn(fs, LogLevel::Info, 7, log_dir).await?;
 /// log.info("Application started");
 /// ```

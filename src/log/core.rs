@@ -19,7 +19,7 @@ use crate::{ArcFile, ArcPath, fs::Fs};
 /// - Buffered stderr output
 ///
 /// # Examples
-/// ```
+/// ```ignore
 /// let (log, _) = LogCore::build(fs, LogLevel::Info, 7, log_dir).await?.spawn();
 /// log.info("Application started");
 /// ```

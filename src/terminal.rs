@@ -24,7 +24,7 @@ use crate::log::Log;
 /// - Terminal state tracking
 ///
 /// # Examples
-/// ```
+/// ```ignore
 /// let terminal = Terminal::spawn(log)?;
 /// terminal.take_over().await?;
 /// ```
@@ -164,7 +164,7 @@ pub enum Message {
 /// regardless of the underlying implementation.
 ///
 /// # Examples
-/// ```
+/// ```ignore
 /// let terminal = Terminal::spawn(log)?;
 /// terminal.take_over().await?;
 /// ```

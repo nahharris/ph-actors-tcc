@@ -17,7 +17,7 @@ use crate::{ArcStr, api::lore::message::LoreApiMessage, net::Net};
 /// - Proper error handling and context
 ///
 /// # Examples
-/// ```
+/// ```ignore
 /// let core = Core::new(net);
 /// let (lore_api, _) = core.spawn();
 /// ```

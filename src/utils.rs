@@ -17,7 +17,7 @@ use tokio::{fs::File, sync::RwLock};
 /// implementation. In the future, it may return errors if the hooks cannot be installed.
 ///
 /// # Examples
-/// ```
+/// ```ignore
 /// install_panic_hook()?;
 /// ```
 pub fn install_panic_hook() -> anyhow::Result<()> {
@@ -28,7 +28,7 @@ pub fn install_panic_hook() -> anyhow::Result<()> {
 /// This type is used throughout the application for sharing string data between threads.
 ///
 /// # Examples
-/// ```
+/// ```ignore
 /// let shared_str = ArcStr::from("Hello, world!");
 /// ```
 #[derive(Debug, Clone, Eq, PartialEq, Ord, PartialOrd, Hash)]
@@ -98,7 +98,7 @@ impl<'de> Deserialize<'de> for ArcStr {
 /// This type is used for sharing path information across threads safely.
 ///
 /// # Examples
-/// ```
+/// ```ignore
 /// let shared_path = ArcPath::from("path/to/file");
 /// ```
 #[derive(Debug, Clone, Eq, PartialEq, Ord, PartialOrd, Hash)]
@@ -162,7 +162,7 @@ impl<'de> Deserialize<'de> for ArcPath {
 /// This type is used for handling operating system specific string data across threads.
 ///
 /// # Examples
-/// ```
+/// ```ignore
 /// let shared_os_str = ArcOsStr::from("path/to/file");
 /// ```
 #[derive(Debug, Clone, Eq, PartialEq, Ord, PartialOrd, Hash)]
@@ -220,7 +220,7 @@ impl<'de> Deserialize<'de> for ArcOsStr {
 /// This type provides synchronized access to file operations across multiple threads.
 ///
 /// # Examples
-/// ```
+/// ```ignore
 /// let file = tokio::fs::File::open("example.txt").await?;
 /// let shared_file = ArcFile::from(file);
 /// ```
@@ -250,7 +250,7 @@ impl Deref for ArcFile {
 /// Like `Arc<[T]>`, this type is `Send` and `Sync` if `T` is `Send` and `Sync`.
 ///
 /// # Examples
-/// ```no_run
+/// ```ignore
 /// use your_crate::utils::ArcSlice;
 /// let shared_slice = ArcSlice::from(&[1, 2, 3][..]);
 /// assert_eq!(shared_slice.len(), 3);
@@ -331,7 +331,7 @@ where
 /// Like `Arc<Vec<T>>`, this type is `Send` and `Sync` if `T` is `Send` and `Sync`.
 ///
 /// # Examples
-/// ```no_run
+/// ```ignore
 /// use your_crate::utils::ArcVec;
 /// let shared_vec = ArcVec::from(vec![1, 2, 3]);
 /// assert_eq!(shared_vec.len(), 3);

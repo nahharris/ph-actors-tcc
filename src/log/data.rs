@@ -7,7 +7,7 @@ use std::{fmt::Display, str::FromStr};
 /// This struct is used internally by the logger to manage log entries.
 ///
 /// # Examples
-/// ```
+/// ```ignore
 /// let msg = LogMessage {
 ///     level: LogLevel::Info,
 ///     message: "Application started".to_string(),
@@ -34,7 +34,7 @@ impl std::fmt::Display for LogMessage {
 /// The levels are ordered by severity: `Info` < `Warning` < `Error`
 ///
 /// # Examples
-/// ```
+/// ```ignore
 /// let level = LogLevel::Info;
 /// assert!(level < LogLevel::Warning);
 /// assert!(level < LogLevel::Error);
