@@ -7,7 +7,7 @@ use ph::net::Net;
 async fn main() {
     let config = Config::mock(Default::default());
     let log = Log::mock();
-    let net = Net::spawn(config, log);
+    let net = Net::spawn(config, log).await;
 
     let lore = LoreApi::spawn(net);
 

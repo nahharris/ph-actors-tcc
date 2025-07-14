@@ -176,9 +176,9 @@ impl LoreApi {
                     .context("Sending message to LoreApi actor")?;
                 rx.await.context("Receiving response from LoreApi actor")?
             }
-            LoreApi::Mock(_) => {
-                Err(anyhow::anyhow!("Mock for structured available lists not implemented"))
-            }
+            LoreApi::Mock(_) => Err(anyhow::anyhow!(
+                "Mock for structured available lists not implemented"
+            )),
         }
     }
 
@@ -346,7 +346,9 @@ mod tests {
 
         // This test verifies the URL construction logic
         // The actual request will fail with mock, but we can verify the structure
-        let result = lore_api.get_patch_feed(ArcStr::from("test-list"), 100).await;
+        let result = lore_api
+            .get_patch_feed(ArcStr::from("test-list"), 100)
+            .await;
         assert!(result.is_err()); // Expected with mock
     }
 

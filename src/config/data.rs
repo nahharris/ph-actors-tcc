@@ -14,6 +14,8 @@ pub enum PathOpt {
 pub enum USizeOpt {
     /// Maximum age of log files in days before they are deleted
     MaxAge,
+    /// Timeout for network requests in seconds
+    Timeout,
 }
 
 /// The configuration data structure that holds all configurable values.
@@ -31,6 +33,8 @@ pub struct Data {
     log_level: LogLevel,
     /// Maximum age of log files in days before they are deleted
     max_age: usize,
+    /// Timeout for network requests in seconds
+    timeout: usize, 
 }
 
 impl Default for Data {
@@ -39,6 +43,7 @@ impl Default for Data {
             log_dir: ArcPath::from("/tmp/patch-hub/logs"),
             log_level: LogLevel::Warning,
             max_age: 0,
+            timeout: 30,
         }
     }
 }
@@ -94,6 +99,7 @@ impl Data {
     pub fn usize(&self, opt: USizeOpt) -> usize {
         match opt {
             USizeOpt::MaxAge => self.max_age,
+            USizeOpt::Timeout => self.timeout,
         }
     }
 
@@ -105,6 +111,7 @@ impl Data {
     pub fn set_usize(&mut self, opt: USizeOpt, value: usize) {
         match opt {
             USizeOpt::MaxAge => self.max_age = value,
+            USizeOpt::Timeout => self.timeout = value,
         }
     }
 }
@@ -122,6 +129,7 @@ mod tests {
             "/tmp/patch-hub/logs"
         );
         assert_eq!(data.usize(USizeOpt::MaxAge), 0);
+        assert_eq!(data.usize(USizeOpt::Timeout), 30);
     }
 
     #[test]
@@ -140,6 +148,10 @@ mod tests {
         // Test max age
         data.set_usize(USizeOpt::MaxAge, 60);
         assert_eq!(data.usize(USizeOpt::MaxAge), 60);
+
+        // Test timeout
+        data.set_usize(USizeOpt::Timeout, 120);
+        assert_eq!(data.usize(USizeOpt::Timeout), 120);
     }
 
     #[test]
@@ -148,6 +160,7 @@ mod tests {
         data.set_log_level(LogLevel::Error);
         data.set_path(PathOpt::LogDir, ArcPath::from("/custom/log"));
         data.set_usize(USizeOpt::MaxAge, 45);
+        data.set_usize(USizeOpt::Timeout, 180);
 
         let toml = toml::to_string_pretty(&data).unwrap();
         let deserialized: Data = toml::from_str(&toml).unwrap();
@@ -160,6 +173,10 @@ mod tests {
         assert_eq!(
             data.usize(USizeOpt::MaxAge),
             deserialized.usize(USizeOpt::MaxAge)
+        );
+        assert_eq!(
+            data.usize(USizeOpt::Timeout),
+            deserialized.usize(USizeOpt::Timeout)
         );
     }
 }

@@ -1,7 +1,7 @@
 use tokio::sync::oneshot::Sender;
 
 use super::data::{LoreAvailableLists, LoreMailingList};
-use crate::{ArcStr, ArcSlice};
+use crate::{ArcSlice, ArcStr};
 
 /// Messages that can be sent to a [`LoreApiCore`] actor.
 ///
@@ -49,7 +49,7 @@ pub enum LoreApiMessage {
     /// Fetches patch metadata in JSON format
     GetPatchMetadata {
         /// The mailing list name
-        target_list: ArcStr,    
+        target_list: ArcStr,
         /// The unique message ID of the patch
         message_id: ArcStr,
         /// Response channel for the operation result

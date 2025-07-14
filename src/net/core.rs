@@ -4,10 +4,7 @@ use std::collections::HashMap;
 use tokio::task::JoinHandle;
 
 use crate::{
-    ArcStr,
-    config::Config,
-    log::Log,
-    net::{Net, message::Message},
+    config::{Config, USizeOpt}, log::Log, net::{message::Message, Net}, ArcStr
 };
 
 /// The core of the networking system that handles HTTP requests.
@@ -47,10 +44,28 @@ impl Core {
     /// * `config` - The configuration actor for settings
     /// * `log` - The logging actor for operation logging
     ///
+    /// # User Agent
+    /// All requests use the user agent string.
+    ///
+    /// # Timeout
+    /// The timeout for network requests is configured via the config (default: 30 seconds).
+    ///
     /// # Returns
     /// A new instance of `Core` with a fresh HTTP client.
-    pub fn new(config: Config, log: Log) -> Self {
-        let client = Client::new();
+    pub async fn new(config: Config, log: Log) -> Self {
+        // Try to get timeout from config synchronously if possible
+        let timeout_secs = config.usize(USizeOpt::Timeout).await as u64;
+        let user_agent = concat!(
+            env!("CARGO_PKG_NAME"),
+            "/",
+            env!("CARGO_PKG_VERSION")
+        );
+        let client = reqwest::Client::builder()
+            .user_agent(user_agent)
+            .timeout(std::time::Duration::from_secs(timeout_secs))
+            .use_rustls_tls()
+            .build()
+            .expect("Failed to build reqwest client with user agent and timeout");
 
         Self {
             config,

@@ -47,8 +47,8 @@ impl Net {
     ///
     /// # Returns
     /// A new networking instance with a spawned actor.
-    pub fn spawn(config: crate::config::Config, log: crate::log::Log) -> Self {
-        let (net, _) = Core::new(config, log).spawn();
+    pub async fn spawn(config: crate::config::Config, log: crate::log::Log) -> Self {
+        let (net, _) = Core::new(config, log).await.spawn();
         net
     }
 
