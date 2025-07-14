@@ -12,7 +12,7 @@ mod message;
 pub mod parse;
 
 // Re-export public types for external use
-pub use data::{LoreAvailableLists, LoreMailingList};
+pub use data::{LoreMailingList, LorePage, LorePatchMetadata};
 pub use message::LoreApiMessage;
 
 /// The Lore API actor that provides a high-level interface for interacting with the Lore Kernel API.
@@ -99,16 +99,16 @@ impl LoreApi {
     /// ```ignore
     /// let feed = lore_api.get_patch_feed("amd-gfx", 0).await?;
     /// ```
-    pub async fn get_patch_feed(
+    pub async fn get_patch_feed_page(
         &self,
         target_list: ArcStr,
         min_index: usize,
-    ) -> Result<ArcStr, anyhow::Error> {
+    ) -> Result<Option<LorePage<LorePatchMetadata>>, anyhow::Error> {
         match self {
             LoreApi::Actual(sender) => {
                 let (tx, rx) = oneshot::channel();
                 sender
-                    .send(LoreApiMessage::GetPatchFeed {
+                    .send(LoreApiMessage::GetPatchFeedPage {
                         target_list,
                         min_index,
                         tx,
@@ -117,12 +117,8 @@ impl LoreApi {
                     .context("Sending message to LoreApi actor")?;
                 rx.await.context("Receiving response from LoreApi actor")?
             }
-            LoreApi::Mock(responses) => {
-                let responses = responses.lock().await;
-                let key = format!("patch_feed_{}_{}", target_list, min_index);
-                responses.get(&key).map(ArcStr::clone).ok_or_else(|| {
-                    anyhow::anyhow!("Patch feed not found in mock responses: {}", key)
-                })
+            LoreApi::Mock(_) => {
+                Err(anyhow::anyhow!("Mock for structured patch feed not implemented"))
             }
         }
     }
@@ -140,7 +136,7 @@ impl LoreApi {
     pub async fn get_available_lists_page(
         &self,
         min_index: usize,
-    ) -> Result<LoreAvailableLists, anyhow::Error> {
+    ) -> Result<LorePage<LoreMailingList>, anyhow::Error> {
         match self {
             LoreApi::Actual(sender) => {
                 let (tx, rx) = oneshot::channel();
@@ -318,7 +314,6 @@ impl LoreApi {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::collections::HashMap;
 
     #[tokio::test]
     async fn test_lore_api_creation() {
@@ -347,7 +342,7 @@ mod tests {
         // This test verifies the URL construction logic
         // The actual request will fail with mock, but we can verify the structure
         let result = lore_api
-            .get_patch_feed(ArcStr::from("test-list"), 100)
+            .get_patch_feed_page(ArcStr::from("test-list"), 100)
             .await;
         assert!(result.is_err()); // Expected with mock
     }
@@ -373,26 +368,13 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_mock_with_typed_keys() {
-        let mut responses = HashMap::new();
-        let test_response = ArcStr::from("<feed>test response</feed>");
-
-        responses.insert("patch_feed_test-list_0".to_string(), test_response.clone());
-
-        let lore_api = LoreApi::mock(responses);
-
-        // This should now work with the mock
-        let result = lore_api.get_patch_feed(ArcStr::from("test-list"), 0).await;
-        assert!(result.is_ok());
-        assert_eq!(result.unwrap(), test_response);
-    }
-
-    #[tokio::test]
     async fn test_mock_empty() {
         let lore_api = LoreApi::mock_empty();
 
         // Test that mock_empty creates an empty mock
-        let result = lore_api.get_patch_feed(ArcStr::from("test-list"), 0).await;
+        let result = lore_api
+            .get_patch_feed_page(ArcStr::from("test-list"), 0)
+            .await;
         assert!(result.is_err()); // Expected with empty mock
     }
 }

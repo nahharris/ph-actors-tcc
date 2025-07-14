@@ -1,6 +1,6 @@
 use tokio::sync::oneshot::Sender;
 
-use super::data::{LoreAvailableLists, LoreMailingList};
+use super::data::{LoreMailingList, LorePage, LorePatchMetadata};
 use crate::{ArcSlice, ArcStr};
 
 /// Messages that can be sent to a [`LoreApiCore`] actor.
@@ -10,13 +10,13 @@ use crate::{ArcSlice, ArcStr};
 #[derive(Debug)]
 pub enum LoreApiMessage {
     /// Fetches a patch feed from a specific mailing list with pagination
-    GetPatchFeed {
+    GetPatchFeedPage {
         /// The mailing list name (e.g., "amd-gfx", "linux-kernel")
         target_list: ArcStr,
         /// The offset for pagination (0-based)
         min_index: usize,
         /// Response channel for the operation result
-        tx: Sender<anyhow::Result<ArcStr>>,
+        tx: Sender<anyhow::Result<Option<LorePage<LorePatchMetadata>>>>,
     },
     GetAvailableLists {
         tx: Sender<anyhow::Result<ArcSlice<LoreMailingList>>>,
@@ -26,7 +26,7 @@ pub enum LoreApiMessage {
         /// The offset for pagination (0-based)
         min_index: usize,
         /// Response channel for the operation result
-        tx: Sender<anyhow::Result<LoreAvailableLists>>,
+        tx: Sender<anyhow::Result<LorePage<LoreMailingList>>>,
     },
     /// Fetches the HTML content of a specific patch
     GetPatchHtml {

@@ -34,7 +34,7 @@ pub struct Data {
     /// Maximum age of log files in days before they are deleted
     max_age: usize,
     /// Timeout for network requests in seconds
-    timeout: usize, 
+    timeout: usize,
 }
 
 impl Default for Data {

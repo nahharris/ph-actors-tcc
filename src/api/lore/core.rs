@@ -2,7 +2,7 @@ use anyhow::Context;
 use std::collections::HashMap;
 use tokio::task::JoinHandle;
 
-use super::data::{LoreAvailableLists, LoreMailingList};
+use super::data::{LoreMailingList, LorePage, LorePatchMetadata};
 use super::parse;
 use crate::ArcSlice;
 use crate::{ArcStr, api::lore::message::LoreApiMessage, net::Net};
@@ -82,13 +82,13 @@ impl Core {
         let handle = tokio::spawn(async move {
             while let Some(message) = rx.recv().await {
                 match message {
-                    LoreApiMessage::GetPatchFeed {
+                    LoreApiMessage::GetPatchFeedPage {
                         target_list,
                         min_index,
                         tx,
                     } => {
                         let response = self
-                            .handle_get_patch_feed(&target_list, min_index)
+                            .handle_get_patch_feed_page(&target_list, min_index)
                             .await
                             .with_context(|| {
                                 format!("GET patch feed failed for list: {}", target_list)
@@ -167,11 +167,11 @@ impl Core {
     }
 
     /// Handles GET patch feed requests
-    async fn handle_get_patch_feed(
+    async fn handle_get_patch_feed_page(
         &self,
         target_list: &str,
         min_index: usize,
-    ) -> anyhow::Result<ArcStr> {
+    ) -> anyhow::Result<Option<LorePage<LorePatchMetadata>>> {
         let url = format!(
             "{}/{}/?x=A&q=((s:patch+OR+s:rfc)+AND+NOT+s:re:)&o={}",
             self.domain, target_list, min_index
@@ -187,10 +187,12 @@ impl Core {
 
         // Check for end of feed indicator
         if <ArcStr as AsRef<str>>::as_ref(&response) == "</feed>" {
-            return Err(anyhow::anyhow!("Feed ended"));
+            return Ok(None);
         }
 
-        Ok(response)
+        let page = parse::parse_patch_feed_xml(&response, min_index)?;
+
+        Ok(Some(page))
     }
 
     /// Handles GET available lists requests
@@ -216,7 +218,7 @@ impl Core {
     async fn handle_get_available_lists_page(
         &self,
         min_index: usize,
-    ) -> anyhow::Result<LoreAvailableLists> {
+    ) -> anyhow::Result<LorePage<LoreMailingList>> {
         let url = ArcStr::from(&format!("{}/?&o={}", self.domain, min_index));
 
         let mut headers = HashMap::new();

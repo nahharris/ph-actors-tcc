@@ -1,7 +1,9 @@
-use super::data::{LoreAvailableLists, LoreMailingList};
+use super::data::{LoreMailingList, LorePage, LorePatchMetadata};
 use crate::ArcStr;
 use chrono::{DateTime, NaiveDateTime, Utc};
 use regex::Regex;
+use serde::Deserialize;
+use serde_xml_rs::from_str;
 
 /// Parses the HTML listing of available mailing lists into structured data using regex.
 ///
@@ -14,7 +16,7 @@ use regex::Regex;
 pub fn parse_available_lists_html(
     html: &str,
     start_index: usize,
-) -> anyhow::Result<LoreAvailableLists> {
+) -> anyhow::Result<LorePage<LoreMailingList>> {
     use anyhow::{Context, anyhow};
 
     let mut items = Vec::new();
@@ -119,10 +121,84 @@ pub fn parse_available_lists_html(
         }
     }
 
-    Ok(LoreAvailableLists {
+    Ok(LorePage {
         start_index,
         next_page_index,
         total_items,
+        items,
+    })
+}
+
+/// Parses the XML patch feed into structured data using serde_xml_rs.
+///
+/// # Arguments
+/// * `xml` - The XML content as a string
+/// * `start_index` - The current start index for pagination
+///
+/// # Returns
+/// A `LorePage<LorePatchMetadata>` struct containing pagination info and a list of patches.
+pub fn parse_patch_feed_xml(
+    xml: &str,
+    start_index: usize,
+) -> anyhow::Result<LorePage<LorePatchMetadata>> {
+    #[derive(Debug, Deserialize)]
+    struct Feed {
+        #[serde(rename = "entry")]
+        entries: Vec<Entry>,
+        #[serde(rename = "link", default)]
+        links: Vec<Link>,
+        #[serde(rename = "totalResults")]
+        total_results: Option<usize>,
+    }
+
+    #[derive(Debug, Deserialize)]
+    struct Entry {
+        title: String,
+        author: Author,
+        id: String,
+        updated: String,
+        link: Link,
+    }
+
+    #[derive(Debug, Deserialize)]
+    struct Author {
+        name: String,
+        email: String,
+    }
+
+    #[derive(Debug, Deserialize)]
+    struct Link {
+        #[serde(rename = "@href")]
+        href: Option<String>,
+        #[serde(rename = "@rel")]
+        rel: Option<String>,
+    }
+
+    use anyhow::Context;
+    use chrono::{DateTime, Utc};
+    let feed: Feed = from_str(xml).context("Failed to parse patch feed XML")?;
+
+    let items = feed
+        .entries
+        .into_iter()
+        .map(|entry| {
+            let datetime = DateTime::parse_from_rfc3339(&entry.updated)
+                .map(|dt| dt.with_timezone(&Utc))
+                .context("Failed to parse patch datetime")?;
+            Ok(LorePatchMetadata {
+                author: ArcStr::from(&entry.author.name),
+                email: ArcStr::from(&entry.author.email),
+                datetime,
+                title: ArcStr::from(&entry.title),
+                link: ArcStr::from(&entry.link.href.unwrap_or_default()),
+            })
+        })
+        .collect::<Result<Vec<_>, anyhow::Error>>()?;
+
+    Ok(LorePage {
+        start_index,
+        next_page_index: Some(start_index + items.len()),
+        total_items: Some(items.len()),
         items,
     })
 }
