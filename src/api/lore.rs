@@ -3,12 +3,16 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::{Mutex, mpsc::Sender, oneshot};
 
+use crate::utils::ArcSlice;
 use crate::{ArcStr, net::Net};
 
 mod core;
+pub mod data;
 mod message;
+pub mod parse;
 
 // Re-export public types for external use
+pub use data::{LoreAvailableLists, LoreMailingList};
 pub use message::LoreApiMessage;
 
 /// The Lore API actor that provides a high-level interface for interacting with the Lore Kernel API.
@@ -97,7 +101,7 @@ impl LoreApi {
     /// ```
     pub async fn get_patch_feed(
         &self,
-        target_list: &str,
+        target_list: ArcStr,
         min_index: usize,
     ) -> Result<ArcStr, anyhow::Error> {
         match self {
@@ -105,7 +109,7 @@ impl LoreApi {
                 let (tx, rx) = oneshot::channel();
                 sender
                     .send(LoreApiMessage::GetPatchFeed {
-                        target_list: target_list.to_string(),
+                        target_list,
                         min_index,
                         tx,
                     })
@@ -123,7 +127,7 @@ impl LoreApi {
         }
     }
 
-    /// Fetches available mailing lists with pagination.
+    /// Fetches a single page of available mailing lists with pagination.
     ///
     /// This method retrieves a paginated list of all available mailing lists
     /// archived on the Lore Kernel Archive.
@@ -132,28 +136,48 @@ impl LoreApi {
     /// * `min_index` - The offset for pagination (0-based)
     ///
     /// # Returns
-    /// The HTML content listing available mailing lists, or an error if the request fails.
-    ///
-    /// # Example
-    /// ```ignore
-    /// let lists = lore_api.get_available_lists(0).await?;
-    /// ```
-    pub async fn get_available_lists(&self, min_index: usize) -> Result<ArcStr, anyhow::Error> {
+    /// A `LoreAvailableLists` struct containing pagination info and a list of items.
+    pub async fn get_available_lists_page(
+        &self,
+        min_index: usize,
+    ) -> Result<LoreAvailableLists, anyhow::Error> {
         match self {
             LoreApi::Actual(sender) => {
                 let (tx, rx) = oneshot::channel();
                 sender
-                    .send(LoreApiMessage::GetAvailableLists { min_index, tx })
+                    .send(LoreApiMessage::GetAvailableListsPage { min_index, tx })
                     .await
                     .context("Sending message to LoreApi actor")?;
                 rx.await.context("Receiving response from LoreApi actor")?
             }
-            LoreApi::Mock(responses) => {
-                let responses = responses.lock().await;
-                let key = format!("available_lists_{}", min_index);
-                responses.get(&key).map(ArcStr::clone).ok_or_else(|| {
-                    anyhow::anyhow!("Available lists not found in mock responses: {}", key)
-                })
+            LoreApi::Mock(_) => {
+                // For brevity, you may want to implement a mock for structured output as well
+                Err(anyhow::anyhow!(
+                    "Mock for structured available lists not implemented"
+                ))
+            }
+        }
+    }
+
+    /// Fetches all available mailing lists, aggregating all paginated results.
+    ///
+    /// This method retrieves all available mailing lists archived on the Lore Kernel Archive,
+    /// following pagination until all items are collected.
+    ///
+    /// # Returns
+    /// An `ArcSlice<LoreMailingList>` containing all available mailing lists.
+    pub async fn get_available_lists(&self) -> Result<ArcSlice<LoreMailingList>, anyhow::Error> {
+        match self {
+            LoreApi::Actual(sender) => {
+                let (tx, rx) = oneshot::channel();
+                sender
+                    .send(LoreApiMessage::GetAvailableLists { tx })
+                    .await
+                    .context("Sending message to LoreApi actor")?;
+                rx.await.context("Receiving response from LoreApi actor")?
+            }
+            LoreApi::Mock(_) => {
+                Err(anyhow::anyhow!("Mock for structured available lists not implemented"))
             }
         }
     }
@@ -176,16 +200,16 @@ impl LoreApi {
     /// ```
     pub async fn get_patch_html(
         &self,
-        target_list: &str,
-        message_id: &str,
+        target_list: ArcStr,
+        message_id: ArcStr,
     ) -> Result<ArcStr, anyhow::Error> {
         match self {
             LoreApi::Actual(sender) => {
                 let (tx, rx) = oneshot::channel();
                 sender
                     .send(LoreApiMessage::GetPatchHtml {
-                        target_list: target_list.to_string(),
-                        message_id: message_id.to_string(),
+                        target_list,
+                        message_id,
                         tx,
                     })
                     .await
@@ -220,16 +244,16 @@ impl LoreApi {
     /// ```
     pub async fn get_raw_patch(
         &self,
-        target_list: &str,
-        message_id: &str,
+        target_list: ArcStr,
+        message_id: ArcStr,
     ) -> Result<ArcStr, anyhow::Error> {
         match self {
             LoreApi::Actual(sender) => {
                 let (tx, rx) = oneshot::channel();
                 sender
                     .send(LoreApiMessage::GetRawPatch {
-                        target_list: target_list.to_string(),
-                        message_id: message_id.to_string(),
+                        target_list,
+                        message_id,
                         tx,
                     })
                     .await
@@ -264,16 +288,16 @@ impl LoreApi {
     /// ```
     pub async fn get_patch_metadata(
         &self,
-        target_list: &str,
-        message_id: &str,
+        target_list: ArcStr,
+        message_id: ArcStr,
     ) -> Result<ArcStr, anyhow::Error> {
         match self {
             LoreApi::Actual(sender) => {
                 let (tx, rx) = oneshot::channel();
                 sender
                     .send(LoreApiMessage::GetPatchMetadata {
-                        target_list: target_list.to_string(),
-                        message_id: message_id.to_string(),
+                        target_list,
+                        message_id,
                         tx,
                     })
                     .await
@@ -322,7 +346,7 @@ mod tests {
 
         // This test verifies the URL construction logic
         // The actual request will fail with mock, but we can verify the structure
-        let result = lore_api.get_patch_feed("test-list", 100).await;
+        let result = lore_api.get_patch_feed(ArcStr::from("test-list"), 100).await;
         assert!(result.is_err()); // Expected with mock
     }
 
@@ -331,7 +355,7 @@ mod tests {
         let net = Net::mock_empty();
         let lore_api = LoreApi::spawn(net);
 
-        let result = lore_api.get_available_lists(200).await;
+        let result = lore_api.get_available_lists().await;
         assert!(result.is_err()); // Expected with mock
     }
 
@@ -341,7 +365,7 @@ mod tests {
         let lore_api = LoreApi::spawn(net);
 
         let result = lore_api
-            .get_patch_html("test-list", "test-message-id")
+            .get_patch_html(ArcStr::from("test-list"), ArcStr::from("test-message-id"))
             .await;
         assert!(result.is_err()); // Expected with mock
     }
@@ -356,7 +380,7 @@ mod tests {
         let lore_api = LoreApi::mock(responses);
 
         // This should now work with the mock
-        let result = lore_api.get_patch_feed("test-list", 0).await;
+        let result = lore_api.get_patch_feed(ArcStr::from("test-list"), 0).await;
         assert!(result.is_ok());
         assert_eq!(result.unwrap(), test_response);
     }
@@ -366,7 +390,7 @@ mod tests {
         let lore_api = LoreApi::mock_empty();
 
         // Test that mock_empty creates an empty mock
-        let result = lore_api.get_patch_feed("test-list", 0).await;
+        let result = lore_api.get_patch_feed(ArcStr::from("test-list"), 0).await;
         assert!(result.is_err()); // Expected with empty mock
     }
 }

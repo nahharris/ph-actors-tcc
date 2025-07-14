@@ -2,6 +2,9 @@ use anyhow::Context;
 use std::collections::HashMap;
 use tokio::task::JoinHandle;
 
+use super::data::{LoreAvailableLists, LoreMailingList};
+use super::parse;
+use crate::ArcSlice;
 use crate::{ArcStr, api::lore::message::LoreApiMessage, net::Net};
 
 /// The core of the Lore API system that handles Lore-specific HTTP requests.
@@ -92,9 +95,16 @@ impl Core {
                             });
                         let _ = tx.send(response);
                     }
-                    LoreApiMessage::GetAvailableLists { min_index, tx } => {
+                    LoreApiMessage::GetAvailableLists { tx } => {
                         let response = self
-                            .handle_get_available_lists(min_index)
+                            .handle_get_available_lists()
+                            .await
+                            .with_context(|| "GET available lists failed");
+                        let _ = tx.send(response);
+                    }
+                    LoreApiMessage::GetAvailableListsPage { min_index, tx } => {
+                        let response = self
+                            .handle_get_available_lists_page(min_index)
                             .await
                             .with_context(|| {
                                 format!("GET available lists failed for index: {}", min_index)
@@ -184,8 +194,28 @@ impl Core {
     }
 
     /// Handles GET available lists requests
-    async fn handle_get_available_lists(&self, min_index: usize) -> anyhow::Result<ArcStr> {
-        let url = format!("{}/?&o={}", self.domain, min_index);
+    async fn handle_get_available_lists(&self) -> anyhow::Result<ArcSlice<LoreMailingList>> {
+        let mut all_items = Vec::new();
+        let mut min_index = 0;
+        loop {
+            let page = self.handle_get_available_lists_page(min_index).await?;
+            all_items.extend(page.items);
+            
+            if let Some(next) = page.next_page_index && page.next_page_index != page.total_items {
+                min_index = next;
+            } else { 
+                break; 
+            }
+        }
+        Ok(ArcSlice::from(&all_items[..]))
+    }
+
+    /// Handles GET available lists requests
+    async fn handle_get_available_lists_page(
+        &self,
+        min_index: usize,
+    ) -> anyhow::Result<LoreAvailableLists> {
+        let url = ArcStr::from(&format!("{}/?&o={}", self.domain, min_index));
 
         let mut headers = HashMap::new();
         headers.insert(
@@ -193,7 +223,8 @@ impl Core {
             ArcStr::from("text/html,application/xhtml+xml,application/xml"),
         );
 
-        self.net.get(ArcStr::from(&url), Some(headers)).await
+        let html = self.net.get(url, Some(headers)).await?;
+        parse::parse_available_lists_html(&html, min_index).context("Failed to parse available lists page")
     }
 
     /// Handles GET patch HTML requests
