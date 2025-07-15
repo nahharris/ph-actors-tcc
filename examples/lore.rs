@@ -1,5 +1,5 @@
 use ph::api::lore::LoreApi;
-use ph::config::Config;
+use ph::app::config::Config;
 use ph::log::Log;
 use ph::net::Net;
 

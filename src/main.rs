@@ -1,6 +1,6 @@
 use std::{path::Path, time::Duration};
 
-use ph::config::{Config, PathOpt, USizeOpt};
+use ph::app::config::{Config, PathOpt, USizeOpt};
 use ph::env::Env;
 use ph::fs::Fs;
 use ph::log::Log;

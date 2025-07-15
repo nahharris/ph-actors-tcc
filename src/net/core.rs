@@ -5,7 +5,7 @@ use tokio::task::JoinHandle;
 
 use crate::{
     ArcStr,
-    config::{Config, USizeOpt},
+    app::config::{Config, USizeOpt},
     log::Log,
     net::{Net, message::Message},
 };

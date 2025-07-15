@@ -5,11 +5,10 @@ use tokio::sync::Mutex;
 use tokio::sync::mpsc::Sender;
 
 use crate::{
-    ArcStr,
-    net::{
+    app::config::Config, net::{
         core::Core,
         message::{Message, MockRequestKey},
-    },
+    }, ArcStr
 };
 
 mod core;
@@ -47,7 +46,7 @@ impl Net {
     ///
     /// # Returns
     /// A new networking instance with a spawned actor.
-    pub async fn spawn(config: crate::config::Config, log: crate::log::Log) -> Self {
+    pub async fn spawn(config: Config, log: crate::log::Log) -> Self {
         let (net, _) = Core::new(config, log).await.spawn();
         net
     }
