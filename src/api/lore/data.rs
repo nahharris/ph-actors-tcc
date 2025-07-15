@@ -33,7 +33,7 @@ pub struct LorePatchMetadata {
     /// The email of the author of the patch
     pub email: ArcStr,
     /// The datetime of the last update of the patch
-    pub datetime: DateTime<Utc>,
+    pub last_update: DateTime<Utc>,
     /// The title of the patch
     pub title: ArcStr,
     /// The link to the patch

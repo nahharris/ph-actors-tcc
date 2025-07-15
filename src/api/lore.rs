@@ -103,7 +103,7 @@ impl LoreApi {
         &self,
         target_list: ArcStr,
         min_index: usize,
-    ) -> Result<Option<LorePage<LorePatchMetadata>>, anyhow::Error> {
+    ) -> anyhow::Result<Option<LorePage<LorePatchMetadata>>> {
         match self {
             LoreApi::Actual(sender) => {
                 let (tx, rx) = oneshot::channel();
@@ -136,7 +136,7 @@ impl LoreApi {
     pub async fn get_available_lists_page(
         &self,
         min_index: usize,
-    ) -> Result<LorePage<LoreMailingList>, anyhow::Error> {
+    ) -> anyhow::Result<Option<LorePage<LoreMailingList>>> {
         match self {
             LoreApi::Actual(sender) => {
                 let (tx, rx) = oneshot::channel();
@@ -162,7 +162,7 @@ impl LoreApi {
     ///
     /// # Returns
     /// An `ArcSlice<LoreMailingList>` containing all available mailing lists.
-    pub async fn get_available_lists(&self) -> Result<ArcSlice<LoreMailingList>, anyhow::Error> {
+    pub async fn get_available_lists(&self) -> anyhow::Result<ArcSlice<LoreMailingList>> {
         match self {
             LoreApi::Actual(sender) => {
                 let (tx, rx) = oneshot::channel();
@@ -198,7 +198,7 @@ impl LoreApi {
         &self,
         target_list: ArcStr,
         message_id: ArcStr,
-    ) -> Result<ArcStr, anyhow::Error> {
+    ) -> anyhow::Result<ArcStr> {
         match self {
             LoreApi::Actual(sender) => {
                 let (tx, rx) = oneshot::channel();
@@ -242,7 +242,7 @@ impl LoreApi {
         &self,
         target_list: ArcStr,
         message_id: ArcStr,
-    ) -> Result<ArcStr, anyhow::Error> {
+    ) -> anyhow::Result<ArcStr> {
         match self {
             LoreApi::Actual(sender) => {
                 let (tx, rx) = oneshot::channel();
@@ -286,7 +286,7 @@ impl LoreApi {
         &self,
         target_list: ArcStr,
         message_id: ArcStr,
-    ) -> Result<ArcStr, anyhow::Error> {
+    ) -> anyhow::Result<ArcStr> {
         match self {
             LoreApi::Actual(sender) => {
                 let (tx, rx) = oneshot::channel();

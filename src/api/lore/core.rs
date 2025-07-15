@@ -201,11 +201,13 @@ impl Core {
         let mut min_index = 0;
         loop {
             let page = self.handle_get_available_lists_page(min_index).await?;
+            let Some(page) = page else {
+                break;
+            };
+
             all_items.extend(page.items);
 
-            if let Some(next) = page.next_page_index
-                && page.next_page_index != page.total_items
-            {
+            if let Some(next) = page.next_page_index {
                 min_index = next;
             } else {
                 break;
@@ -218,7 +220,7 @@ impl Core {
     async fn handle_get_available_lists_page(
         &self,
         min_index: usize,
-    ) -> anyhow::Result<LorePage<LoreMailingList>> {
+    ) -> anyhow::Result<Option<LorePage<LoreMailingList>>> {
         let url = ArcStr::from(&format!("{}/?&o={}", self.domain, min_index));
 
         let mut headers = HashMap::new();

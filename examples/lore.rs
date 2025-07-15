@@ -20,7 +20,7 @@ async fn main() {
     for item in patch_feed.unwrap().items {
         println!(
             "[{}] {}<{}> - {}",
-            item.datetime, item.author, item.email, item.title
+            item.last_update, item.author, item.email, item.title
         );
     }
 }

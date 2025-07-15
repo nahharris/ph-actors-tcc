@@ -26,7 +26,7 @@ pub enum LoreApiMessage {
         /// The offset for pagination (0-based)
         min_index: usize,
         /// Response channel for the operation result
-        tx: Sender<anyhow::Result<LorePage<LoreMailingList>>>,
+        tx: Sender<anyhow::Result<Option<LorePage<LoreMailingList>>>>,
     },
     /// Fetches the HTML content of a specific patch
     GetPatchHtml {

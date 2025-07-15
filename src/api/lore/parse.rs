@@ -16,7 +16,7 @@ use serde_xml_rs::from_str;
 pub fn parse_available_lists_html(
     html: &str,
     start_index: usize,
-) -> anyhow::Result<LorePage<LoreMailingList>> {
+) -> anyhow::Result<Option<LorePage<LoreMailingList>>> {
     use anyhow::{Context, anyhow};
 
     let mut items = Vec::new();
@@ -121,12 +121,16 @@ pub fn parse_available_lists_html(
         }
     }
 
-    Ok(LorePage {
+    if start_index == total_items.unwrap_or(0) {
+        return Ok(None)
+    }
+
+    Ok(Some(LorePage {
         start_index,
         next_page_index,
         total_items,
         items,
-    })
+    }))
 }
 
 /// Parses the XML patch feed into structured data using serde_xml_rs.
@@ -188,7 +192,7 @@ pub fn parse_patch_feed_xml(
             Ok(LorePatchMetadata {
                 author: ArcStr::from(&entry.author.name),
                 email: ArcStr::from(&entry.author.email),
-                datetime,
+                last_update: datetime,
                 title: ArcStr::from(&entry.title),
                 link: ArcStr::from(&entry.link.href.unwrap_or_default()),
             })
