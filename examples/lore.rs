@@ -16,11 +16,11 @@ async fn main() {
     let item = lists.get(0).unwrap();
     let name = item.name.clone();
     println!("First mailing list: {}", name);
-    let patch_feed = lore.get_patch_feed_page(name, 0).await.unwrap();
-    for item in patch_feed.unwrap().items {
-        println!(
-            "[{}] {}<{}> - {}",
-            item.last_update, item.author, item.email, item.title
-        );
-    }
+
+    let Some(patch_feed) = lore.get_patch_feed_page(name.clone(), 0).await.unwrap() else {
+        println!("No patch feed found");
+        return;
+    };
+
+    println!("First patch from feed {}: {:#?}", name, patch_feed.items[0]);
 }
