@@ -10,6 +10,9 @@ pub mod net;
 pub mod terminal;
 pub mod utils;
 
+#[macro_use]
+pub mod macros;
+
 pub use utils::*;
 
 /// Default buffer size used for various operations in the application.

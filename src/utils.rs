@@ -49,6 +49,12 @@ where
     }
 }
 
+impl From<String> for ArcStr {
+    fn from(s: String) -> Self {
+        Self(Arc::from(s))
+    }
+}
+
 impl Deref for ArcStr {
     type Target = str;
 
@@ -276,10 +282,25 @@ impl<T> Default for ArcSlice<T> {
 }
 
 impl<T> From<&[T]> for ArcSlice<T>
-where
+where 
     T: Clone,
 {
     fn from(slice: &[T]) -> Self {
+        Self(Arc::from(slice))
+    }
+}
+
+impl<T> From<Vec<T>> for ArcSlice<T> {
+    fn from(vec: Vec<T>) -> Self {
+        Self(Arc::from(vec))
+    }
+}
+
+impl<T, const N: usize> From<[T; N]> for ArcSlice<T>
+where
+    T: Clone,
+{
+    fn from(slice: [T; N]) -> Self {
         Self(Arc::from(slice))
     }
 }
