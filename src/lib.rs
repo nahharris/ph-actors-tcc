@@ -7,6 +7,7 @@ pub mod env;
 pub mod fs;
 pub mod log;
 pub mod net;
+pub mod shell;
 pub mod terminal;
 pub mod utils;
 
