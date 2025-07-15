@@ -1,8 +1,8 @@
 //! Library entry point for the ph crate.
 //! This file re-exports key types for use in examples and other crates.
 
-pub mod app;
 pub mod api;
+pub mod app;
 pub mod env;
 pub mod fs;
 pub mod log;

@@ -5,10 +5,12 @@ use tokio::sync::Mutex;
 use tokio::sync::mpsc::Sender;
 
 use crate::{
-    app::config::Config, net::{
+    ArcStr,
+    app::config::Config,
+    net::{
         core::Core,
         message::{Message, MockRequestKey},
-    }, ArcStr
+    },
 };
 
 mod core;

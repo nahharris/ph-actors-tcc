@@ -122,7 +122,7 @@ pub fn parse_available_lists_html(
     }
 
     if start_index == total_items.unwrap_or(0) {
-        return Ok(None)
+        return Ok(None);
     }
 
     Ok(Some(LorePage {
