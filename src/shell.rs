@@ -9,7 +9,7 @@ use std::sync::Arc;
 use tokio::sync::Mutex;
 use tokio::sync::mpsc::Sender;
 
-use crate::{ArcStr, ArcSlice};
+use crate::{ArcSlice, ArcStr};
 
 /// The shell actor that provides a thread-safe interface for executing external programs.
 ///

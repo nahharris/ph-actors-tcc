@@ -117,9 +117,9 @@ impl LoreApi {
                     .context("Sending message to LoreApi actor")?;
                 rx.await.context("Receiving response from LoreApi actor")?
             }
-            LoreApi::Mock(_) => {
-                Err(anyhow::anyhow!("Mock for structured patch feed not implemented"))
-            }
+            LoreApi::Mock(_) => Err(anyhow::anyhow!(
+                "Mock for structured patch feed not implemented"
+            )),
         }
     }
 

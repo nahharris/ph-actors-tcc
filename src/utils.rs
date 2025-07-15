@@ -282,7 +282,7 @@ impl<T> Default for ArcSlice<T> {
 }
 
 impl<T> From<&[T]> for ArcSlice<T>
-where 
+where
     T: Clone,
 {
     fn from(slice: &[T]) -> Self {

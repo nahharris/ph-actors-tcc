@@ -15,7 +15,9 @@ async fn main() -> anyhow::Result<()> {
 
     // Example 1: Simple command execution
     println!("\n1. Executing 'echo hello world':");
-    let result = shell.execute(arc_str!("echo"), arc_slice!["hello", "world"], None).await?;
+    let result = shell
+        .execute(arc_str!("echo"), arc_slice!["hello", "world"], None)
+        .await?;
     println!("Command: {}", result.command.to_string());
     println!("Status: {}", result.status);
     println!("Stdout: {}", result.stdout.trim());
@@ -25,14 +27,22 @@ async fn main() -> anyhow::Result<()> {
 
     // Example 2: Command with stdin input
     println!("\n2. Executing 'cat' with stdin input:");
-    let result = shell.execute(arc_str!("cat"), arc_slice![], Some(arc_str!("Hello from stdin!"))).await?;
+    let result = shell
+        .execute(
+            arc_str!("cat"),
+            arc_slice![],
+            Some(arc_str!("Hello from stdin!")),
+        )
+        .await?;
     println!("Command: {}", result.command.to_string());
     println!("Status: {}", result.status);
     println!("Stdout: {}", result.stdout.trim());
 
     // Example 3: Command that might fail
     println!("\n3. Executing 'ls' on a non-existent directory:");
-    let result = shell.execute(arc_str!("ls"), arc_slice!["/non/existent/path"], None).await?;
+    let result = shell
+        .execute(arc_str!("ls"), arc_slice!["/non/existent/path"], None)
+        .await?;
     println!("Command: {}", result.command.to_string());
     println!("Status: {}", result.status);
     if !result.stdout.is_empty() {
@@ -59,7 +69,11 @@ async fn main() -> anyhow::Result<()> {
     println!("\n5. Using mock shell for testing:");
     let mock_shell = Shell::mock();
     let mock_result = mock_shell
-        .execute(arc_str!("test_command"), arc_slice!["arg1", "arg2"], Some(arc_str!("mock input")))
+        .execute(
+            arc_str!("test_command"),
+            arc_slice!["arg1", "arg2"],
+            Some(arc_str!("mock input")),
+        )
         .await?;
     println!("Mock command: {}", mock_result.command.to_string());
     println!("Mock result: {}", mock_result.stdout);

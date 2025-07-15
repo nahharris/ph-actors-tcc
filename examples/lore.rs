@@ -18,6 +18,9 @@ async fn main() {
     println!("First mailing list: {}", name);
     let patch_feed = lore.get_patch_feed_page(name, 0).await.unwrap();
     for item in patch_feed.unwrap().items {
-        println!("[{}] {}<{}> - {}", item.datetime, item.author, item.email, item.title);
+        println!(
+            "[{}] {}<{}> - {}",
+            item.datetime, item.author, item.email, item.title
+        );
     }
 }

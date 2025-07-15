@@ -1,6 +1,6 @@
 use std::process::ExitStatus;
 
-use crate::{ArcStr, ArcSlice};
+use crate::{ArcSlice, ArcStr};
 
 /// Represents a shell command to be executed.
 ///
@@ -111,12 +111,7 @@ impl Result {
     ///
     /// # Returns
     /// A new shell result instance.
-    pub fn new(
-        stdout: ArcStr,
-        stderr: ArcStr,
-        status: Status,
-        command: Command,
-    ) -> Self {
+    pub fn new(stdout: ArcStr, stderr: ArcStr, status: Status, command: Command) -> Self {
         Self {
             stdout,
             stderr,
