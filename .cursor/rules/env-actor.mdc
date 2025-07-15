@@ -1,0 +1,383 @@
+---
+description: When dealing with environment variables at runtime
+alwaysApply: false
+---
+# Environment Actor System
+
+This document explains how the environment actor system works in `src/env.rs` and the `/env` module for implementers who want to consume environment variables or extend the environment functionality.
+
+## Overview
+
+The environment actor system uses the Actor Model pattern to provide thread-safe access to environment variables. It consists of:
+
+- **Env**: The main interface enum that provides either a real actor or mock implementation
+- **Core**: The internal actor that handles system environment variable operations
+- **Message**: The message types for actor communication
+
+## Architecture
+
+```
+┌─────────────┐    ┌─────────────┐    ┌─────────────┐
+│     Env     │───▶│    Core     │───▶│ std::env    │
+│  (Public)   │    │   (Actor)   │    │ (System)    │
+└─────────────┘    └─────────────┘    └─────────────┘
+       │                   │                   │
+       │                   │                   │
+       ▼                   ▼                   ▼
+┌─────────────┐    ┌─────────────┐    ┌─────────────┐
+│   Message   │    │   Channel   │    │ Global      │
+│   Channel   │    │   Buffer    │    │ State       │
+└─────────────┘    └─────────────┘    └─────────────┘
+```
+
+## Consuming Environment Variables
+
+### Basic Usage
+
+```rust
+use crate::env::Env;
+use crate::ArcOsStr;
+
+// Create an environment instance
+let env = Env::spawn();
+
+// Set environment variables
+let key = ArcOsStr::from("DATABASE_URL");
+env.set_env(key.clone(), "postgres://localhost/db").await;
+
+// Get environment variables
+let value = env.env(key.clone()).await?;
+println!("Database URL: {}", value);
+
+// Unset environment variables
+env.unset_env(key).await;
+```
+
+### Thread Safety
+
+The `Env` type is designed to be safely shared between threads. Cloning is cheap as it only copies the channel sender:
+
+```rust
+let env = Env::spawn();
+let env_clone = env.clone(); // Safe to clone and share
+
+// Use in different tasks
+tokio::spawn(async move {
+    let value = env_clone.env(ArcOsStr::from("API_KEY")).await;
+});
+```
+
+### Testing with Mock
+
+For testing, use the mock implementation:
+
+```rust
+use crate::env::Env;
+
+let env = Env::mock();
+
+// Mock stores variables in memory
+env.set_env(ArcOsStr::from("TEST_VAR"), "test_value").await;
+let value = env.env(ArcOsStr::from("TEST_VAR")).await.unwrap();
+assert_eq!(value.as_ref(), "test_value");
+```
+
+### Error Handling
+
+Environment variable operations can fail:
+
+```rust
+use std::env::VarError;
+
+match env.env(ArcOsStr::from("NONEXISTENT_VAR")).await {
+    Ok(value) => println!("Value: {}", value),
+    Err(VarError::NotPresent) => println!("Variable not set"),
+    Err(VarError::NotUnicode(_)) => println!("Invalid Unicode in variable"),
+}
+```
+
+## Data Types
+
+### ArcOsStr
+
+Environment variable keys use `ArcOsStr` (Arc<OsStr>) for thread-safe, cheap cloning:
+
+```rust
+use crate::ArcOsStr;
+
+// Create from string literals
+let key = ArcOsStr::from("API_KEY");
+
+// Create from OsString
+let os_string = std::ffi::OsString::from("DATABASE_URL");
+let key = ArcOsStr::from(os_string);
+
+// Clone is cheap
+let key_clone = key.clone();
+```
+
+### ArcStr
+
+Environment variable values are returned as `ArcStr` (Arc<str>) for thread-safe access:
+
+```rust
+let value = env.env(ArcOsStr::from("PATH")).await?;
+// value is ArcStr, can be cloned cheaply
+let value_clone = value.clone();
+```
+
+## Adding New Environment Operations
+
+To add new environment variable operations, you need to modify several files:
+
+### 1. Add Message Variant (`src/env/message.rs`)
+
+Add a new message variant for the operation:
+
+```rust
+#[derive(Debug)]
+pub enum Message {
+    // ... existing variants ...
+    
+    /// Check if an environment variable exists
+    HasEnv {
+        /// The environment variable name to check
+        key: ArcOsStr,
+        /// Channel to send the result back to the caller
+        tx: oneshot::Sender<bool>,
+    },
+}
+```
+
+### 2. Update Core Actor (`src/env/core.rs`)
+
+Add message handling in the actor's message loop:
+
+```rust
+match msg {
+    // ... existing matches ...
+    
+    HasEnv { key, tx } => {
+        let exists = std::env::var(key).is_ok();
+        let _ = tx.send(exists);
+    }
+}
+```
+
+### 3. Add Public Interface (`src/env.rs`)
+
+Add public methods to the `Env` enum:
+
+```rust
+impl Env {
+    // ... existing methods ...
+    
+    /// Checks if an environment variable exists
+    pub async fn has_env(&self, key: ArcOsStr) -> bool {
+        match self {
+            Self::Actual(sender) => {
+                let (tx, rx) = tokio::sync::oneshot::channel();
+                sender
+                    .send(message::Message::HasEnv { key, tx })
+                    .await
+                    .expect("env actor died");
+                rx.await.expect("env actor died")
+            }
+            Self::Mock(lock) => {
+                let lock = lock.lock().await;
+                lock.contains_key(&key)
+            }
+        }
+    }
+}
+```
+
+### 4. Add Tests (`src/env/tests.rs`)
+
+Add comprehensive tests for the new functionality:
+
+```rust
+#[tokio::test]
+async fn test_has_env() {
+    let env = Env::mock();
+    let key = ArcOsStr::from("TEST_HAS_ENV");
+    
+    // Initially should not exist
+    assert!(!env.has_env(key.clone()).await);
+    
+    // After setting, should exist
+    env.set_env(key.clone(), "value").await;
+    assert!(env.has_env(key.clone()).await);
+    
+    // After unsetting, should not exist
+    env.unset_env(key.clone()).await;
+    assert!(!env.has_env(key).await);
+}
+```
+
+## Advanced Usage Patterns
+
+### Batch Operations
+
+For multiple environment variables, consider batching operations:
+
+```rust
+async fn set_multiple_env_vars(env: &Env, vars: &[(ArcOsStr, &str)]) {
+    for (key, value) in vars {
+        env.set_env(key.clone(), *value).await;
+    }
+}
+
+let vars = vec![
+    (ArcOsStr::from("DB_HOST"), "localhost"),
+    (ArcOsStr::from("DB_PORT"), "5432"),
+    (ArcOsStr::from("DB_NAME"), "myapp"),
+];
+
+set_multiple_env_vars(&env, &vars).await;
+```
+
+### Environment Variable Validation
+
+Implement validation for environment variables:
+
+```rust
+async fn get_required_env(env: &Env, key: ArcOsStr) -> anyhow::Result<ArcStr> {
+    env.env(key.clone())
+        .await
+        .with_context(|| format!("Required environment variable '{}' not set", key.to_string_lossy()))
+}
+
+async fn get_optional_env(env: &Env, key: ArcOsStr, default: &str) -> ArcStr {
+    env.env(key).await.unwrap_or_else(|_| ArcStr::from(default))
+}
+```
+
+### Configuration Integration
+
+Integrate with the configuration system:
+
+```rust
+use crate::config::Config;
+
+async fn load_env_config(env: &Env, config: &Config) -> anyhow::Result<()> {
+    // Load database URL from environment
+    if let Ok(db_url) = env.env(ArcOsStr::from("DATABASE_URL")).await {
+        // Store in configuration
+        // (This would require adding a string option to the config system)
+    }
+    
+    // Load log level from environment
+    if let Ok(log_level_str) = env.env(ArcOsStr::from("LOG_LEVEL")).await {
+        if let Ok(log_level) = log_level_str.parse() {
+            config.set_log_level(log_level).await;
+        }
+    }
+    
+    Ok(())
+}
+```
+
+## Best Practices
+
+### 1. Use Appropriate Key Names
+
+Follow environment variable naming conventions:
+
+```rust
+// Good: UPPER_CASE with underscores
+let key = ArcOsStr::from("DATABASE_URL");
+let key = ArcOsStr::from("API_KEY");
+let key = ArcOsStr::from("LOG_LEVEL");
+
+// Avoid: lowercase or mixed case
+let key = ArcOsStr::from("database_url"); // Bad
+let key = ArcOsStr::from("apiKey"); // Bad
+```
+
+### 2. Handle Missing Variables Gracefully
+
+Always handle the case where environment variables might not be set:
+
+```rust
+// Good: Provide defaults
+let db_url = env.env(ArcOsStr::from("DATABASE_URL"))
+    .await
+    .unwrap_or_else(|_| ArcStr::from("sqlite://:memory:"));
+
+// Good: Use anyhow for better error context
+let api_key = env.env(ArcOsStr::from("API_KEY"))
+    .await
+    .context("API_KEY environment variable is required")?;
+```
+
+### 3. Validate Environment Variables
+
+Validate environment variable values when appropriate:
+
+```rust
+async fn validate_port(env: &Env) -> anyhow::Result<u16> {
+    let port_str = env.env(ArcOsStr::from("PORT"))
+        .await
+        .context("PORT environment variable is required")?;
+    
+    port_str.parse::<u16>()
+        .context("PORT must be a valid port number (1-65535)")
+}
+```
+
+### 4. Clean Up in Tests
+
+Always clean up environment variables in tests:
+
+```rust
+#[tokio::test]
+async fn test_env_operations() {
+    let env = Env::spawn();
+    let key = ArcOsStr::from("TEST_CLEANUP");
+    
+    // Test operations...
+    env.set_env(key.clone(), "value").await;
+    
+    // Clean up
+    env.unset_env(key).await;
+}
+```
+
+### 5. Use Mock for Unit Tests
+
+Use the mock implementation for unit tests to avoid affecting the system environment:
+
+```rust
+#[tokio::test]
+async fn test_with_mock() {
+    let env = Env::mock(); // Safe for unit tests
+    
+    // Test operations without affecting system environment
+    env.set_env(ArcOsStr::from("TEST_VAR"), "test_value").await;
+    assert_eq!(env.env(ArcOsStr::from("TEST_VAR")).await.unwrap().as_ref(), "test_value");
+}
+```
+
+## Performance Considerations
+
+- Environment variable operations are cached in memory for the mock implementation
+- Real environment operations go through the system's environment variable functions
+- The actor pattern ensures thread safety without locks on the hot path
+- `ArcOsStr` and `ArcStr` provide cheap cloning for sharing between threads
+
+## Security Considerations
+
+- Environment variables can contain sensitive information (passwords, API keys)
+- Be careful when logging environment variable values
+- Consider using a secure environment variable manager for production systems
+- Validate environment variable values to prevent injection attacks
+
+## Integration with Other Systems
+
+The environment actor can be integrated with:
+
+- **Configuration System**: Load environment variables into configuration
+- **Logging System**: Set log levels from environment variables
+- **Database Systems**: Configure database connections from environment
+- **API Clients**: Set API keys and endpoints from environment

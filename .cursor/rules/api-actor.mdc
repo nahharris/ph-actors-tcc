@@ -1,0 +1,553 @@
+---
+description: When wrapping http requests with high-level api interface for structured requests/responses to given targets
+alwaysApply: false
+---
+# API Actor System
+
+This document explains how the API actor system works in `src/api.rs` and the `/api` module for implementers who want to consume API operations or extend the API functionality.
+
+## Overview
+
+The API actor system provides high-level interfaces for external services by intermediating calls to the networking actor. It consists of:
+
+- **API Modules**: Domain-specific APIs for different services
+- **LoreApi**: Example API implementation for lore-related operations
+- **Net Integration**: Uses the networking actor for HTTP operations
+
+## Architecture
+
+```
+┌─────────────┐    ┌─────────────┐    ┌─────────────┐
+│   API       │───▶│   LoreApi   │───▶│     Net     │
+│  (Public)   │    │  (Example)  │    │  (Actor)    │
+└─────────────┘    └─────────────┘    └─────────────┘
+       │                   │                   │
+       │                   │                   │
+       ▼                   ▼                   ▼
+┌─────────────┐    ┌─────────────┐    ┌─────────────┐
+│   Domain    │    │   Service   │    │   HTTP      │
+│  Specific   │    │   Logic     │    │  Requests   │
+└─────────────┘    └─────────────┘    └─────────────┘
+```
+
+## Consuming API Operations
+
+### Basic Usage
+
+```rust
+use crate::api::LoreApi;
+
+// Create an API instance
+let net = Net::spawn(config, log).await;
+let lore_api = LoreApi::new(net);
+
+// Use the API
+let lore_data = lore_api.get_lore("dragon").await?;
+println!("Lore: {}", lore_data);
+```
+
+### Thread Safety
+
+API instances are designed to be safely shared between threads:
+
+```rust
+let lore_api = LoreApi::new(net);
+let lore_api_clone = lore_api.clone(); // Safe to clone and share
+
+// Use in different tasks
+tokio::spawn(async move {
+    let data = lore_api_clone.get_lore("elf").await;
+});
+```
+
+### Testing with Mock
+
+For testing, use mock networking:
+
+```rust
+use crate::net::{Net, MockRequestKey};
+use std::collections::HashMap;
+
+// Create mock with predefined responses
+let mut responses = HashMap::new();
+responses.insert(
+    MockRequestKey::get(ArcStr::from("https://api.example.com/lore/dragon")),
+    ArcStr::from(r#"{"name": "dragon", "description": "A mythical creature"}"#)
+);
+
+let net = Net::mock(responses);
+let lore_api = LoreApi::new(net);
+
+// Mock will return the predefined response
+let lore = lore_api.get_lore("dragon").await?;
+assert_eq!(lore.name, "dragon");
+```
+
+## API Module Structure
+
+### Module Organization
+
+Each API module represents a different service or domain:
+
+```rust
+// src/api.rs
+pub mod lore;  // Lore-related API operations
+
+// Re-exports for convenience
+pub use lore::LoreApi;
+```
+
+### Example API Implementation
+
+```rust
+// src/api/lore.rs
+use crate::net::Net;
+use crate::ArcStr;
+use serde::{Deserialize, Serialize};
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct LoreData {
+    pub name: String,
+    pub description: String,
+    pub category: String,
+}
+
+pub struct LoreApi {
+    net: Net,
+    base_url: ArcStr,
+}
+
+impl LoreApi {
+    pub fn new(net: Net) -> Self {
+        Self {
+            net,
+            base_url: ArcStr::from("https://api.example.com/lore"),
+        }
+    }
+    
+    pub async fn get_lore(&self, name: &str) -> anyhow::Result<LoreData> {
+        let url = format!("{}/{}", self.base_url, name);
+        let response = self.net.get(ArcStr::from(&url), None).await?;
+        let lore: LoreData = serde_json::from_str(&response)?;
+        Ok(lore)
+    }
+    
+    pub async fn create_lore(&self, lore: &LoreData) -> anyhow::Result<()> {
+        let url = self.base_url.clone();
+        let body = serde_json::to_string(lore)?;
+        
+        let mut headers = HashMap::new();
+        headers.insert(ArcStr::from("Content-Type"), ArcStr::from("application/json"));
+        
+        self.net.post(url, Some(headers), Some(ArcStr::from(body))).await?;
+        Ok(())
+    }
+}
+```
+
+## Adding New API Modules
+
+To add new API modules, you need to modify several files:
+
+### 1. Create API Module (`src/api/new_service.rs`)
+
+Create a new module for your service:
+
+```rust
+use crate::net::Net;
+use crate::ArcStr;
+use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct UserData {
+    pub id: u64,
+    pub username: String,
+    pub email: String,
+}
+
+pub struct UserApi {
+    net: Net,
+    base_url: ArcStr,
+}
+
+impl UserApi {
+    pub fn new(net: Net) -> Self {
+        Self {
+            net,
+            base_url: ArcStr::from("https://api.example.com/users"),
+        }
+    }
+    
+    pub async fn get_user(&self, id: u64) -> anyhow::Result<UserData> {
+        let url = format!("{}/{}", self.base_url, id);
+        let response = self.net.get(ArcStr::from(&url), None).await?;
+        let user: UserData = serde_json::from_str(&response)?;
+        Ok(user)
+    }
+    
+    pub async fn create_user(&self, user: &UserData) -> anyhow::Result<UserData> {
+        let body = serde_json::to_string(user)?;
+        
+        let mut headers = HashMap::new();
+        headers.insert(ArcStr::from("Content-Type"), ArcStr::from("application/json"));
+        
+        let response = self.net.post(
+            self.base_url.clone(),
+            Some(headers),
+            Some(ArcStr::from(body))
+        ).await?;
+        
+        let created_user: UserData = serde_json::from_str(&response)?;
+        Ok(created_user)
+    }
+}
+```
+
+### 2. Add Module to API (`src/api.rs`)
+
+Add the new module to the main API module:
+
+```rust
+//! API module providing high-level interfaces for external services.
+
+pub mod lore;
+pub mod new_service;  // Add your new module
+
+/// Re-exports for convenience
+pub use lore::LoreApi;
+pub use new_service::UserApi;  // Export your new API
+```
+
+### 3. Add Tests (`src/api/new_service/tests.rs`)
+
+Add comprehensive tests for the new API:
+
+```rust
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::net::{Net, MockRequestKey};
+    use std::collections::HashMap;
+
+    #[tokio::test]
+    async fn test_get_user() {
+        let mut responses = HashMap::new();
+        responses.insert(
+            MockRequestKey::get(ArcStr::from("https://api.example.com/users/123")),
+            ArcStr::from(r#"{"id": 123, "username": "john", "email": "john@example.com"}"#)
+        );
+        
+        let net = Net::mock(responses);
+        let user_api = UserApi::new(net);
+        
+        let user = user_api.get_user(123).await.unwrap();
+        assert_eq!(user.username, "john");
+        assert_eq!(user.email, "john@example.com");
+    }
+    
+    #[tokio::test]
+    async fn test_create_user() {
+        let mut responses = HashMap::new();
+        responses.insert(
+            MockRequestKey::post(ArcStr::from("https://api.example.com/users")),
+            ArcStr::from(r#"{"id": 456, "username": "jane", "email": "jane@example.com"}"#)
+        );
+        
+        let net = Net::mock(responses);
+        let user_api = UserApi::new(net);
+        
+        let new_user = UserData {
+            id: 0,
+            username: "jane".to_string(),
+            email: "jane@example.com".to_string(),
+        };
+        
+        let created_user = user_api.create_user(&new_user).await.unwrap();
+        assert_eq!(created_user.id, 456);
+    }
+}
+```
+
+## Advanced Usage Patterns
+
+### API Client with Authentication
+
+```rust
+pub struct AuthenticatedApi {
+    net: Net,
+    base_url: ArcStr,
+    token: ArcStr,
+}
+
+impl AuthenticatedApi {
+    pub fn new(net: Net, base_url: ArcStr, token: ArcStr) -> Self {
+        Self { net, base_url, token }
+    }
+    
+    async fn authenticated_request(
+        &self,
+        method: &str,
+        endpoint: &str,
+        body: Option<ArcStr>
+    ) -> anyhow::Result<ArcStr> {
+        let url = format!("{}/{}", self.base_url, endpoint);
+        let mut headers = HashMap::new();
+        headers.insert(ArcStr::from("Authorization"), format!("Bearer {}", self.token).into());
+        headers.insert(ArcStr::from("Content-Type"), ArcStr::from("application/json"));
+        
+        match method {
+            "GET" => self.net.get(ArcStr::from(&url), Some(headers)).await,
+            "POST" => self.net.post(ArcStr::from(&url), Some(headers), body).await,
+            "PUT" => self.net.put(ArcStr::from(&url), Some(headers), body).await,
+            "DELETE" => self.net.delete(ArcStr::from(&url), Some(headers)).await,
+            _ => Err(anyhow::anyhow!("Unsupported HTTP method: {}", method)),
+        }
+    }
+}
+```
+
+### Batch API Operations
+
+```rust
+impl LoreApi {
+    pub async fn get_multiple_lore(&self, names: &[&str]) -> anyhow::Result<Vec<LoreData>> {
+        let mut results = Vec::new();
+        
+        for name in names {
+            match self.get_lore(name).await {
+                Ok(lore) => results.push(lore),
+                Err(e) => {
+                    eprintln!("Failed to get lore for '{}': {}", name, e);
+                    // Continue with other requests
+                }
+            }
+        }
+        
+        Ok(results)
+    }
+}
+```
+
+### API with Retry Logic
+
+```rust
+impl LoreApi {
+    pub async fn get_lore_with_retry(&self, name: &str, max_retries: usize) -> anyhow::Result<LoreData> {
+        let mut last_error = None;
+        
+        for attempt in 0..=max_retries {
+            match self.get_lore(name).await {
+                Ok(lore) => return Ok(lore),
+                Err(e) => {
+                    last_error = Some(e);
+                    if attempt < max_retries {
+                        tokio::time::sleep(tokio::time::Duration::from_secs(2u64.pow(attempt as u32))).await;
+                    }
+                }
+            }
+        }
+        
+        Err(last_error.unwrap())
+    }
+}
+```
+
+### API with Caching
+
+```rust
+use std::collections::HashMap;
+use tokio::sync::Mutex;
+
+pub struct CachedLoreApi {
+    api: LoreApi,
+    cache: Arc<Mutex<HashMap<String, LoreData>>>,
+}
+
+impl CachedLoreApi {
+    pub fn new(api: LoreApi) -> Self {
+        Self {
+            api,
+            cache: Arc::new(Mutex::new(HashMap::new())),
+        }
+    }
+    
+    pub async fn get_lore(&self, name: &str) -> anyhow::Result<LoreData> {
+        // Check cache first
+        {
+            let cache = self.cache.lock().await;
+            if let Some(lore) = cache.get(name) {
+                return Ok(lore.clone());
+            }
+        }
+        
+        // Fetch from API
+        let lore = self.api.get_lore(name).await?;
+        
+        // Store in cache
+        {
+            let mut cache = self.cache.lock().await;
+            cache.insert(name.to_string(), lore.clone());
+        }
+        
+        Ok(lore)
+    }
+}
+```
+
+## Best Practices
+
+### 1. Use Appropriate Data Structures
+
+Define clear data structures for your API:
+
+```rust
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ApiResponse<T> {
+    pub success: bool,
+    pub data: Option<T>,
+    pub error: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PaginatedResponse<T> {
+    pub items: Vec<T>,
+    pub total: u64,
+    pub page: u32,
+    pub per_page: u32,
+}
+```
+
+### 2. Handle API Errors Gracefully
+
+Always handle API errors appropriately:
+
+```rust
+impl LoreApi {
+    pub async fn get_lore_safe(&self, name: &str) -> anyhow::Result<Option<LoreData>> {
+        match self.get_lore(name).await {
+            Ok(lore) => Ok(Some(lore)),
+            Err(e) => {
+                if e.to_string().contains("404") {
+                    Ok(None) // Not found
+                } else {
+                    Err(e) // Other errors
+                }
+            }
+        }
+    }
+}
+```
+
+### 3. Use Configuration for API Settings
+
+Make API settings configurable:
+
+```rust
+pub struct ConfigurableApi {
+    net: Net,
+    base_url: ArcStr,
+    timeout: std::time::Duration,
+    retry_attempts: usize,
+}
+
+impl ConfigurableApi {
+    pub fn new(net: Net, config: &Config) -> Self {
+        let timeout_secs = config.usize(USizeOpt::Timeout).await;
+        Self {
+            net,
+            base_url: ArcStr::from("https://api.example.com"),
+            timeout: std::time::Duration::from_secs(timeout_secs as u64),
+            retry_attempts: 3,
+        }
+    }
+}
+```
+
+### 4. Use Mock for Testing
+
+Use mock networking for unit tests:
+
+```rust
+#[tokio::test]
+async fn test_api_integration() {
+    let mut responses = HashMap::new();
+    responses.insert(
+        MockRequestKey::get(ArcStr::from("https://api.example.com/lore/dragon")),
+        ArcStr::from(r#"{"name": "dragon", "description": "A mythical creature"}"#)
+    );
+    
+    let net = Net::mock(responses);
+    let api = LoreApi::new(net);
+    
+    let lore = api.get_lore("dragon").await.unwrap();
+    assert_eq!(lore.name, "dragon");
+}
+```
+
+### 5. Implement Proper Error Types
+
+Define specific error types for your API:
+
+```rust
+#[derive(Debug, thiserror::Error)]
+pub enum ApiError {
+    #[error("Network error: {0}")]
+    Network(#[from] anyhow::Error),
+    
+    #[error("Serialization error: {0}")]
+    Serialization(#[from] serde_json::Error),
+    
+    #[error("API error: {message}")]
+    Api { message: String, status_code: u16 },
+    
+    #[error("Not found: {resource}")]
+    NotFound { resource: String },
+}
+
+impl LoreApi {
+    pub async fn get_lore(&self, name: &str) -> Result<LoreData, ApiError> {
+        let url = format!("{}/{}", self.base_url, name);
+        let response = self.net.get(ArcStr::from(&url), None).await
+            .map_err(ApiError::Network)?;
+        
+        let lore: LoreData = serde_json::from_str(&response)
+            .map_err(ApiError::Serialization)?;
+        
+        Ok(lore)
+    }
+}
+```
+
+## Performance Considerations
+
+- API calls are made through the networking actor for thread safety
+- Consider implementing caching for frequently accessed data
+- Use batch operations when possible to reduce network overhead
+- Mock implementations provide fast testing without network calls
+
+## Error Handling
+
+API modules should handle various error conditions:
+
+- **Network errors**: Connection failures, timeouts
+- **HTTP errors**: 4xx and 5xx status codes
+- **Serialization errors**: Invalid JSON/XML responses
+- **Business logic errors**: API-specific error conditions
+
+## Integration with Other Systems
+
+The API system integrates with:
+
+- **Networking System**: Making HTTP requests
+- **Configuration System**: Reading API settings
+- **Logging System**: Logging API operations and errors
+- **All Other Actors**: Providing external service access
+
+## Security Considerations
+
+- Always validate and sanitize API inputs
+- Use secure authentication methods (Bearer tokens, API keys)
+- Handle sensitive data appropriately
+- Implement rate limiting when necessary
+- Use HTTPS for all API communications

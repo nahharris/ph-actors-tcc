@@ -1,0 +1,432 @@
+---
+description: When in need to log information during app execution
+alwaysApply: false
+---
+# Logging Actor System
+
+This document explains how the logging actor system works in `src/log.rs` and the `/log` module for implementers who want to consume logging operations or extend the logging functionality.
+
+## Overview
+
+The logging actor system uses the Actor Model pattern to provide thread-safe logging capabilities. It consists of:
+
+- **Log**: The main interface enum that provides either a real actor or mock implementation
+- **LogCore**: The internal actor that handles file and stderr logging
+- **Message**: The message types for actor communication
+- **LogLevel**: The logging levels (Debug, Info, Warning, Error)
+
+## Architecture
+
+```
+┌─────────────┐    ┌─────────────┐    ┌─────────────┐
+│     Log     │───▶│   LogCore   │───▶│   Files     │
+│  (Public)   │    │   (Actor)   │    │  (System)   │
+└─────────────┘    └─────────────┘    └─────────────┘
+       │                   │                   │
+       │                   │                   │
+       ▼                   ▼                   ▼
+┌─────────────┐    ┌─────────────┐    ┌─────────────┐
+│   Message   │    │   Buffer    │    │   stderr    │
+│   Channel   │    │   & Cache   │    │  (Output)   │
+└─────────────┘    └─────────────┘    └─────────────┘
+```
+
+## Consuming Logging Operations
+
+### Basic Usage
+
+```rust
+use crate::log::{Log, LogLevel};
+
+// Create a logging instance
+let fs = Fs::spawn();
+let log = Log::spawn(fs, LogLevel::Info, 7, ArcPath::from("/tmp/logs")).await?;
+
+// Log messages at different levels
+log.info("Application started");
+log.warn("Configuration file not found, using defaults");
+log.error("Failed to connect to database");
+
+// Log errors with context
+let result = some_operation();
+log.error_on_error(result)?;
+
+// Flush logs before shutdown
+let handle = log.flush();
+handle.await;
+```
+
+### Thread Safety
+
+The `Log` type is designed to be safely shared between threads. Cloning is cheap as it only copies the channel sender:
+
+```rust
+let log = Log::spawn(fs, LogLevel::Info, 7, log_dir).await?;
+let log_clone = log.clone(); // Safe to clone and share
+
+// Use in different tasks
+tokio::spawn(async move {
+    log_clone.info("Task started");
+});
+```
+
+### Testing with Mock
+
+For testing, use the mock implementation:
+
+```rust
+use crate::log::Log;
+
+let log = Log::mock();
+
+// Log messages (stored in memory)
+log.info("Test message");
+log.warn("Test warning");
+
+// Get logged messages for assertions
+let messages = log.get_messages().await.unwrap();
+assert_eq!(messages.len(), 2);
+assert_eq!(messages[0].message, "Test message");
+```
+
+### Log Levels
+
+The logging system supports four levels:
+
+```rust
+use crate::log::LogLevel;
+
+// Debug: Detailed information for debugging
+log.debug("Variable x = {}", x);
+
+// Info: General information about program execution
+log.info("User logged in: {}", username);
+
+// Warning: Something unexpected happened but the program can continue
+log.warn("Configuration file not found, using defaults");
+
+// Error: Something failed and the program cannot continue normally
+log.error("Database connection failed: {}", error);
+```
+
+### Error Logging Patterns
+
+The logging system provides convenient methods for logging errors:
+
+```rust
+// Log error and return the result as-is
+let result = risky_operation();
+log.error_on_error(result)?;
+
+// Log warning and return the result as-is
+let result = optional_operation();
+log.warn_on_error(result)?;
+
+// Log info and return the result as-is
+let result = debug_operation();
+log.info_on_error(result)?;
+```
+
+## Data Types
+
+### LogLevel
+
+Log levels are defined as an enum:
+
+```rust
+#[derive(Debug, Clone, Copy, PartialEq, PartialOrd)]
+pub enum LogLevel {
+    Debug,
+    Info,
+    Warning,
+    Error,
+}
+```
+
+### LogMessage
+
+Log messages contain level and content:
+
+```rust
+#[derive(Debug, Clone)]
+pub struct LogMessage {
+    pub level: LogLevel,
+    pub message: String,
+}
+```
+
+## Adding New Logging Operations
+
+To add new logging operations, you need to modify several files:
+
+### 1. Add Message Variant (`src/log/message.rs`)
+
+Add a new message variant for the operation:
+
+```rust
+#[derive(Debug)]
+pub enum Message {
+    // ... existing variants ...
+    
+    /// Set the minimum log level
+    SetLevel {
+        /// The new minimum log level
+        level: LogLevel,
+    },
+}
+```
+
+### 2. Update LogCore Actor (`src/log/core.rs`)
+
+Add message handling in the actor's message loop:
+
+```rust
+match command {
+    // ... existing matches ...
+    
+    Message::SetLevel { level } => {
+        self.print_level = level;
+    }
+}
+```
+
+### 3. Add Public Interface (`src/log.rs`)
+
+Add public methods to the `Log` enum:
+
+```rust
+impl Log {
+    // ... existing methods ...
+    
+    /// Sets the minimum log level
+    pub async fn set_level(&self, level: LogLevel) {
+        match self {
+            Self::Actual(sender) => {
+                let _ = sender.send(message::Message::SetLevel { level }).await;
+            }
+            Self::Mock(_) => {
+                // Mock implementation could store the level
+            }
+        }
+    }
+}
+```
+
+### 4. Add Tests (`src/log/tests.rs`)
+
+Add comprehensive tests for the new functionality:
+
+```rust
+#[tokio::test]
+async fn test_set_level() {
+    let log = Log::mock();
+    
+    // Set level to Warning
+    log.set_level(LogLevel::Warning).await;
+    
+    // Info messages should not be logged
+    log.info("This should not appear");
+    
+    // Warning messages should be logged
+    log.warn("This should appear");
+    
+    let messages = log.get_messages().await.unwrap();
+    assert_eq!(messages.len(), 1);
+    assert_eq!(messages[0].level, LogLevel::Warning);
+}
+```
+
+## Advanced Usage Patterns
+
+### Structured Logging
+
+```rust
+async fn log_operation(log: &Log, operation: &str, duration: std::time::Duration) {
+    log.info(format!(
+        "Operation '{}' completed in {:?}",
+        operation, duration
+    ));
+}
+
+async fn log_user_action(log: &Log, user: &str, action: &str, success: bool) {
+    let level = if success { LogLevel::Info } else { LogLevel::Warning };
+    log.log(
+        format!("User '{}' performed '{}' - {}", user, action, if success { "SUCCESS" } else { "FAILED" }),
+        level
+    );
+}
+```
+
+### Conditional Logging
+
+```rust
+async fn log_with_condition(log: &Log, condition: bool, message: &str) {
+    if condition {
+        log.info(message);
+    }
+}
+
+async fn log_performance(log: &Log, operation: &str, start: std::time::Instant) {
+    let duration = start.elapsed();
+    if duration > std::time::Duration::from_secs(1) {
+        log.warn(format!("Slow operation '{}': {:?}", operation, duration));
+    } else {
+        log.debug(format!("Operation '{}': {:?}", operation, duration));
+    }
+}
+```
+
+### Batch Logging
+
+```rust
+async fn log_batch_operations(log: &Log, operations: &[&str]) {
+    log.info(format!("Starting batch of {} operations", operations.len()));
+    
+    for (i, operation) in operations.iter().enumerate() {
+        log.debug(format!("Processing operation {}/{}: {}", i + 1, operations.len(), operation));
+    }
+    
+    log.info("Batch operations completed");
+}
+```
+
+## Best Practices
+
+### 1. Use Appropriate Log Levels
+
+Choose the right log level for your messages:
+
+```rust
+// Debug: For detailed debugging information
+log.debug("Processing item {} with config {:?}", item_id, config);
+
+// Info: For general program flow
+log.info("User '{}' logged in successfully", username);
+
+// Warning: For recoverable issues
+log.warn("Configuration file not found, using defaults");
+
+// Error: For unrecoverable issues
+log.error("Failed to connect to database: {}", error);
+```
+
+### 2. Include Context in Messages
+
+Provide useful context in log messages:
+
+```rust
+// Good: Include relevant context
+log.error(format!("Failed to process file '{}': {}", file_path.display(), error));
+
+// Bad: Vague message
+log.error("Failed to process file"); // Bad
+```
+
+### 3. Use Error Logging Helpers
+
+Use the provided error logging methods:
+
+```rust
+// Good: Use error_on_error for automatic error logging
+let result = risky_operation();
+log.error_on_error(result)?;
+
+// Good: Use warn_on_error for warnings
+let result = optional_operation();
+log.warn_on_error(result)?;
+```
+
+### 4. Handle Logging Failures Gracefully
+
+Logging should not break your application:
+
+```rust
+// Good: Handle logging errors gracefully
+if let Err(e) = log.info("Operation completed").await {
+    eprintln!("Failed to log message: {}", e);
+}
+```
+
+### 5. Use Mock for Testing
+
+Use the mock implementation for unit tests:
+
+```rust
+#[tokio::test]
+async fn test_with_mock() {
+    let log = Log::mock();
+    
+    log.info("Test message");
+    
+    let messages = log.get_messages().await.unwrap();
+    assert_eq!(messages.len(), 1);
+    assert_eq!(messages[0].message, "Test message");
+}
+```
+
+### 6. Flush Logs Before Shutdown
+
+Always flush logs before shutting down:
+
+```rust
+// Good: Flush logs before exit
+let handle = log.flush();
+handle.await;
+
+// Or use drop to ensure logs are written
+drop(log);
+```
+
+## Performance Considerations
+
+- Log messages are buffered and written asynchronously
+- File operations are batched for better performance
+- The actor pattern ensures thread safety without locks
+- Log level filtering happens early to avoid unnecessary processing
+- Mock implementation stores messages in memory for fast testing
+
+## File Management
+
+### Log File Structure
+
+The logging system creates two types of log files:
+
+1. **Timestamped files**: `patch-hub_YYYY-MM-DD-HH-MM-SS.log`
+2. **Latest file**: `latest.log` (always points to the most recent log)
+
+### Garbage Collection
+
+The system automatically cleans up old log files:
+
+```rust
+// Collect garbage (remove old log files)
+log.collect_garbage().await;
+```
+
+### Log Directory Structure
+
+```
+/tmp/logs/
+├── patch-hub_2024-01-15-10-30-00.log
+├── patch-hub_2024-01-15-14-45-30.log
+├── patch-hub_2024-01-16-09-15-20.log
+└── latest.log
+```
+
+## Error Handling
+
+The logging system handles various error conditions:
+
+- **File creation failures**: Logged to stderr
+- **Write failures**: Logged to stderr
+- **Directory creation failures**: Logged to stderr
+- **Garbage collection failures**: Logged to stderr
+
+## Integration with Other Systems
+
+The logging actor integrates with:
+
+- **Filesystem System**: Creating and writing to log files
+- **Configuration System**: Reading log level and directory settings
+- **All Other Actors**: Providing logging capabilities throughout the application
+

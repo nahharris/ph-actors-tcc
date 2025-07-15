@@ -1,0 +1,479 @@
+---
+description: When dealing with low-level terminal IO operations
+alwaysApply: false
+---
+# Terminal Actor System
+
+This document explains how the terminal actor system works in `src/terminal.rs` and the `/terminal` module for implementers who want to consume terminal operations or extend the terminal functionality.
+
+## Overview
+
+The terminal actor system uses the Actor Model pattern to provide thread-safe access to terminal operations. It consists of:
+
+- **Terminal**: The main interface enum that provides either a real actor or mock implementation
+- **TerminalCore**: The internal actor that handles terminal screen management
+- **Message**: The message types for actor communication
+
+## Architecture
+
+```
+┌─────────────┐    ┌─────────────┐    ┌─────────────┐
+│  Terminal   │───▶│ TerminalCore│───▶│   ratatui   │
+│  (Public)   │    │   (Actor)   │    │  (TUI)      │
+└─────────────┘    └─────────────┘    └─────────────┘
+       │                   │                   │
+       │                   │                   │
+       ▼                   ▼                   ▼
+┌─────────────┐    ┌─────────────┐    ┌─────────────┐
+│   Message   │    │   Screen    │    │   crossterm │
+│   Channel   │    │   State     │    │  (Terminal) │
+└─────────────┘    └─────────────┘    └─────────────┘
+```
+
+## Consuming Terminal Operations
+
+### Basic Usage
+
+```rust
+use crate::terminal::Terminal;
+
+// Create a terminal instance
+let log = Log::spawn(fs, LogLevel::Info, 7, log_dir).await?;
+let terminal = Terminal::spawn(log)?;
+
+// Take over the terminal (enter alternate screen and raw mode)
+terminal.take_over().await?;
+
+// Perform terminal operations here
+// ... draw UI, handle input, etc.
+
+// Release the terminal (leave alternate screen and disable raw mode)
+terminal.release().await?;
+```
+
+### Thread Safety
+
+The `Terminal` type is designed to be safely shared between threads. Cloning is cheap as it only copies the channel sender:
+
+```rust
+let terminal = Terminal::spawn(log)?;
+let terminal_clone = terminal.clone(); // Safe to clone and share
+
+// Use in different tasks
+tokio::spawn(async move {
+    terminal_clone.take_over().await?;
+    // ... terminal operations
+    terminal_clone.release().await?;
+});
+```
+
+### Testing with Mock
+
+For testing, use the mock implementation:
+
+```rust
+use crate::terminal::Terminal;
+
+let terminal = Terminal::mock();
+
+// Mock always succeeds
+terminal.take_over().await?; // Always Ok(())
+terminal.release().await?; // Always Ok(())
+```
+
+### Terminal Lifecycle
+
+The terminal has a specific lifecycle that must be followed:
+
+```rust
+async fn terminal_application() -> anyhow::Result<()> {
+    let log = Log::spawn(fs, LogLevel::Info, 7, log_dir).await?;
+    let terminal = Terminal::spawn(log)?;
+    
+    // 1. Take over the terminal
+    terminal.take_over().await?;
+    
+    // 2. Perform terminal operations
+    // This is where you would use ratatui to draw UI
+    // and handle user input
+    
+    // 3. Release the terminal
+    terminal.release().await?;
+    
+    Ok(())
+}
+```
+
+## Data Types
+
+### Terminal
+
+The main terminal interface:
+
+```rust
+#[derive(Debug, Clone)]
+pub enum Terminal {
+    /// A real terminal actor that manages the terminal screen
+    Actual(tokio::sync::mpsc::Sender<Message>),
+    /// A mock implementation for testing that does nothing
+    Mock,
+}
+```
+
+### Message
+
+Terminal operation messages:
+
+```rust
+#[derive(Debug)]
+pub enum Message {
+    /// Takes over the terminal by entering alternate screen and enabling raw mode
+    TakeOver(tokio::sync::oneshot::Sender<anyhow::Result<()>>),
+    /// Releases the terminal by leaving alternate screen and disabling raw mode
+    Release(tokio::sync::oneshot::Sender<anyhow::Result<()>>),
+}
+```
+
+## Adding New Terminal Operations
+
+To add new terminal operations, you need to modify several files:
+
+### 1. Add Message Variant (`src/terminal.rs`)
+
+Add a new message variant for the operation:
+
+```rust
+#[derive(Debug)]
+pub enum Message {
+    // ... existing variants ...
+    
+    /// Get terminal size
+    GetSize(tokio::sync::oneshot::Sender<anyhow::Result<(u16, u16)>>),
+}
+```
+
+### 2. Update TerminalCore Actor (`src/terminal.rs`)
+
+Add message handling in the actor's message loop:
+
+```rust
+match msg {
+    // ... existing matches ...
+    
+    Message::GetSize(tx) => {
+        let res = self.get_size();
+        let _ = tx.send(res);
+    }
+}
+```
+
+### 3. Implement the Operation
+
+Add the actual implementation in TerminalCore:
+
+```rust
+impl TerminalCore {
+    // ... existing methods ...
+    
+    /// Gets the terminal size
+    fn get_size(&self) -> anyhow::Result<(u16, u16)> {
+        let size = crossterm::terminal::size()?;
+        Ok(size)
+    }
+}
+```
+
+### 4. Add Public Interface (`src/terminal.rs`)
+
+Add public methods to the `Terminal` enum:
+
+```rust
+impl Terminal {
+    // ... existing methods ...
+    
+    /// Gets the terminal size
+    pub async fn get_size(&self) -> anyhow::Result<(u16, u16)> {
+        match self {
+            Terminal::Actual(tx) => {
+                let (res_tx, res_rx) = tokio::sync::oneshot::channel();
+                tx.send(Message::GetSize(res_tx))
+                    .await
+                    .context("Failed to get terminal size")
+                    .expect("Terminal actor is dead");
+                res_rx
+                    .await
+                    .context("Failed to get terminal size")
+                    .expect("Terminal actor is dead")
+            }
+            Terminal::Mock => Ok((80, 24)), // Default mock size
+        }
+    }
+}
+```
+
+### 5. Add Tests (`src/terminal/tests.rs`)
+
+Add comprehensive tests for the new functionality:
+
+```rust
+#[tokio::test]
+async fn test_get_size() {
+    let terminal = Terminal::mock();
+    
+    let size = terminal.get_size().await.unwrap();
+    assert_eq!(size, (80, 24)); // Mock default size
+}
+```
+
+## Advanced Usage Patterns
+
+### Terminal Application Pattern
+
+```rust
+async fn run_terminal_app() -> anyhow::Result<()> {
+    let log = Log::spawn(fs, LogLevel::Info, 7, log_dir).await?;
+    let terminal = Terminal::spawn(log)?;
+    
+    // Take over terminal
+    terminal.take_over().await?;
+    
+    // Create ratatui terminal
+    let mut tui = ratatui::Terminal::new(ratatui::backend::CrosstermBackend::new(std::io::stdout()))?;
+    
+    // Main application loop
+    loop {
+        // Draw UI
+        tui.draw(|frame| {
+            // Draw your UI components here
+        })?;
+        
+        // Handle input
+        if crossterm::event::poll(std::time::Duration::from_millis(100))? {
+            if let crossterm::event::Event::Key(key_event) = crossterm::event::read()? {
+                match key_event.code {
+                    crossterm::event::KeyCode::Char('q') => break,
+                    _ => {}
+                }
+            }
+        }
+    }
+    
+    // Release terminal
+    terminal.release().await?;
+    Ok(())
+}
+```
+
+### Error Recovery Pattern
+
+```rust
+async fn safe_terminal_operation<F, T>(terminal: &Terminal, operation: F) -> anyhow::Result<T>
+where
+    F: FnOnce() -> anyhow::Result<T>,
+{
+    // Ensure terminal is in a known state
+    if let Err(e) = terminal.take_over().await {
+        eprintln!("Failed to take over terminal: {}", e);
+        return Err(e);
+    }
+    
+    // Perform operation
+    let result = operation();
+    
+    // Always try to release terminal
+    if let Err(e) = terminal.release().await {
+        eprintln!("Failed to release terminal: {}", e);
+    }
+    
+    result
+}
+```
+
+### Conditional Terminal Usage
+
+```rust
+async fn run_with_or_without_terminal(use_terminal: bool) -> anyhow::Result<()> {
+    if use_terminal {
+        let log = Log::spawn(fs, LogLevel::Info, 7, log_dir).await?;
+        let terminal = Terminal::spawn(log)?;
+        
+        terminal.take_over().await?;
+        // Run terminal-based UI
+        terminal.release().await?;
+    } else {
+        // Run command-line interface
+        println!("Running in CLI mode");
+    }
+    
+    Ok(())
+}
+```
+
+## Best Practices
+
+### 1. Always Release the Terminal
+
+Always ensure the terminal is released, even if an error occurs:
+
+```rust
+async fn terminal_operation() -> anyhow::Result<()> {
+    let terminal = Terminal::spawn(log)?;
+    
+    // Take over terminal
+    terminal.take_over().await?;
+    
+    // Use defer or ensure to guarantee release
+    let _guard = scopeguard::guard((), |_| {
+        // This will run when the function exits
+        if let Err(e) = terminal.release().block_in_place() {
+            eprintln!("Failed to release terminal: {}", e);
+        }
+    });
+    
+    // Perform operations
+    // ... terminal operations ...
+    
+    Ok(())
+}
+```
+
+### 2. Handle Terminal Errors Gracefully
+
+Terminal operations can fail, especially in non-interactive environments:
+
+```rust
+match terminal.take_over().await {
+    Ok(()) => {
+        // Terminal taken over successfully
+    }
+    Err(e) => {
+        // Handle terminal errors
+        eprintln!("Warning: Could not take over terminal: {}", e);
+        eprintln!("Running in non-interactive mode");
+        // Continue without terminal features
+    }
+}
+```
+
+### 3. Use Mock for Testing
+
+Use the mock implementation for unit tests:
+
+```rust
+#[tokio::test]
+async fn test_terminal_operations() {
+    let terminal = Terminal::mock();
+    
+    // Mock always succeeds
+    assert!(terminal.take_over().await.is_ok());
+    assert!(terminal.release().await.is_ok());
+}
+```
+
+### 4. Check Terminal Capabilities
+
+Check if the terminal supports the features you need:
+
+```rust
+async fn check_terminal_support() -> anyhow::Result<bool> {
+    let log = Log::spawn(fs, LogLevel::Info, 7, log_dir).await?;
+    let terminal = Terminal::spawn(log)?;
+    
+    // Try to take over terminal
+    match terminal.take_over().await {
+        Ok(()) => {
+            terminal.release().await?;
+            Ok(true)
+        }
+        Err(_) => Ok(false),
+    }
+}
+```
+
+### 5. Handle Non-Interactive Environments
+
+Some environments don't support terminal operations:
+
+```rust
+async fn run_application() -> anyhow::Result<()> {
+    // Check if we're in an interactive terminal
+    if atty::is(atty::Stream::Stdout) {
+        // Interactive mode
+        let terminal = Terminal::spawn(log)?;
+        terminal.take_over().await?;
+        // ... terminal operations
+        terminal.release().await?;
+    } else {
+        // Non-interactive mode
+        println!("Running in non-interactive mode");
+    }
+    
+    Ok(())
+}
+```
+
+## Performance Considerations
+
+- Terminal operations are processed sequentially in the actor for consistency
+- The actor pattern ensures thread safety without locks
+- Raw mode and alternate screen operations are relatively fast
+- Mock implementation does nothing for fast testing
+
+## Error Handling
+
+The terminal system uses `anyhow::Error` for error handling:
+
+- **Terminal already taken over**: When trying to take over an already controlled terminal
+- **Terminal not taken over**: When trying to release a terminal that wasn't taken over
+- **System errors**: When terminal operations fail due to system limitations
+- **Actor errors**: When the terminal actor has died
+
+## Integration with Other Systems
+
+The terminal actor integrates with:
+
+- **Logging System**: Logging terminal operations and errors
+- **Ratatui**: Providing the TUI framework for drawing interfaces
+- **Crossterm**: Handling low-level terminal operations
+- **All Other Actors**: Providing terminal capabilities throughout the application
+
+## Terminal State Management
+
+The terminal maintains internal state:
+
+```rust
+pub struct TerminalCore {
+    log: Log,
+    take_over: bool,  // Whether terminal is currently taken over
+    terminal: ratatui::Terminal<CrosstermBackend<Stdout>>,
+}
+```
+
+### State Transitions
+
+1. **Initial State**: `take_over = false`
+2. **After take_over()**: `take_over = true`
+3. **After release()**: `take_over = false`
+
+### State Validation
+
+The terminal validates state transitions:
+
+```rust
+// Cannot take over if already taken over
+if self.take_over {
+    bail!("Terminal already taken over");
+}
+
+// Cannot release if not taken over
+if !self.take_over {
+    bail!("Terminal not taken over");
+}
+```
+
+## Security Considerations
+
+- Terminal operations can affect the user's terminal session
+- Always restore terminal state on exit
+- Be careful with raw mode as it can interfere with normal terminal operation
+- Consider the impact on non-interactive environments (CI/CD, automation)

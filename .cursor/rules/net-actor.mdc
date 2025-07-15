@@ -1,0 +1,565 @@
+---
+description: When directly working with http requests at low-level
+alwaysApply: false
+---
+# Networking Actor System
+
+This document explains how the networking actor system works in `src/net.rs` and the `/net` module for implementers who want to consume network operations or extend the networking functionality.
+
+## Overview
+
+The networking actor system uses the Actor Model pattern to provide thread-safe access to HTTP operations. It consists of:
+
+- **Net**: The main interface enum that provides either a real actor or mock implementation
+- **Core**: The internal actor that handles HTTP requests using reqwest
+- **Message**: The message types for actor communication
+- **MockRequestKey**: Key structure for mock response caching
+
+## Architecture
+
+```
+┌─────────────┐    ┌─────────────┐    ┌─────────────┐
+│     Net     │───▶│    Core     │───▶│   reqwest   │
+│  (Public)   │    │   (Actor)   │    │  (HTTP)     │
+└─────────────┘    └─────────────┘    └─────────────┘
+       │                   │                   │
+       │                   │                   │
+       ▼                   ▼                   ▼
+┌─────────────┐    ┌─────────────┐    ┌─────────────┐
+│   Message   │    │   Client    │    │   Network   │
+│   Channel   │    │   Pool      │    │  (System)   │
+└─────────────┘    └─────────────┘    └─────────────┘
+```
+
+## Consuming Network Operations
+
+### Basic Usage
+
+```rust
+use crate::net::Net;
+use crate::ArcStr;
+use std::collections::HashMap;
+
+// Create a networking instance
+let config = Config::spawn(env, fs, config_path);
+let log = Log::spawn(fs, LogLevel::Info, 7, log_dir).await?;
+let net = Net::spawn(config, log).await;
+
+// Simple GET request
+let response = net.get(ArcStr::from("https://api.example.com/data"), None).await?;
+println!("Response: {}", response);
+
+// POST request with headers and body
+let mut headers = HashMap::new();
+headers.insert(ArcStr::from("Content-Type"), ArcStr::from("application/json"));
+headers.insert(ArcStr::from("Authorization"), ArcStr::from("Bearer token"));
+
+let body = ArcStr::from(r#"{"key": "value"}"#);
+let response = net.post(
+    ArcStr::from("https://api.example.com/submit"),
+    Some(headers),
+    Some(body)
+).await?;
+```
+
+### Thread Safety
+
+The `Net` type is designed to be safely shared between threads. Cloning is cheap as it only copies the channel sender:
+
+```rust
+let net = Net::spawn(config, log).await;
+let net_clone = net.clone(); // Safe to clone and share
+
+// Use in different tasks
+tokio::spawn(async move {
+    let response = net_clone.get(ArcStr::from("https://api.example.com/status"), None).await;
+});
+```
+
+### Testing with Mock
+
+For testing, use the mock implementation:
+
+```rust
+use crate::net::{Net, MockRequestKey};
+use std::collections::HashMap;
+
+// Create mock with predefined responses
+let mut responses = HashMap::new();
+responses.insert(
+    MockRequestKey::get(ArcStr::from("https://api.example.com/test")),
+    ArcStr::from(r#"{"status": "success"}"#)
+);
+
+let net = Net::mock(responses);
+
+// Mock will return the predefined response
+let response = net.get(ArcStr::from("https://api.example.com/test"), None).await?;
+assert_eq!(response.as_ref(), r#"{"status": "success"}"#);
+```
+
+### HTTP Methods
+
+The networking system supports all major HTTP methods:
+
+#### GET Requests
+
+```rust
+// Simple GET
+let response = net.get(ArcStr::from("https://api.example.com/users"), None).await?;
+
+// GET with headers
+let mut headers = HashMap::new();
+headers.insert(ArcStr::from("Accept"), ArcStr::from("application/json"));
+let response = net.get(ArcStr::from("https://api.example.com/users"), Some(headers)).await?;
+```
+
+#### POST Requests
+
+```rust
+// POST with body
+let body = ArcStr::from(r#"{"name": "John", "email": "john@example.com"}"#);
+let response = net.post(
+    ArcStr::from("https://api.example.com/users"),
+    None,
+    Some(body)
+).await?;
+
+// POST with headers and body
+let mut headers = HashMap::new();
+headers.insert(ArcStr::from("Content-Type"), ArcStr::from("application/json"));
+let body = ArcStr::from(r#"{"action": "create"}"#);
+let response = net.post(
+    ArcStr::from("https://api.example.com/actions"),
+    Some(headers),
+    Some(body)
+).await?;
+```
+
+#### PUT Requests
+
+```rust
+let body = ArcStr::from(r#"{"name": "John Updated"}"#);
+let response = net.put(
+    ArcStr::from("https://api.example.com/users/123"),
+    None,
+    Some(body)
+).await?;
+```
+
+#### DELETE Requests
+
+```rust
+let response = net.delete(ArcStr::from("https://api.example.com/users/123"), None).await?;
+```
+
+#### PATCH Requests
+
+```rust
+let body = ArcStr::from(r#"{"status": "active"}"#);
+let response = net.patch(
+    ArcStr::from("https://api.example.com/users/123"),
+    None,
+    Some(body)
+).await?;
+```
+
+## Data Types
+
+### ArcStr
+
+URLs and response bodies use `ArcStr` (Arc<str>) for thread-safe, cheap cloning:
+
+```rust
+use crate::ArcStr;
+
+// Create from string literals
+let url = ArcStr::from("https://api.example.com/data");
+
+// Create from String
+let string = String::from("https://api.example.com/users");
+let url = ArcStr::from(&string);
+
+// Clone is cheap
+let url_clone = url.clone();
+```
+
+### MockRequestKey
+
+Mock requests are identified by HTTP method and URL:
+
+```rust
+use crate::net::MockRequestKey;
+
+// Create keys for different HTTP methods
+let get_key = MockRequestKey::get(ArcStr::from("https://api.example.com/data"));
+let post_key = MockRequestKey::post(ArcStr::from("https://api.example.com/submit"));
+let put_key = MockRequestKey::put(ArcStr::from("https://api.example.com/update"));
+let delete_key = MockRequestKey::delete(ArcStr::from("https://api.example.com/remove"));
+let patch_key = MockRequestKey::patch(ArcStr::from("https://api.example.com/modify"));
+```
+
+## Adding New Network Operations
+
+To add new network operations, you need to modify several files:
+
+### 1. Add Message Variant (`src/net/message.rs`)
+
+Add a new message variant for the operation:
+
+```rust
+#[derive(Debug)]
+pub enum Message {
+    // ... existing variants ...
+    
+    /// Performs an HTTP HEAD request
+    Head {
+        /// The URL to send the HEAD request to
+        url: ArcStr,
+        /// Optional headers to include in the request
+        headers: Option<HashMap<ArcStr, ArcStr>>,
+        /// Channel to send the result back to the caller
+        tx: oneshot::Sender<Result<ArcStr, anyhow::Error>>,
+    },
+}
+```
+
+### 2. Update Core Actor (`src/net/core.rs`)
+
+Add message handling in the actor's message loop:
+
+```rust
+match message {
+    // ... existing matches ...
+    
+    Message::Head { url, headers, tx } => {
+        let response = self
+            .handle_head_request(url.clone(), headers)
+            .await
+            .with_context(|| format!("HEAD request failed for URL: {}", url));
+        let _ = tx.send(response);
+    }
+}
+```
+
+### 3. Implement the Operation
+
+Add the actual implementation in the Core:
+
+```rust
+impl Core {
+    // ... existing methods ...
+    
+    /// Handles HEAD requests with optional headers
+    async fn handle_head_request(
+        &self,
+        url: ArcStr,
+        headers: Option<HashMap<ArcStr, ArcStr>>,
+    ) -> anyhow::Result<ArcStr> {
+        let mut request = self.client.head::<&str>(url.as_ref());
+
+        if let Some(headers) = headers {
+            for (key, value) in headers {
+                request = request.header(
+                    <ArcStr as AsRef<str>>::as_ref(&key),
+                    <ArcStr as AsRef<str>>::as_ref(&value),
+                );
+            }
+        }
+
+        let response = request.send().await.context("Sending HEAD request")?;
+        let headers = response.headers();
+        // Convert headers to string representation
+        let header_str = format!("{:?}", headers);
+        Ok(ArcStr::from(&header_str))
+    }
+}
+```
+
+### 4. Add Public Interface (`src/net.rs`)
+
+Add public methods to the `Net` enum:
+
+```rust
+impl Net {
+    // ... existing methods ...
+    
+    /// Performs an HTTP HEAD request to the specified URL.
+    pub async fn head(
+        &self,
+        url: ArcStr,
+        headers: Option<HashMap<ArcStr, ArcStr>>,
+    ) -> Result<ArcStr, anyhow::Error> {
+        match self {
+            Net::Actual(sender) => {
+                let (tx, rx) = tokio::sync::oneshot::channel();
+                sender
+                    .send(Message::Head { url, headers, tx })
+                    .await
+                    .context("Sending message to Net actor")?;
+                rx.await.context("Receiving response from Net actor")?
+            }
+            Net::Mock(responses) => {
+                let responses = responses.lock().await;
+                let key = MockRequestKey::head(url);
+                responses.get(&key).map(ArcStr::clone).ok_or_else(|| {
+                    anyhow::anyhow!("HEAD request not found in mock responses: {}", key.url)
+                })
+            }
+        }
+    }
+}
+```
+
+### 5. Add MockRequestKey Support
+
+Add the new method to MockRequestKey:
+
+```rust
+impl MockRequestKey {
+    // ... existing methods ...
+    
+    /// Creates a new HEAD request key
+    pub fn head(url: ArcStr) -> Self {
+        Self { method: "HEAD".to_string(), url }
+    }
+}
+```
+
+### 6. Add Tests (`src/net/tests.rs`)
+
+Add comprehensive tests for the new functionality:
+
+```rust
+#[tokio::test]
+async fn test_head_request() {
+    let net = Net::mock_empty();
+    
+    // Test HEAD request (will fail in empty mock)
+    let result = net.head(ArcStr::from("https://api.example.com/status"), None).await;
+    assert!(result.is_err());
+    
+    // Test with mock response
+    let mut responses = HashMap::new();
+    responses.insert(
+        MockRequestKey::head(ArcStr::from("https://api.example.com/status")),
+        ArcStr::from("content-length: 1234")
+    );
+    
+    let net = Net::mock(responses);
+    let response = net.head(ArcStr::from("https://api.example.com/status"), None).await.unwrap();
+    assert_eq!(response.as_ref(), "content-length: 1234");
+}
+```
+
+## Advanced Usage Patterns
+
+### Request Building
+
+```rust
+async fn build_api_request(net: &Net, endpoint: &str, token: &str) -> anyhow::Result<ArcStr> {
+    let mut headers = HashMap::new();
+    headers.insert(ArcStr::from("Authorization"), ArcStr::from(&format!("Bearer {}", token)));
+    headers.insert(ArcStr::from("Accept"), ArcStr::from("application/json"));
+    
+    let url = ArcStr::from(&format!("https://api.example.com/{}", endpoint));
+    net.get(url, Some(headers)).await
+}
+```
+
+### Error Handling
+
+```rust
+async fn handle_api_response(net: &Net, url: ArcStr) -> anyhow::Result<ArcStr> {
+    match net.get(url.clone(), None).await {
+        Ok(response) => Ok(response),
+        Err(e) => {
+            // Log the error and retry once
+            eprintln!("Request failed: {}, retrying...", e);
+            net.get(url, None).await
+        }
+    }
+}
+```
+
+### Batch Requests
+
+```rust
+async fn fetch_multiple_endpoints(net: &Net, endpoints: &[&str]) -> anyhow::Result<Vec<ArcStr>> {
+    let mut responses = Vec::new();
+    
+    for endpoint in endpoints {
+        let url = ArcStr::from(&format!("https://api.example.com/{}", endpoint));
+        let response = net.get(url, None).await?;
+        responses.push(response);
+    }
+    
+    Ok(responses)
+}
+```
+
+### Request with Retry Logic
+
+```rust
+async fn request_with_retry(
+    net: &Net,
+    url: ArcStr,
+    max_retries: usize
+) -> anyhow::Result<ArcStr> {
+    let mut last_error = None;
+    
+    for attempt in 0..=max_retries {
+        match net.get(url.clone(), None).await {
+            Ok(response) => return Ok(response),
+            Err(e) => {
+                last_error = Some(e);
+                if attempt < max_retries {
+                    tokio::time::sleep(tokio::time::Duration::from_secs(2u64.pow(attempt as u32))).await;
+                }
+            }
+        }
+    }
+    
+    Err(last_error.unwrap())
+}
+```
+
+## Best Practices
+
+### 1. Use Appropriate HTTP Methods
+
+Choose the right HTTP method for your operation:
+
+```rust
+// GET: Retrieve data
+let users = net.get(ArcStr::from("https://api.example.com/users"), None).await?;
+
+// POST: Create new resource
+let new_user = net.post(
+    ArcStr::from("https://api.example.com/users"),
+    None,
+    Some(ArcStr::from(r#"{"name": "John"}"#))
+).await?;
+
+// PUT: Update entire resource
+let updated_user = net.put(
+    ArcStr::from("https://api.example.com/users/123"),
+    None,
+    Some(ArcStr::from(r#"{"name": "John Updated"}"#))
+).await?;
+
+// PATCH: Partial update
+let patched_user = net.patch(
+    ArcStr::from("https://api.example.com/users/123"),
+    None,
+    Some(ArcStr::from(r#"{"status": "active"}"#))
+).await?;
+
+// DELETE: Remove resource
+net.delete(ArcStr::from("https://api.example.com/users/123"), None).await?;
+```
+
+### 2. Handle Errors Gracefully
+
+Always handle network errors appropriately:
+
+```rust
+match net.get(url.clone(), None).await {
+    Ok(response) => {
+        // Process response
+    }
+    Err(e) => {
+        // Handle different error types
+        if e.to_string().contains("timeout") {
+            // Handle timeout
+        } else if e.to_string().contains("404") {
+            // Handle not found
+        } else {
+            // Handle other errors
+            return Err(anyhow::anyhow!("Request failed: {}", e));
+        }
+    }
+}
+```
+
+### 3. Use Headers Appropriately
+
+Set appropriate headers for your requests:
+
+```rust
+// Good: Set content type for JSON
+let mut headers = HashMap::new();
+headers.insert(ArcStr::from("Content-Type"), ArcStr::from("application/json"));
+headers.insert(ArcStr::from("Accept"), ArcStr::from("application/json"));
+
+let response = net.post(url, Some(headers), Some(json_body)).await?;
+```
+
+### 4. Use Mock for Testing
+
+Use the mock implementation for unit tests:
+
+```rust
+#[tokio::test]
+async fn test_api_integration() {
+    let mut responses = HashMap::new();
+    responses.insert(
+        MockRequestKey::get(ArcStr::from("https://api.example.com/users")),
+        ArcStr::from(r#"[{"id": 1, "name": "John"}]"#)
+    );
+    
+    let net = Net::mock(responses);
+    
+    let response = net.get(ArcStr::from("https://api.example.com/users"), None).await.unwrap();
+    assert!(response.as_ref().contains("John"));
+}
+```
+
+### 5. Handle Timeouts
+
+The networking system uses configuration-based timeouts:
+
+```rust
+// Timeout is configured via the config system
+// Default is 30 seconds, can be changed via USizeOpt::Timeout
+let timeout = config.usize(USizeOpt::Timeout).await;
+println!("Network timeout: {} seconds", timeout);
+```
+
+## Performance Considerations
+
+- HTTP client uses connection pooling for better performance
+- Requests are processed sequentially in the actor for consistency
+- The actor pattern ensures thread safety without locks
+- `ArcStr` provides cheap cloning for sharing between threads
+- Mock implementation uses in-memory cache for fast testing
+
+## Configuration Integration
+
+The networking system integrates with the configuration system:
+
+```rust
+// Timeout is read from configuration
+let timeout = config.usize(USizeOpt::Timeout).await;
+
+// User agent is set automatically
+// Format: "package_name/package_version"
+```
+
+## Error Handling
+
+The networking system uses `anyhow::Error` for error handling:
+
+- **Network errors**: Connection failures, timeouts
+- **HTTP errors**: 4xx and 5xx status codes
+- **Serialization errors**: Invalid JSON/XML responses
+- **Configuration errors**: Missing timeout settings
+
+## Integration with Other Systems
+
+The networking actor integrates with:
+
+- **Configuration System**: Reading timeout and other settings
+- **Logging System**: Logging network operations and errors
+- **API Systems**: Providing HTTP client capabilities
+- **All Other Actors**: Making external API calls

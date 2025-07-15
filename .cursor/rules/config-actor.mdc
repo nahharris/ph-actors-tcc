@@ -1,0 +1,353 @@
+---
+description: When dealing with config options
+alwaysApply: false
+---
+# Configuration Actor System
+
+This document explains how the configuration system works in `src/config.rs` and the `/config` module for implementers who want to consume configuration values or add new configuration options.
+
+## Overview
+
+The configuration system uses the Actor Model pattern to provide thread-safe access to configuration data. It consists of:
+
+- **Config**: The main interface enum that provides either a real actor or mock implementation
+- **Data**: The configuration data structure that holds all configurable values
+- **Core**: The internal actor that handles file I/O and data management
+- **Message**: The message types for actor communication
+
+## Architecture
+
+```
+┌─────────────┐    ┌─────────────┐    ┌─────────────┐
+│   Config    │───▶│    Core     │───▶│    Data     │
+│  (Public)   │    │   (Actor)   │    │ (Internal)  │
+└─────────────┘    └─────────────┘    └─────────────┘
+       │                   │                   │
+       │                   │                   │
+       ▼                   ▼                   ▼
+┌─────────────┐    ┌─────────────┐    ┌─────────────┐
+│   Message   │    │     File    │    │   Options   │
+│   Channel   │    │     I/O     │    │   Enums     │
+└─────────────┘    └─────────────┘    └─────────────┘
+```
+
+## Consuming Configuration
+
+### Basic Usage
+
+```rust
+use crate::config::{Config, PathOpt, USizeOpt};
+
+// Create a config instance
+let config = Config::spawn(env, fs, config_path);
+
+// Load configuration from file
+config.load().await?;
+
+// Get configuration values
+let log_dir = config.path(PathOpt::LogDir).await;
+let timeout = config.usize(USizeOpt::Timeout).await;
+let log_level = config.log_level().await;
+
+// Set configuration values
+config.set_path(PathOpt::LogDir, new_path).await;
+config.set_usize(USizeOpt::Timeout, 60).await;
+config.set_log_level(LogLevel::Info).await;
+
+// Save changes to file
+config.save().await?;
+```
+
+### Thread Safety
+
+The `Config` type is designed to be safely shared between threads. Cloning is cheap as it only copies the channel sender:
+
+```rust
+let config = Config::spawn(env, fs, config_path);
+let config_clone = config.clone(); // Safe to clone and share
+
+// Use in different tasks
+tokio::spawn(async move {
+    let value = config_clone.usize(USizeOpt::Timeout).await;
+});
+```
+
+### Testing with Mock
+
+For testing, use the mock implementation:
+
+```rust
+use crate::config::{Config, Data};
+
+let mock_data = Data::default();
+let config = Config::mock(mock_data);
+
+// Mock always succeeds for load/save operations
+config.load().await?; // Always Ok(())
+config.save().await?; // Always Ok(())
+```
+
+## Adding New Configuration Values
+
+To add new configuration values, you need to modify several files:
+
+### 1. Add to Data Structure (`src/config/data.rs`)
+
+Add the new field to the `Data` struct:
+
+```rust
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Data {
+    // ... existing fields ...
+    
+    /// Your new configuration value
+    pub new_value: String,
+}
+```
+
+### 2. Add to Options Enum
+
+Add a new variant to the appropriate options enum:
+
+```rust
+#[derive(Debug, Clone, Copy)]
+pub enum StringOpt {
+    /// Your new string option
+    NewValue,
+}
+```
+
+### 3. Update Default Implementation
+
+Add the default value in the `Default` implementation:
+
+```rust
+impl Default for Data {
+    fn default() -> Self {
+        Self {
+            // ... existing defaults ...
+            new_value: String::from("default_value"),
+        }
+    }
+}
+```
+
+### 4. Add Getter/Setter Methods
+
+Add methods to access and modify the new value:
+
+```rust
+impl Data {
+    // ... existing methods ...
+    
+    /// Gets a string configuration value.
+    pub fn string(&self, opt: StringOpt) -> String {
+        match opt {
+            StringOpt::NewValue => self.new_value.clone(),
+        }
+    }
+    
+    /// Sets a string configuration value.
+    pub fn set_string(&mut self, opt: StringOpt, value: String) {
+        match opt {
+            StringOpt::NewValue => self.new_value = value,
+        }
+    }
+}
+```
+
+### 5. Add Message Variants (`src/config/message.rs`)
+
+Add new message variants for the actor communication:
+
+```rust
+#[derive(Debug)]
+pub enum Message {
+    // ... existing variants ...
+    
+    /// Get a string configuration value
+    GetString {
+        /// The string option to retrieve
+        opt: StringOpt,
+        /// Channel to send the result back to the caller
+        tx: oneshot::Sender<String>,
+    },
+    
+    /// Set a string configuration value
+    SetString {
+        /// The string option to set
+        opt: StringOpt,
+        /// The new string value
+        value: String,
+    },
+}
+```
+
+### 6. Update Core Actor (`src/config/core.rs`)
+
+Add message handling in the actor's message loop:
+
+```rust
+match msg {
+    // ... existing matches ...
+    
+    Message::GetString { opt, tx } => {
+        let res = self.data.string(opt);
+        let _ = tx.send(res);
+    }
+    
+    Message::SetString { opt, value } => {
+        self.data.set_string(opt, value);
+    }
+}
+```
+
+### 7. Add Public Interface (`src/config.rs`)
+
+Add public methods to the `Config` enum:
+
+```rust
+impl Config {
+    // ... existing methods ...
+    
+    /// Gets a string configuration value.
+    pub async fn string(&self, opt: StringOpt) -> String {
+        match self {
+            Self::Actual(sender) => {
+                let (tx, rx) = tokio::sync::oneshot::channel();
+                sender
+                    .send(Message::GetString { opt, tx })
+                    .await
+                    .expect("Config actor died");
+                rx.await.expect("Config actor died")
+            }
+            Self::Mock(data) => {
+                let data = data.lock().await;
+                data.string(opt)
+            }
+        }
+    }
+    
+    /// Sets a string configuration value.
+    pub async fn set_string(&self, opt: StringOpt, value: String) {
+        match self {
+            Self::Actual(sender) => {
+                let _ = sender.send(Message::SetString { opt, value }).await;
+            }
+            Self::Mock(data) => {
+                let mut data = data.lock().await;
+                data.set_string(opt, value);
+            }
+        }
+    }
+}
+```
+
+### 8. Export the New Option
+
+Add the new option to the public exports in `src/config.rs`:
+
+```rust
+pub use data::{PathOpt, USizeOpt, StringOpt}; // Add StringOpt
+```
+
+## Configuration File Format
+
+The configuration is stored in TOML format. The file structure follows the `Data` struct:
+
+```toml
+# Log directory path
+log_dir = "/tmp/patch-hub/logs"
+
+# Log level (Debug, Info, Warning, Error)
+log_level = "Warning"
+
+# Maximum age of log files in days
+max_age = 0
+
+# Timeout for network requests in seconds
+timeout = 30
+
+# Your new configuration value
+new_value = "default_value"
+```
+
+## Best Practices
+
+### 1. Use Appropriate Data Types
+
+- Use `ArcPath` for file paths (thread-safe, cheap to clone)
+- Use `usize` for numeric values
+- Use `String` for text values
+- Use enums for constrained values (like `LogLevel`)
+
+### 2. Provide Sensible Defaults
+
+Always provide reasonable default values in the `Default` implementation:
+
+```rust
+impl Default for Data {
+    fn default() -> Self {
+        Self {
+            // Use system-appropriate defaults
+            log_dir: ArcPath::from("/tmp/patch-hub/logs"),
+            log_level: LogLevel::Warning,
+            max_age: 0, // 0 means no automatic deletion
+            timeout: 30, // 30 seconds is reasonable
+        }
+    }
+}
+```
+
+### 3. Add Documentation
+
+Document all new configuration options:
+
+```rust
+/// Options for string configuration values
+#[derive(Debug, Clone, Copy)]
+pub enum StringOpt {
+    /// Description of what this option controls
+    NewValue,
+}
+```
+
+### 4. Add Tests
+
+Always add tests for new configuration values:
+
+```rust
+#[test]
+fn test_new_string_option() {
+    let mut data = Data::default();
+    
+    // Test default value
+    assert_eq!(data.string(StringOpt::NewValue), "default_value");
+    
+    // Test setter and getter
+    data.set_string(StringOpt::NewValue, "new_value".to_string());
+    assert_eq!(data.string(StringOpt::NewValue), "new_value");
+}
+```
+
+### 5. Handle Serialization
+
+Ensure your new values can be serialized/deserialized properly. The `Data` struct already derives `Serialize` and `Deserialize`, so most standard types will work automatically.
+
+## Error Handling
+
+The configuration system uses `anyhow::Result` for error handling:
+
+- `load()` and `save()` return `anyhow::Result<()>`
+- Getter methods return the value directly (they don't fail)
+- Setter methods don't return results (they're fire-and-forget)
+
+For critical configuration errors, the actor will panic with descriptive messages.
+
+## Performance Considerations
+
+- Configuration values are cached in memory after loading
+- File I/O only happens during `load()` and `save()` operations
+- All getter operations are fast in-memory lookups
+- The actor pattern ensures thread safety without locks on the hot path
+

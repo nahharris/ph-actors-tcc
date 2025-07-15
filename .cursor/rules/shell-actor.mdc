@@ -1,0 +1,206 @@
+---
+description: When needing to invoke external programs via shell
+alwaysApply: false
+---
+# Shell Actor Rule
+
+Apply for implementation of shell actors that invoke external programs with structured responses.
+
+## Architecture Components
+
+Each shell actor must consist of three main components:
+
+1. **Core** (`shell/core.rs`) - Internal implementation and process execution
+2. **Message** (`shell/message.rs`) - Message types for actor communication  
+3. **Public Interface** (main module `shell.rs`) - Unified API with real and mock implementations
+
+## Core Component (`core.rs`)
+
+- Create a `Core` struct that holds the actor's internal state and dependencies (log actor)
+- The creation function must be called `new` if creation always succeeds
+- The `spawn` function must:
+  - Take ownership of the core (`self`)
+  - Create an `mpsc` channel with appropriate buffer size
+  - Spawn a Tokio task with a message handling loop
+  - Return a tuple: `(PublicInterface::Actual(sender), JoinHandle<()>)`
+  - Handle all message variants in the loop using pattern matching
+  - Use `tokio::process::Command` for executing external programs
+  - Log all command invocations and results using the log actor
+
+```rust
+pub struct Core {
+    log: crate::log::Log,
+}
+
+impl Core {
+    pub fn new(log: crate::log::Log) -> Self { /* ... */ }
+    
+    pub fn spawn(self) -> (PublicInterface, JoinHandle<()>) {
+        let (tx, mut rx) = tokio::sync::mpsc::channel(BUFFER_SIZE);
+        let handle = tokio::spawn(async move {
+            while let Some(message) = rx.recv().await {
+                match message {
+                    Message::Execute { tx, command } => self.execute(tx, command).await,
+                }
+            }
+        });
+        (PublicInterface::Actual(tx), handle)
+    }
+}
+```
+
+## Message Types (`message.rs`)
+
+- Create a private `Message` enum that defines all operations
+- Each variant must contain the data needed for processing
+- For operations that return values, include a `oneshot::Sender` in the payload
+- Use `tokio::sync::oneshot::Sender<Result<T, E>>` for response channels
+- Document each message variant clearly
+
+```rust
+pub enum Message {
+    /// Executes an external program with the given command
+    Execute {
+        tx: oneshot::Sender<anyhow::Result<ShellResult>>,
+        command: ShellCommand,
+    },
+}
+```
+
+## Data Types (`data.rs`)
+
+- Create structured types for commands and results
+- `ShellCommand` should contain program name, arguments, and optional stdin
+- `ShellResult` should contain stdout, stderr, status, and original command
+- `ShellStatus` enum for different exit conditions (Success, Signal, Failed)
+- Implement `Display` traits for user-friendly output
+- Provide helper methods like `is_success()`, `exit_code()`, etc.
+
+```rust
+#[derive(Debug, Clone)]
+pub struct ShellCommand {
+    pub program: String,
+    pub args: Vec<String>,
+    pub stdin: Option<String>,
+}
+
+#[derive(Debug, Clone)]
+pub struct ShellResult {
+    pub stdout: String,
+    pub stderr: String,
+    pub status: ShellStatus,
+    pub command: ShellCommand,
+}
+
+#[derive(Debug, Clone)]
+pub enum ShellStatus {
+    Success(i32),
+    Signal(i32),
+    Failed(String),
+}
+```
+
+## Public Interface (main module)
+
+- Create a public enum with `Actual` and `Mock` variants
+- `Actual` variant wraps `mpsc::Sender<Message>` 
+- `Mock` variant wraps `Arc<Mutex<Vec<ShellCommand>>>` for testing
+- Implement `Debug` and `Clone` traits
+- Provide `spawn()` method for real actors
+- Provide `mock()` method for testing
+- All public methods must be `async`
+- Handle both real and mock implementations in each method
+
+```rust
+#[derive(Debug, Clone)]
+pub enum Shell {
+    Actual(Sender<Message>),
+    Mock(Arc<Mutex<Vec<ShellCommand>>>),
+}
+
+impl Shell {
+    pub async fn spawn(log: crate::log::Log) -> anyhow::Result<Self> {
+        let (shell, _) = Core::new(log).spawn();
+        Ok(shell)
+    }
+    
+    pub fn mock() -> Self {
+        Self::Mock(Arc::new(Mutex::new(Vec::new())))
+    }
+    
+    pub async fn execute(&self, program: &str, args: &[&str], stdin: Option<&str>) -> anyhow::Result<ShellResult> {
+        match self {
+            Self::Actual(sender) => {
+                // Real implementation using message passing
+            }
+            Self::Mock(commands) => {
+                // Mock implementation storing commands and returning fake results
+            }
+        }
+    }
+}
+```
+
+## Thread Safety Requirements
+
+- All state must be managed internally within the actor
+- Never share mutable state between threads
+- Use message passing for all communication
+- Process messages sequentially within the actor
+- Handle channel send failures gracefully (actor death detection)
+
+## Error Handling
+
+- Use `anyhow::Result` for error propagation
+- Handle channel communication errors in public methods
+- Provide meaningful error context using `anyhow::Context`
+- Detect actor death through channel send failures
+- Log all command execution attempts and results
+
+## Process Execution
+
+- Use `tokio::process::Command` for spawning external programs
+- Capture stdout and stderr using `Stdio::piped()`
+- Handle stdin input when provided
+- Convert `ExitStatus` to custom `ShellStatus` enum
+- Handle UTF-8 conversion for output streams
+- Log command start, completion, and any errors
+
+## Testing Support
+
+- Always provide a mock implementation
+- Mock implementations should be deterministic and fast
+- Use in-memory storage for mock state (`Arc<Mutex<Vec<ShellCommand>>>`)
+- Mock methods should have the same signature as real methods
+- Provide `get_commands()` method to retrieve executed commands from mock
+
+## Dependencies
+
+- Use `tokio::sync::mpsc` for main message channel
+- Use `tokio::sync::oneshot` for response channels  
+- Use `tokio::process` for external program execution
+- Use `tokio::sync::Mutex` for mock shared state
+- Use `anyhow` for error handling and context
+- Use the log actor for logging all operations
+
+## Example Usage
+
+```rust
+// Create shell actor
+let shell = Shell::spawn(log).await?;
+
+// Execute a command
+let result = shell.execute("ls", &["-la"], None).await?;
+println!("Status: {}", result.status);
+println!("Output: {}", result.stdout);
+
+// Execute with stdin
+let result = shell.execute("cat", &[], Some("input data")).await?;
+
+// Check results
+if result.is_success() {
+    println!("Command succeeded");
+} else {
+    println!("Command failed with code: {:?}", result.exit_code());
+}
+```
