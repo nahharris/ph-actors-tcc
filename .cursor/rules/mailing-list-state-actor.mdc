@@ -1,0 +1,27 @@
+# MailingListState Actor Rule
+
+## Overview
+
+The MailingListState actor provides a demand-driven, cached list of mailing lists. It fetches pages from the Lore API as needed, persists the cache to TOML, and supports cache invalidation and validation.
+
+## Architecture
+- Core: Handles state, cache, and message loop
+- Message: Enum for all supported operations (get, get_slice, len, is_cache_valid, persist, load, invalidate)
+- Public Interface: Async methods for all operations, with mock support
+
+## Usage
+- Use `get(index)` or `get_slice(range)` to fetch items; actor will fetch new pages as needed
+- Use `len()` to get the number of cached items
+- Use `is_cache_valid()` to check if the cache is up-to-date
+- Use `persist_cache()` and `load_cache()` for persistence
+- Use `invalidate_cache()` to clear the cache
+
+## Best Practices
+- Always use async methods
+- Use demand-driven access for efficiency
+- Persist cache before shutdown if needed
+- Validate cache before using for critical operations
+description:
+globs:
+alwaysApply: false
+---
