@@ -114,12 +114,23 @@ impl LoreApi {
                         tx,
                     })
                     .await
-                    .context("Sending message to LoreApi actor")?;
-                rx.await.context("Receiving response from LoreApi actor")?
+                    .context("Sending message to LoreApi actor")
+                    .expect("LoreApi actor died");
+                rx.await
+                    .context("Awaiting response from LoreApi actor")
+                    .expect("LoreApi actor died")
             }
-            LoreApi::Mock(_) => Err(anyhow::anyhow!(
-                "Mock for structured patch feed not implemented"
-            )),
+            LoreApi::Mock(responses) => {
+                let responses = responses.lock().await;
+                let key = format!("patch_feed_page_{}_{}", target_list, min_index);
+                let xml = responses.get(&key).map(ArcStr::clone).ok_or_else(|| {
+                    anyhow::anyhow!("Patch feed page not found in mock responses: {}", key)
+                })?;
+                // Parse the XML string into LorePage<LorePatchMetadata>
+                let page: LorePage<LorePatchMetadata> =
+                    crate::api::lore::parse::parse_patch_feed_xml(&xml, min_index)?;
+                Ok(Some(page))
+            }
         }
     }
 
@@ -143,14 +154,27 @@ impl LoreApi {
                 sender
                     .send(LoreApiMessage::GetAvailableListsPage { min_index, tx })
                     .await
-                    .context("Sending message to LoreApi actor")?;
-                rx.await.context("Receiving response from LoreApi actor")?
+                    .context("Sending message to LoreApi actor")
+                    .expect("LoreApi actor died");
+                rx.await
+                    .context("Awaiting response from LoreApi actor")
+                    .expect("LoreApi actor died")
             }
-            LoreApi::Mock(_) => {
-                // For brevity, you may want to implement a mock for structured output as well
-                Err(anyhow::anyhow!(
-                    "Mock for structured available lists not implemented"
-                ))
+            LoreApi::Mock(responses) => {
+                let responses = responses.lock().await;
+                let key = format!("available_lists_page_{}", min_index);
+                let html = responses.get(&key).map(ArcStr::clone).ok_or_else(|| {
+                    anyhow::anyhow!("Available lists page not found in mock responses: {}", key)
+                })?;
+                let page: LorePage<LoreMailingList> =
+                    crate::api::lore::parse::parse_available_lists_html(&html, min_index)?
+                        .ok_or_else(|| {
+                            anyhow::anyhow!(
+                                "No available lists page found in mock responses: {}",
+                                key
+                            )
+                        })?;
+                Ok(Some(page))
             }
         }
     }
@@ -169,12 +193,39 @@ impl LoreApi {
                 sender
                     .send(LoreApiMessage::GetAvailableLists { tx })
                     .await
-                    .context("Sending message to LoreApi actor")?;
-                rx.await.context("Receiving response from LoreApi actor")?
+                    .context("Sending message to LoreApi actor")
+                    .expect("LoreApi actor died");
+                rx.await
+                    .context("Awaiting response from LoreApi actor")
+                    .expect("LoreApi actor died")
             }
-            LoreApi::Mock(_) => Err(anyhow::anyhow!(
-                "Mock for structured available lists not implemented"
-            )),
+            LoreApi::Mock(responses) => {
+                // Aggregate all available lists from the mock responses
+                let responses = responses.lock().await;
+                let mut all_lists = Vec::new();
+                let mut min_index = 0;
+                loop {
+                    let key = format!("available_lists_page_{}", min_index);
+                    if let Some(html) = responses.get(&key) {
+                        let page: LorePage<LoreMailingList> =
+                            crate::api::lore::parse::parse_available_lists_html(html, min_index)?
+                                .ok_or_else(|| {
+                                anyhow::anyhow!(
+                                    "No available lists page found in mock responses: {}",
+                                    key
+                                )
+                            })?;
+                        all_lists.extend(page.items.iter().cloned());
+                        if page.next_page_index.is_none() {
+                            break;
+                        }
+                        min_index = page.next_page_index.unwrap();
+                    } else {
+                        break;
+                    }
+                }
+                Ok(ArcSlice::from(all_lists))
+            }
         }
     }
 
@@ -209,8 +260,11 @@ impl LoreApi {
                         tx,
                     })
                     .await
-                    .context("Sending message to LoreApi actor")?;
-                rx.await.context("Receiving response from LoreApi actor")?
+                    .context("Sending message to LoreApi actor")
+                    .expect("LoreApi actor died");
+                rx.await
+                    .context("Awaiting response from LoreApi actor")
+                    .expect("LoreApi actor died")
             }
             LoreApi::Mock(responses) => {
                 let responses = responses.lock().await;
@@ -253,8 +307,11 @@ impl LoreApi {
                         tx,
                     })
                     .await
-                    .context("Sending message to LoreApi actor")?;
-                rx.await.context("Receiving response from LoreApi actor")?
+                    .context("Sending message to LoreApi actor")
+                    .expect("LoreApi actor died");
+                rx.await
+                    .context("Awaiting response from LoreApi actor")
+                    .expect("LoreApi actor died")
             }
             LoreApi::Mock(responses) => {
                 let responses = responses.lock().await;
@@ -297,8 +354,11 @@ impl LoreApi {
                         tx,
                     })
                     .await
-                    .context("Sending message to LoreApi actor")?;
-                rx.await.context("Receiving response from LoreApi actor")?
+                    .context("Sending message to LoreApi actor")
+                    .expect("LoreApi actor died");
+                rx.await
+                    .context("Awaiting response from LoreApi actor")
+                    .expect("LoreApi actor died")
             }
             LoreApi::Mock(responses) => {
                 let responses = responses.lock().await;

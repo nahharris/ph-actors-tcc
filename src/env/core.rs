@@ -51,46 +51,19 @@ impl Core {
         (super::Env::Actual(tx), handle)
     }
 
-    /// Sets an environment variable using the standard library.
-    ///
-    /// # Arguments
-    /// * `key` - The environment variable name
-    /// * `value` - The value to set
-    ///
-    /// # Safety
-    /// This function is unsafe because it modifies global state. The caller must ensure
-    /// that no other thread is concurrently modifying the same environment variable.
-    pub fn set_env(&self, key: ArcOsStr, value: OsString) {
+    fn set_env(&self, key: ArcOsStr, value: OsString) {
         unsafe {
             std::env::set_var(key, value);
         }
     }
 
-    /// Removes an environment variable using the standard library.
-    ///
-    /// # Arguments
-    /// * `key` - The environment variable name to remove
-    ///
-    /// # Safety
-    /// This function is unsafe because it modifies global state. The caller must ensure
-    /// that no other thread is concurrently modifying the same environment variable.
-    pub fn unset_env(&self, key: ArcOsStr) {
+    fn unset_env(&self, key: ArcOsStr) {
         unsafe {
             std::env::remove_var(key);
         }
     }
 
-    /// Gets an environment variable using the standard library and sends the result
-    /// through the provided channel.
-    ///
-    /// # Arguments
-    /// * `tx` - A oneshot channel sender to receive the result
-    /// * `key` - The environment variable name to retrieve
-    ///
-    /// # Errors
-    /// The function will return an error if the environment variable is not found
-    /// or if there are any issues with the channel communication.
-    pub fn get_env(
+    fn get_env(
         &self,
         tx: tokio::sync::oneshot::Sender<Result<ArcStr, VarError>>,
         key: ArcOsStr,

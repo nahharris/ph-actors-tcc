@@ -6,6 +6,7 @@ use message::Message;
 use tokio::sync::Mutex;
 
 use crate::{ArcPath, env::Env, fs::Fs, log::LogLevel};
+use anyhow::Context;
 
 mod core;
 mod data;
@@ -76,8 +77,11 @@ impl Config {
                 sender
                     .send(Message::Load { tx })
                     .await
+                    .context("Loading config with Config actor")
                     .expect("Config actor is dead");
-                rx.await.expect("Config actor is dead")
+                rx.await
+                    .context("Awaiting response for config load with Config actor")
+                    .expect("Config actor is dead")
             }
             Self::Mock(_) => Ok(()),
         }
@@ -96,8 +100,11 @@ impl Config {
                 sender
                     .send(Message::Save { tx })
                     .await
+                    .context("Saving config with Config actor")
                     .expect("Config actor is dead");
-                rx.await.expect("Config actor is dead")
+                rx.await
+                    .context("Awaiting response for config save with Config actor")
+                    .expect("Config actor is dead")
             }
             Self::Mock(_) => Ok(()),
         }
@@ -117,8 +124,11 @@ impl Config {
                 sender
                     .send(Message::GetPath { opt, tx })
                     .await
+                    .context("Getting path with Config actor")
                     .expect("Config actor is dead");
-                rx.await.expect("Config actor is dead")
+                rx.await
+                    .context("Awaiting response for path with Config actor")
+                    .expect("Config actor is dead")
             }
             Self::Mock(data) => {
                 let data = data.lock().await;
@@ -138,6 +148,7 @@ impl Config {
                 sender
                     .send(Message::SetPath { opt, path })
                     .await
+                    .context("Setting path with Config actor")
                     .expect("Config actor is dead");
             }
             Self::Mock(data) => {
@@ -158,8 +169,11 @@ impl Config {
                 sender
                     .send(Message::GetLogLevel { tx })
                     .await
+                    .context("Getting log level with Config actor")
                     .expect("Config actor died");
-                rx.await.expect("Config actor died")
+                rx.await
+                    .context("Awaiting response for log level with Config actor")
+                    .expect("Config actor died")
             }
             Self::Mock(data) => {
                 let data = data.lock().await;
@@ -198,8 +212,11 @@ impl Config {
                 sender
                     .send(Message::GetUSize { opt, tx })
                     .await
+                    .context("Getting numeric value with Config actor")
                     .expect("Config actor died");
-                rx.await.expect("Config actor died")
+                rx.await
+                    .context("Awaiting response for numeric value with Config actor")
+                    .expect("Config actor died")
             }
             Self::Mock(data) => {
                 let data = data.lock().await;

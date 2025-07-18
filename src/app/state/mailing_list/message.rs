@@ -25,11 +25,9 @@ pub enum Message {
         tx: oneshot::Sender<anyhow::Result<()>>,
     },
     /// Get the number of cached mailing lists
-    Len {
-        tx: oneshot::Sender<usize>,
-    },
+    Len { tx: oneshot::Sender<usize> },
     /// Check if the cache is still valid (by last_update of 0th item)
     IsCacheValid {
         tx: oneshot::Sender<anyhow::Result<bool>>,
     },
-} 
+}

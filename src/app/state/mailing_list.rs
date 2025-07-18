@@ -1,12 +1,13 @@
 use std::sync::Arc;
 use tokio::sync::Mutex;
+use anyhow::Context;
 
 mod core;
 pub mod message;
 
-use crate::api::lore::{LoreMailingList, LoreApi};
-use crate::fs::Fs;
+use crate::api::lore::{LoreApi, LoreMailingList};
 use crate::app::config::Config;
+use crate::fs::Fs;
 use message::Message;
 
 /// The MailingListState actor provides a demand-driven, cached list of mailing lists.
@@ -41,8 +42,13 @@ impl MailingListState {
         match self {
             Self::Actual(sender) => {
                 let (tx, rx) = tokio::sync::oneshot::channel();
-                sender.send(Message::Get { index, tx }).await?;
-                rx.await?
+                sender.send(Message::Get { index, tx })
+                    .await
+                    .context("Sending message to MailingListState actor")
+                    .expect("MailingListState actor died");
+                rx.await
+                    .context("Awaiting response from MailingListState actor")
+                    .expect("MailingListState actor died")
             }
             Self::Mock(data) => {
                 let data = data.lock().await;
@@ -52,12 +58,20 @@ impl MailingListState {
     }
 
     /// Fetches a slice of mailing lists by range (demand-driven).
-    pub async fn get_slice(&self, range: std::ops::Range<usize>) -> anyhow::Result<Vec<LoreMailingList>> {
+    pub async fn get_slice(
+        &self,
+        range: std::ops::Range<usize>,
+    ) -> anyhow::Result<Vec<LoreMailingList>> {
         match self {
             Self::Actual(sender) => {
                 let (tx, rx) = tokio::sync::oneshot::channel();
-                sender.send(Message::GetSlice { range, tx }).await?;
-                rx.await?
+                sender.send(Message::GetSlice { range, tx })
+                    .await
+                    .context("Sending message to MailingListState actor")
+                    .expect("MailingListState actor died");
+                rx.await
+                    .context("Awaiting response from MailingListState actor")
+                    .expect("MailingListState actor died")
             }
             Self::Mock(data) => {
                 let data = data.lock().await;
@@ -70,7 +84,10 @@ impl MailingListState {
     pub async fn invalidate_cache(&self) {
         match self {
             Self::Actual(sender) => {
-                let _ = sender.send(Message::InvalidateCache).await;
+                let _ = sender.send(Message::InvalidateCache)
+                    .await
+                    .context("Sending message to MailingListState actor")
+                    .expect("MailingListState actor died");
             }
             Self::Mock(data) => {
                 let mut data = data.lock().await;
@@ -84,8 +101,13 @@ impl MailingListState {
         match self {
             Self::Actual(sender) => {
                 let (tx, rx) = tokio::sync::oneshot::channel();
-                sender.send(Message::PersistCache { tx }).await?;
-                rx.await?
+                sender.send(Message::PersistCache { tx })
+                    .await
+                    .context("Sending message to MailingListState actor")
+                    .expect("MailingListState actor died");
+                rx.await
+                    .context("Awaiting response from MailingListState actor")
+                    .expect("MailingListState actor died")
             }
             Self::Mock(_) => Ok(()),
         }
@@ -96,8 +118,13 @@ impl MailingListState {
         match self {
             Self::Actual(sender) => {
                 let (tx, rx) = tokio::sync::oneshot::channel();
-                sender.send(Message::LoadCache { tx }).await?;
-                rx.await?
+                sender.send(Message::LoadCache { tx })
+                    .await
+                    .context("Sending message to MailingListState actor")
+                    .expect("MailingListState actor died");
+                rx.await
+                    .context("Awaiting response from MailingListState actor")
+                    .expect("MailingListState actor died")
             }
             Self::Mock(_) => Ok(()),
         }
@@ -108,8 +135,14 @@ impl MailingListState {
         match self {
             Self::Actual(sender) => {
                 let (tx, rx) = tokio::sync::oneshot::channel();
-                let _ = sender.send(message::Message::Len { tx }).await;
-                rx.await.unwrap_or(0)
+                let _ = sender.send(message::Message::Len { tx })
+                    .await
+                    .context("Sending message to MailingListState actor")
+                    .expect("MailingListState actor died");
+                match rx.await {
+                    Ok(v) => v,
+                    Err(_) => 0,
+                }
             }
             Self::Mock(data) => {
                 let data = data.lock().await;
@@ -123,8 +156,13 @@ impl MailingListState {
         match self {
             Self::Actual(sender) => {
                 let (tx, rx) = tokio::sync::oneshot::channel();
-                sender.send(message::Message::IsCacheValid { tx }).await?;
-                rx.await?
+                sender.send(message::Message::IsCacheValid { tx })
+                    .await
+                    .context("Sending message to MailingListState actor")
+                    .expect("MailingListState actor died");
+                rx.await
+                    .context("Awaiting response from MailingListState actor")
+                    .expect("MailingListState actor died")
             }
             Self::Mock(_) => {
                 // Always true for mock
@@ -132,4 +170,4 @@ impl MailingListState {
             }
         }
     }
-} 
+}

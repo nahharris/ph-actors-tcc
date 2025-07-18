@@ -25,6 +25,7 @@ Each actor must consist of three main components:
   - Spawn a Tokio task with a message handling loop
   - Return a tuple: `(PublicInterface::Actual(sender), JoinHandle<()>)`
   - Handle all message variants in the loop using pattern matching
+- Private methods to handle messages and manage internal state
 
 ```rust
 pub struct Core {
@@ -47,6 +48,8 @@ impl Core {
         });
         (PublicInterface::Actual(tx), handle)
     }
+
+    // private message handling methods
 }
 ```
 
@@ -104,8 +107,13 @@ impl PublicInterface {
         match self {
             Self::Actual(sender) => {
                 let (tx, rx) = tokio::sync::oneshot::channel();
-                sender.send(Message::Operation { tx, params }).await?;
-                rx.await?
+                sender.send(Message::Operation { tx, params })
+                    .await
+                    .context("Doing operation with Foo")
+                    .expect("Foo actor died");
+                rx.await
+                    .context("Awaiting response for operation with Foo")
+                    .expect("Foo actor died");
             }
             Self::Mock(data) => {
                 // Mock implementation
@@ -121,14 +129,12 @@ impl PublicInterface {
 - Never share mutable state between threads
 - Use message passing for all communication
 - Process messages sequentially within the actor
-- Handle channel send failures gracefully (actor death detection)
 
 ## Error Handling
 
 - Use `anyhow::Result` for error propagation
-- Handle channel communication errors in public methods
 - Provide meaningful error context using `anyhow::Context`
-- Detect actor death through channel send failures
+- Assume communication errors never happen on public interfaces by using the `.context().expect()` pattern both when sending and receiving
 
 ## Testing Support
 

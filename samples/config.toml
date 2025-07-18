@@ -1,3 +1,4 @@
 log_dir = "/tmp/logs"
 log_level = "Info"
 max_age = 30
+timeout = 30

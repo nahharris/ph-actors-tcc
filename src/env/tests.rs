@@ -66,46 +66,47 @@ async fn test_actual_env_operations() {
 
 #[tokio::test]
 async fn test_core_set_env() {
-    let core = Core::new();
+    let env = Env::spawn();
     let key = ArcOsStr::from("TEST_CORE_SET");
     let value = "test_value";
 
     // Remove env var if it exists
     unsafe { std::env::remove_var(key.as_ref()) };
 
-    // Verify it's not set
-    assert!(std::env::var(key.as_ref()).is_err());
+    // Verify it's not set in the actor
+    assert!(env.env(key.clone()).await.is_err());
 
     // Test set
-    core.set_env(key.clone(), value.into());
-    let result = std::env::var(key.as_ref()).unwrap();
-    assert_eq!(result, value);
+    env.set_env(key.clone(), value).await;
+    let result = env.env(key.clone()).await.unwrap();
+    assert_eq!(result.deref(), value);
 
     // Cleanup
-    unsafe { std::env::remove_var(key.as_ref()) };
+    env.unset_env(key.clone()).await;
 }
 
 #[tokio::test]
 async fn test_core_unset_env() {
-    let core = Core::new();
+    let env = Env::spawn();
     let key = ArcOsStr::from("TEST_CORE_UNSET");
     let value = "test_value";
 
     // Set env var
-    unsafe { std::env::set_var(key.as_ref(), value) };
+    env.set_env(key.clone(), value).await;
 
-    // Verify it's set
-    assert_eq!(std::env::var(key.as_ref()).unwrap(), value);
+    // Verify it's set in the actor
+    let result = env.env(key.clone()).await.unwrap();
+    assert_eq!(result.deref(), value);
 
     // Test unset
-    core.unset_env(key.clone());
-    let result = std::env::var(key.as_ref());
+    env.unset_env(key.clone()).await;
+    let result = env.env(key.clone()).await;
     assert!(matches!(result, Err(std::env::VarError::NotPresent)));
 }
 
 #[tokio::test]
 async fn test_core_get_env() {
-    let core = Core::new();
+    let env = Env::spawn();
     let key = ArcOsStr::from("TEST_CORE_GET");
     let value = "test_value";
 
@@ -113,9 +114,7 @@ async fn test_core_get_env() {
     unsafe { std::env::set_var(key.as_ref(), value) };
 
     // Test get
-    let (tx, rx) = tokio::sync::oneshot::channel();
-    core.get_env(tx, key.clone());
-    let result = rx.await.unwrap().unwrap();
+    let result = env.env(key.clone()).await.unwrap();
     assert_eq!(result.deref(), value);
 
     // Cleanup

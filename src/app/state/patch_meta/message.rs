@@ -1,5 +1,5 @@
-use crate::api::lore::LorePatchMetadata;
 use crate::ArcStr;
+use crate::api::lore::LorePatchMetadata;
 use tokio::sync::oneshot;
 
 /// Messages for the PatchMetaState actor.
@@ -37,4 +37,4 @@ pub enum Message {
         list: ArcStr,
         tx: oneshot::Sender<anyhow::Result<bool>>,
     },
-} 
+}

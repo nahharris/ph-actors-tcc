@@ -4,11 +4,12 @@ use tokio::sync::Mutex;
 mod core;
 pub mod message;
 
-use crate::api::lore::{LorePatchMetadata, LoreApi};
-use crate::{ArcStr};
-use crate::fs::Fs;
+use crate::ArcStr;
+use crate::api::lore::{LoreApi, LorePatchMetadata};
 use crate::app::config::Config;
+use crate::fs::Fs;
 use message::Message;
+use anyhow::Context;
 
 /// The PatchMetaState actor provides a demand-driven, cached map of patch metadata per mailing list.
 ///
@@ -19,6 +20,7 @@ pub enum PatchMetaState {
     Mock(Arc<Mutex<MockData>>),
 }
 
+/// Mock data for PatchMetaState, used for testing.
 #[derive(Debug, Default)]
 pub struct MockData {
     pub patch_cache: std::collections::HashMap<ArcStr, Vec<LorePatchMetadata>>,
@@ -33,36 +35,68 @@ impl PatchMetaState {
     }
 
     /// Creates a new mock PatchMetaState actor for testing.
+    ///
+    /// # Arguments
+    /// * `data` - The mock data to use for the actor.
+    ///
+    /// # Returns
+    /// A new PatchMetaState actor using the provided mock data.
     pub fn mock(data: MockData) -> Self {
         Self::Mock(Arc::new(Mutex::new(data)))
     }
 
     /// Fetches a single patch metadata item by index for a given mailing list (demand-driven).
-    pub async fn get(&self, list: ArcStr, index: usize) -> anyhow::Result<Option<LorePatchMetadata>> {
+    pub async fn get(
+        &self,
+        list: ArcStr,
+        index: usize,
+    ) -> anyhow::Result<Option<LorePatchMetadata>> {
         match self {
             Self::Actual(sender) => {
                 let (tx, rx) = tokio::sync::oneshot::channel();
-                sender.send(Message::Get { list, index, tx }).await?;
-                rx.await?
+                sender.send(Message::Get { list, index, tx })
+                    .await
+                    .context("Sending message to PatchMetaState actor")
+                    .expect("PatchMetaState actor died");
+                rx.await
+                    .context("Awaiting response from PatchMetaState actor")
+                    .expect("PatchMetaState actor died")
             }
             Self::Mock(data) => {
                 let data = data.lock().await;
-                Ok(data.patch_cache.get(&list).and_then(|v| v.get(index)).cloned())
+                Ok(data
+                    .patch_cache
+                    .get(&list)
+                    .and_then(|v| v.get(index))
+                    .cloned())
             }
         }
     }
 
     /// Fetches a slice of patch metadata items by range for a given mailing list (demand-driven).
-    pub async fn get_slice(&self, list: ArcStr, range: std::ops::Range<usize>) -> anyhow::Result<Vec<LorePatchMetadata>> {
+    pub async fn get_slice(
+        &self,
+        list: ArcStr,
+        range: std::ops::Range<usize>,
+    ) -> anyhow::Result<Vec<LorePatchMetadata>> {
         match self {
             Self::Actual(sender) => {
                 let (tx, rx) = tokio::sync::oneshot::channel();
-                sender.send(Message::GetSlice { list, range, tx }).await?;
-                rx.await?
+                sender.send(Message::GetSlice { list, range, tx })
+                    .await
+                    .context("Sending message to PatchMetaState actor")
+                    .expect("PatchMetaState actor died");
+                rx.await
+                    .context("Awaiting response from PatchMetaState actor")
+                    .expect("PatchMetaState actor died")
             }
             Self::Mock(data) => {
                 let data = data.lock().await;
-                Ok(data.patch_cache.get(&list).map(|v| v[range].to_vec()).unwrap_or_default())
+                Ok(data
+                    .patch_cache
+                    .get(&list)
+                    .map(|v| v[range].to_vec())
+                    .unwrap_or_default())
             }
         }
     }
@@ -85,8 +119,12 @@ impl PatchMetaState {
         match self {
             Self::Actual(sender) => {
                 let (tx, rx) = tokio::sync::oneshot::channel();
-                sender.send(Message::PersistCache { tx }).await?;
-                rx.await?
+                sender.send(Message::PersistCache { tx }).await
+                    .context("Sending message to PatchMetaState actor")
+                    .expect("PatchMetaState actor died");
+                rx.await
+                    .context("Awaiting response from PatchMetaState actor")
+                    .expect("PatchMetaState actor died")
             }
             Self::Mock(_) => Ok(()),
         }
@@ -97,8 +135,12 @@ impl PatchMetaState {
         match self {
             Self::Actual(sender) => {
                 let (tx, rx) = tokio::sync::oneshot::channel();
-                sender.send(Message::LoadCache { tx }).await?;
-                rx.await?
+                sender.send(Message::LoadCache { tx }).await
+                    .context("Sending message to PatchMetaState actor")
+                    .expect("PatchMetaState actor died");
+                rx.await
+                    .context("Awaiting response from PatchMetaState actor")
+                    .expect("PatchMetaState actor died")
             }
             Self::Mock(_) => Ok(()),
         }
@@ -124,8 +166,14 @@ impl PatchMetaState {
         match self {
             Self::Actual(sender) => {
                 let (tx, rx) = tokio::sync::oneshot::channel();
-                sender.send(message::Message::IsCacheValid { list, tx }).await?;
-                rx.await?
+                sender
+                    .send(message::Message::IsCacheValid { list, tx })
+                    .await
+                    .context("Sending message to PatchMetaState actor")
+                    .expect("PatchMetaState actor died");
+                rx.await
+                    .context("Awaiting response from PatchMetaState actor")
+                    .expect("PatchMetaState actor died")
             }
             Self::Mock(_) => {
                 // Always true for mock

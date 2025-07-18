@@ -91,8 +91,11 @@ impl Net {
                 sender
                     .send(Message::Get { url, headers, tx })
                     .await
-                    .context("Sending message to Net actor")?;
-                rx.await.context("Receiving response from Net actor")?
+                    .context("Sending message to Net actor")
+                    .expect("Net actor died");
+                rx.await
+                    .context("Awaiting response from Net actor")
+                    .expect("Net actor died")
             }
             Net::Mock(responses) => {
                 let responses = responses.lock().await;

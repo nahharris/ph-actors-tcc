@@ -12,7 +12,10 @@ use serde_xml_rs::from_str;
 /// * `start_index` - The current start index for pagination
 ///
 /// # Returns
-/// A `LoreAvailableLists` struct containing pagination info and a list of items.
+/// A `LorePage<LoreMailingList>` struct containing pagination info and a list of items, or None if no items are found.
+///
+/// # Errors
+/// Returns an error if parsing fails.
 pub fn parse_available_lists_html(
     html: &str,
     start_index: usize,
@@ -141,6 +144,9 @@ pub fn parse_available_lists_html(
 ///
 /// # Returns
 /// A `LorePage<LorePatchMetadata>` struct containing pagination info and a list of patches.
+///
+/// # Errors
+/// Returns an error if parsing fails.
 pub fn parse_patch_feed_xml(
     xml: &str,
     start_index: usize,

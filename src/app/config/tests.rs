@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use crate::{
     ArcFile, ArcPath,
-    config::{Config, PathOpt, USizeOpt, data::Data},
+    app::config::{Config, PathOpt, USizeOpt, data::Data},
     env::Env,
     fs::Fs,
     log::LogLevel,

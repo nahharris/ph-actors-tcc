@@ -1,8 +1,8 @@
-use crate::api::lore::{LoreApi, LoreMailingList};
-use crate::{ArcPath, fs::Fs, app::config::Config};
 use super::message::Message;
+use crate::api::lore::{LoreApi, LoreMailingList};
+use crate::{ArcPath, app::config::Config, fs::Fs};
+use serde::{Deserialize, Serialize};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
-use serde::{Serialize, Deserialize};
 
 #[derive(Debug, Default, Serialize, Deserialize)]
 /// Structure for persisting the mailing list cache to disk.
@@ -76,12 +76,12 @@ impl Core {
     }
 
     /// Returns the number of cached mailing lists.
-    pub fn len(&self) -> usize {
+    fn len(&self) -> usize {
         self.mailing_lists.len()
     }
 
     /// Checks if the cache is still valid by comparing the last_update field of the 0th item.
-    pub async fn is_cache_valid(&self) -> anyhow::Result<bool> {
+    async fn is_cache_valid(&self) -> anyhow::Result<bool> {
         if let Some(first) = self.mailing_lists.get(0) {
             let remote_page = self.lore.get_available_lists_page(0).await?;
             if let Some(page) = remote_page {
@@ -94,7 +94,7 @@ impl Core {
     }
 
     /// Fetches a single mailing list by index (demand-driven).
-    pub async fn get(&mut self, index: usize) -> anyhow::Result<Option<LoreMailingList>> {
+    async fn get(&mut self, index: usize) -> anyhow::Result<Option<LoreMailingList>> {
         while self.mailing_lists.len() <= index {
             let min_index = self.mailing_lists.len();
             let page = self.lore.get_available_lists_page(min_index).await?;
@@ -111,7 +111,10 @@ impl Core {
     }
 
     /// Fetches a slice of mailing lists by range (demand-driven).
-    pub async fn get_slice(&mut self, range: std::ops::Range<usize>) -> anyhow::Result<Vec<LoreMailingList>> {
+    async fn get_slice(
+        &mut self,
+        range: std::ops::Range<usize>,
+    ) -> anyhow::Result<Vec<LoreMailingList>> {
         let end = range.end;
         while self.mailing_lists.len() < end {
             let min_index = self.mailing_lists.len();
@@ -125,11 +128,15 @@ impl Core {
                 break;
             }
         }
-        Ok(self.mailing_lists.get(range).map(|s| s.to_vec()).unwrap_or_default())
+        Ok(self
+            .mailing_lists
+            .get(range)
+            .map(|s| s.to_vec())
+            .unwrap_or_default())
     }
 
     /// Persists the cache to the filesystem as TOML.
-    pub async fn persist_cache(&self) -> anyhow::Result<()> {
+    async fn persist_cache(&self) -> anyhow::Result<()> {
         let cache = CacheData {
             mailing_lists: self.mailing_lists.clone(),
         };
@@ -140,7 +147,7 @@ impl Core {
     }
 
     /// Loads the cache from the filesystem (TOML).
-    pub async fn load_cache(&mut self) -> anyhow::Result<()> {
+    async fn load_cache(&mut self) -> anyhow::Result<()> {
         let file = self.fs.open_file(self.cache_path.clone()).await?;
         let mut contents = String::new();
         file.write().await.read_to_string(&mut contents).await?;
@@ -148,4 +155,4 @@ impl Core {
         self.mailing_lists = cache.mailing_lists;
         Ok(())
     }
-} 
+}

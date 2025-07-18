@@ -1,9 +1,9 @@
-use crate::api::lore::{LoreApi, LorePatchMetadata};
-use crate::{ArcPath, ArcStr, fs::Fs, app::config::Config};
 use super::message::Message;
-use tokio::io::{AsyncReadExt, AsyncWriteExt};
-use serde::{Serialize, Deserialize};
+use crate::api::lore::{LoreApi, LorePatchMetadata};
+use crate::{ArcPath, ArcStr, app::config::Config, fs::Fs};
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
 #[derive(Debug, Default, Serialize, Deserialize)]
 /// Structure for persisting the patch metadata cache to disk.
@@ -77,12 +77,12 @@ impl Core {
     }
 
     /// Returns the number of cached patch metadata items for a given mailing list.
-    pub fn len(&self, list: ArcStr) -> usize {
+    fn len(&self, list: ArcStr) -> usize {
         self.patch_cache.get(&list).map(|v| v.len()).unwrap_or(0)
     }
 
     /// Checks if the cache is still valid for a given mailing list by comparing the last_update field of the 0th item.
-    pub async fn is_cache_valid(&self, list: ArcStr) -> anyhow::Result<bool> {
+    async fn is_cache_valid(&self, list: ArcStr) -> anyhow::Result<bool> {
         if let Some(cached) = self.patch_cache.get(&list) {
             if let Some(first) = cached.get(0) {
                 let remote_page = self.lore.get_patch_feed_page(list.clone(), 0).await?;
@@ -97,11 +97,21 @@ impl Core {
     }
 
     /// Fetches a single patch metadata item by index for a given mailing list (demand-driven).
-    pub async fn get(&mut self, list: ArcStr, index: usize) -> anyhow::Result<Option<LorePatchMetadata>> {
-        let cache = self.patch_cache.entry(list.clone()).or_insert_with(Vec::new);
+    async fn get(
+        &mut self,
+        list: ArcStr,
+        index: usize,
+    ) -> anyhow::Result<Option<LorePatchMetadata>> {
+        let cache = self
+            .patch_cache
+            .entry(list.clone())
+            .or_insert_with(Vec::new);
         while cache.len() <= index {
             let min_index = cache.len();
-            let page = self.lore.get_patch_feed_page(list.clone(), min_index).await?;
+            let page = self
+                .lore
+                .get_patch_feed_page(list.clone(), min_index)
+                .await?;
             if let Some(page) = page {
                 if page.items.is_empty() {
                     break;
@@ -115,12 +125,22 @@ impl Core {
     }
 
     /// Fetches a slice of patch metadata items by range for a given mailing list (demand-driven).
-    pub async fn get_slice(&mut self, list: ArcStr, range: std::ops::Range<usize>) -> anyhow::Result<Vec<LorePatchMetadata>> {
-        let cache = self.patch_cache.entry(list.clone()).or_insert_with(Vec::new);
+    async fn get_slice(
+        &mut self,
+        list: ArcStr,
+        range: std::ops::Range<usize>,
+    ) -> anyhow::Result<Vec<LorePatchMetadata>> {
+        let cache = self
+            .patch_cache
+            .entry(list.clone())
+            .or_insert_with(Vec::new);
         let end = range.end;
         while cache.len() < end {
             let min_index = cache.len();
-            let page = self.lore.get_patch_feed_page(list.clone(), min_index).await?;
+            let page = self
+                .lore
+                .get_patch_feed_page(list.clone(), min_index)
+                .await?;
             if let Some(page) = page {
                 if page.items.is_empty() {
                     break;
@@ -134,7 +154,7 @@ impl Core {
     }
 
     /// Persists the cache to the filesystem as TOML.
-    pub async fn persist_cache(&self) -> anyhow::Result<()> {
+    async fn persist_cache(&self) -> anyhow::Result<()> {
         let cache = CacheData {
             patch_cache: self.patch_cache.clone(),
         };
@@ -145,7 +165,7 @@ impl Core {
     }
 
     /// Loads the cache from the filesystem (TOML).
-    pub async fn load_cache(&mut self) -> anyhow::Result<()> {
+    async fn load_cache(&mut self) -> anyhow::Result<()> {
         let file = self.fs.open_file(self.cache_path.clone()).await?;
         let mut contents = String::new();
         file.write().await.read_to_string(&mut contents).await?;
@@ -153,4 +173,4 @@ impl Core {
         self.patch_cache = cache.patch_cache;
         Ok(())
     }
-} 
+}
