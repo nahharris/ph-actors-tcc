@@ -8,8 +8,8 @@ use crate::ArcStr;
 use crate::api::lore::{LoreApi, LorePatchMetadata};
 use crate::app::config::Config;
 use crate::fs::Fs;
-use message::Message;
 use anyhow::Context;
+use message::Message;
 
 /// The PatchMetaState actor provides a demand-driven, cached map of patch metadata per mailing list.
 ///
@@ -54,7 +54,8 @@ impl PatchMetaState {
         match self {
             Self::Actual(sender) => {
                 let (tx, rx) = tokio::sync::oneshot::channel();
-                sender.send(Message::Get { list, index, tx })
+                sender
+                    .send(Message::Get { list, index, tx })
                     .await
                     .context("Sending message to PatchMetaState actor")
                     .expect("PatchMetaState actor died");
@@ -82,7 +83,8 @@ impl PatchMetaState {
         match self {
             Self::Actual(sender) => {
                 let (tx, rx) = tokio::sync::oneshot::channel();
-                sender.send(Message::GetSlice { list, range, tx })
+                sender
+                    .send(Message::GetSlice { list, range, tx })
                     .await
                     .context("Sending message to PatchMetaState actor")
                     .expect("PatchMetaState actor died");
@@ -119,7 +121,9 @@ impl PatchMetaState {
         match self {
             Self::Actual(sender) => {
                 let (tx, rx) = tokio::sync::oneshot::channel();
-                sender.send(Message::PersistCache { tx }).await
+                sender
+                    .send(Message::PersistCache { tx })
+                    .await
                     .context("Sending message to PatchMetaState actor")
                     .expect("PatchMetaState actor died");
                 rx.await
@@ -135,7 +139,9 @@ impl PatchMetaState {
         match self {
             Self::Actual(sender) => {
                 let (tx, rx) = tokio::sync::oneshot::channel();
-                sender.send(Message::LoadCache { tx }).await
+                sender
+                    .send(Message::LoadCache { tx })
+                    .await
                     .context("Sending message to PatchMetaState actor")
                     .expect("PatchMetaState actor died");
                 rx.await

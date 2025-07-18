@@ -92,9 +92,10 @@ impl Core {
     /// # Returns
     /// `Ok(())` if the configuration was loaded successfully.
     async fn load(&mut self) -> anyhow::Result<()> {
-        let file = self.fs.open_file(self.path.clone()).await?;
+        let mut file = self.fs.open_file(self.path.clone()).await?;
         let mut contents = String::new();
-        file.write().await.read_to_string(&mut contents).await?;
+        use tokio::io::AsyncReadExt;
+        file.read_to_string(&mut contents).await?;
         let data = toml::from_str(&contents)?;
         self.data = data;
         Ok(())
@@ -106,8 +107,9 @@ impl Core {
     /// `Ok(())` if the configuration was saved successfully.
     async fn save(&self) -> anyhow::Result<()> {
         let contents = toml::to_string(&self.data)?;
-        let file = self.fs.open_file(self.path.clone()).await?;
-        file.write().await.write_all(contents.as_bytes()).await?;
+        let mut file = self.fs.open_file(self.path.clone()).await?;
+        use tokio::io::AsyncWriteExt;
+        file.write_all(contents.as_bytes()).await?;
         Ok(())
     }
 }

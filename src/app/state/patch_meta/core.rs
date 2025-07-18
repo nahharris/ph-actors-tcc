@@ -159,16 +159,18 @@ impl Core {
             patch_cache: self.patch_cache.clone(),
         };
         let toml = toml::to_string(&cache)?;
-        let file = self.fs.open_file(self.cache_path.clone()).await?;
-        file.write().await.write_all(toml.as_bytes()).await?;
+        let mut file = self.fs.open_file(self.cache_path.clone()).await?;
+        use tokio::io::AsyncWriteExt;
+        file.write_all(toml.as_bytes()).await?;
         Ok(())
     }
 
     /// Loads the cache from the filesystem (TOML).
     async fn load_cache(&mut self) -> anyhow::Result<()> {
-        let file = self.fs.open_file(self.cache_path.clone()).await?;
+        let mut file = self.fs.open_file(self.cache_path.clone()).await?;
         let mut contents = String::new();
-        file.write().await.read_to_string(&mut contents).await?;
+        use tokio::io::AsyncReadExt;
+        file.read_to_string(&mut contents).await?;
         let cache: CacheData = toml::from_str(&contents)?;
         self.patch_cache = cache.patch_cache;
         Ok(())

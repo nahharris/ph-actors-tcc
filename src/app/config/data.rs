@@ -7,6 +7,8 @@ use crate::{ArcPath, log::LogLevel};
 pub enum PathOpt {
     /// Directory where log files are stored
     LogDir,
+    /// Path to the cache file
+    CachePath,
 }
 
 /// Options for numeric configuration values that can be accessed and modified.
@@ -27,6 +29,8 @@ pub enum USizeOpt {
 /// This type is designed to be safely shared between threads when wrapped in an `Arc<Mutex<>>`.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Data {
+    /// Path to the cache file
+    cache_path: ArcPath,
     /// Directory where log files are stored
     log_dir: ArcPath,
     /// Current log level
@@ -40,6 +44,7 @@ pub struct Data {
 impl Default for Data {
     fn default() -> Self {
         Self {
+            cache_path: ArcPath::from("/tmp/patch-hub/cache"),
             log_dir: ArcPath::from("/tmp/patch-hub/logs"),
             log_level: LogLevel::Warning,
             max_age: 0,
@@ -59,6 +64,7 @@ impl Data {
     pub fn path(&self, opt: PathOpt) -> ArcPath {
         match opt {
             PathOpt::LogDir => self.log_dir.clone(),
+            PathOpt::CachePath => self.cache_path.clone(),
         }
     }
 
@@ -70,6 +76,7 @@ impl Data {
     pub fn set_path(&mut self, opt: PathOpt, path: ArcPath) {
         match opt {
             PathOpt::LogDir => self.log_dir = path,
+            PathOpt::CachePath => self.cache_path = path,
         }
     }
 
@@ -130,6 +137,10 @@ mod tests {
         );
         assert_eq!(data.usize(USizeOpt::MaxAge), 0);
         assert_eq!(data.usize(USizeOpt::Timeout), 30);
+        assert_eq!(
+            data.path(PathOpt::CachePath).to_str().unwrap(),
+            "/tmp/patch-hub/cache"
+        );
     }
 
     #[test]
@@ -145,6 +156,10 @@ mod tests {
         data.set_path(PathOpt::LogDir, new_path.clone());
         assert_eq!(data.path(PathOpt::LogDir), new_path);
 
+        let new_path = ArcPath::from("/var/cache");
+        data.set_path(PathOpt::CachePath, new_path.clone());
+        assert_eq!(data.path(PathOpt::CachePath), new_path);
+
         // Test max age
         data.set_usize(USizeOpt::MaxAge, 60);
         assert_eq!(data.usize(USizeOpt::MaxAge), 60);
@@ -159,6 +174,7 @@ mod tests {
         let mut data = Data::default();
         data.set_log_level(LogLevel::Error);
         data.set_path(PathOpt::LogDir, ArcPath::from("/custom/log"));
+        data.set_path(PathOpt::CachePath, ArcPath::from("/custom/cache"));
         data.set_usize(USizeOpt::MaxAge, 45);
         data.set_usize(USizeOpt::Timeout, 180);
 
@@ -169,6 +185,10 @@ mod tests {
         assert_eq!(
             data.path(PathOpt::LogDir),
             deserialized.path(PathOpt::LogDir)
+        );
+        assert_eq!(
+            data.path(PathOpt::CachePath),
+            deserialized.path(PathOpt::CachePath)
         );
         assert_eq!(
             data.usize(USizeOpt::MaxAge),

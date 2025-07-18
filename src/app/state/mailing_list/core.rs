@@ -1,6 +1,10 @@
 use super::message::Message;
 use crate::api::lore::{LoreApi, LoreMailingList};
-use crate::{ArcPath, app::config::Config, fs::Fs};
+use crate::{
+    app::config::{Config, PathOpt},
+    fs::Fs,
+};
+use anyhow::Context;
 use serde::{Deserialize, Serialize};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
@@ -19,20 +23,17 @@ pub struct Core {
     pub fs: Fs,
     /// Config actor for config path
     pub config: Config,
-    /// Path to the cache file (from config)
-    pub cache_path: ArcPath,
     /// Cached mailing lists
     pub mailing_lists: Vec<LoreMailingList>,
 }
 
 impl Core {
     /// Creates a new core instance for MailingListState.
-    pub fn new(lore: LoreApi, fs: Fs, config: Config, cache_path: ArcPath) -> Self {
+    pub fn new(lore: LoreApi, fs: Fs, config: Config) -> Self {
         Self {
             lore,
             fs,
             config,
-            cache_path,
             mailing_lists: Vec::new(),
         }
     }
@@ -141,17 +142,46 @@ impl Core {
             mailing_lists: self.mailing_lists.clone(),
         };
         let toml = toml::to_string(&cache)?;
-        let file = self.fs.open_file(self.cache_path.clone()).await?;
-        file.write().await.write_all(toml.as_bytes()).await?;
+        // Ensure the parent directory exists before opening the file
+        let cache_path = self.config.path(PathOpt::CachePath).await;
+        if let Some(parent) = cache_path.parent()
+            && !parent.exists()
+        {
+            self.fs
+                .mkdir(parent.into())
+                .await
+                .context("Creating cache directory")?;
+        }
+        let mut file = self
+            .fs
+            .open_file(self.config.path(PathOpt::CachePath).await)
+            .await
+            .context("Opening cache file")?;
+        use tokio::io::AsyncWriteExt;
+        file.write_all(toml.as_bytes())
+            .await
+            .context("Writing cache file")?;
         Ok(())
     }
 
     /// Loads the cache from the filesystem (TOML).
     async fn load_cache(&mut self) -> anyhow::Result<()> {
-        let file = self.fs.open_file(self.cache_path.clone()).await?;
+        // Ensure the cache file exists before opening it
+        let cache_path = self.config.path(PathOpt::CachePath).await;
+        if !cache_path.exists() {
+            return Ok(());
+        }
+        let mut file = self
+            .fs
+            .open_file(self.config.path(PathOpt::CachePath).await)
+            .await
+            .context("Opening cache file")?;
         let mut contents = String::new();
-        file.write().await.read_to_string(&mut contents).await?;
-        let cache: CacheData = toml::from_str(&contents)?;
+        use tokio::io::AsyncReadExt;
+        file.read_to_string(&mut contents)
+            .await
+            .context("Reading cache file")?;
+        let cache: CacheData = toml::from_str(&contents).context("Deserializing cache file")?;
         self.mailing_lists = cache.mailing_lists;
         Ok(())
     }

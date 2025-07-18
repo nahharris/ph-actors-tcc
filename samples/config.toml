@@ -1,4 +1,5 @@
-log_dir = "/tmp/logs"
+cache_path = "/tmp/ph/cache.toml"
+log_dir = "/tmp/ph/logs"
 log_level = "Info"
 max_age = 30
 timeout = 30

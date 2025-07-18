@@ -1,13 +1,11 @@
-use std::{
-    collections::{HashMap, LinkedList},
-    io,
-    sync::Arc,
-};
+use std::{collections::HashMap, collections::LinkedList, io, sync::Arc};
 
 use anyhow::Context;
 use tokio::sync::mpsc::Sender;
 
-use crate::{ArcFile, ArcPath};
+use crate::ArcPath;
+use std::path::PathBuf;
+use tempfile::TempDir;
 
 mod core;
 mod message;
@@ -34,8 +32,8 @@ mod tests;
 pub enum Fs {
     /// A real filesystem actor that interacts with the system
     Actual(Sender<message::Message>),
-    /// A mock implementation for testing
-    Mock(Arc<tokio::sync::Mutex<HashMap<ArcPath, ArcFile>>>),
+    /// A mock implementation for testing (uses a temp dir)
+    Mock(Arc<tokio::sync::Mutex<TempDir>>),
 }
 
 impl Fs {
@@ -50,25 +48,25 @@ impl Fs {
 
     /// Creates a new mock filesystem instance for testing.
     ///
-    /// # Arguments
-    /// * `files` - Optional initial file cache. If None, an empty cache will be used.
-    ///
     /// # Returns
-    /// A new mock filesystem instance that stores files in memory.
-    pub fn mock(files: HashMap<ArcPath, ArcFile>) -> Self {
-        Self::Mock(Arc::new(tokio::sync::Mutex::new(files)))
+    /// A new mock filesystem instance that returns errors for all operations.
+    pub fn mock() -> Self {
+        let temp_dir = tempfile::TempDir::new().expect("Failed to create temp dir for Fs mock");
+        Self::Mock(Arc::new(tokio::sync::Mutex::new(temp_dir)))
     }
 
-    /// Opens a file
-    ///
-    /// File opening is cached, so opening a file multiple times will return the
-    /// same file descriptor using `Arc` to avoid cloning.
-    ///
-    /// # Errors
-    ///
-    /// If the file cannot be opened, an error is returned, also if a mock is
-    /// being using and the file was not previously opened and passed to [`Fs::mock`]
-    pub async fn open_file(&self, path: ArcPath) -> Result<ArcFile, io::Error> {
+    async fn mock_path(&self, path: &ArcPath) -> PathBuf {
+        match self {
+            Fs::Mock(temp_dir) => {
+                let temp_dir = temp_dir.lock().await;
+                temp_dir.path().join(path.as_ref() as &std::path::Path)
+            }
+            _ => unreachable!(),
+        }
+    }
+
+    /// Opens a file (always opens a new handle).
+    pub async fn open_file(&self, path: ArcPath) -> Result<tokio::fs::File, io::Error> {
         match self {
             Self::Actual(sender) => {
                 let (tx, rx) = tokio::sync::oneshot::channel();
@@ -81,28 +79,14 @@ impl Fs {
                     .context("Awaiting response for file open with Fs")
                     .expect("fs actor died")
             }
-            Self::Mock(lock) => {
-                let lock = lock.lock().await;
-                lock.get(&path)
-                    .map(ArcFile::clone)
-                    .ok_or_else(|| io::Error::new(io::ErrorKind::NotFound, "file not found"))
-            }
-        }
-    }
-
-    /// Removes a file from the cache, notice that this won't close the file
-    /// immediately. Every `Arc` must be dropped before the file is actually
-    /// closed.
-    pub async fn close_file(&self, path: ArcPath) {
-        match self {
-            Self::Actual(sender) => sender
-                .send(message::Message::CloseFile { path })
-                .await
-                .context("Closing file with Fs")
-                .expect("fs actor died"),
-            Self::Mock(mutex) => {
-                let mut lock = mutex.lock().await;
-                lock.remove(&path);
+            Self::Mock(_) => {
+                let real_path = self.mock_path(&path).await;
+                tokio::fs::OpenOptions::new()
+                    .read(true)
+                    .write(true)
+                    .create(true)
+                    .open(real_path)
+                    .await
             }
         }
     }
@@ -121,11 +105,9 @@ impl Fs {
                     .context("Awaiting response for file removal with Fs")
                     .expect("fs actor died")
             }
-            Self::Mock(lock) => {
-                let mut lock = lock.lock().await;
-                lock.remove(&path)
-                    .map(|_| ())
-                    .ok_or_else(|| io::Error::new(io::ErrorKind::NotFound, "file not found"))
+            Self::Mock(_) => {
+                let real_path = self.mock_path(&path).await;
+                tokio::fs::remove_file(real_path).await
             }
         }
     }
@@ -144,10 +126,16 @@ impl Fs {
                     .context("Awaiting response for directory read with Fs")
                     .expect("fs actor died")
             }
-            Self::Mock(_) => Err(io::Error::new(
-                io::ErrorKind::Unsupported,
-                "read_dir not supported in mock",
-            )),
+            Self::Mock(_) => {
+                let real_path = self.mock_path(&path).await;
+                let mut entries = LinkedList::new();
+                let mut rd = tokio::fs::read_dir(real_path).await?;
+                while let Some(entry) = rd.next_entry().await? {
+                    let path = entry.path();
+                    entries.push_back(ArcPath::from(&path));
+                }
+                Ok(entries)
+            }
         }
     }
 
@@ -165,10 +153,10 @@ impl Fs {
                     .context("Awaiting response for directory creation with Fs")
                     .expect("fs actor died")
             }
-            Self::Mock(_) => Err(io::Error::new(
-                io::ErrorKind::Unsupported,
-                "mkdir not supported in mock",
-            )),
+            Self::Mock(_) => {
+                let real_path = self.mock_path(&path).await;
+                tokio::fs::create_dir_all(real_path).await
+            }
         }
     }
 
@@ -186,10 +174,10 @@ impl Fs {
                     .context("Awaiting response for directory removal with Fs")
                     .expect("fs actor died")
             }
-            Self::Mock(_) => Err(io::Error::new(
-                io::ErrorKind::Unsupported,
-                "rmdir not supported in mock",
-            )),
+            Self::Mock(_) => {
+                let real_path = self.mock_path(&path).await;
+                tokio::fs::remove_dir_all(real_path).await
+            }
         }
     }
 }

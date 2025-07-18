@@ -63,11 +63,7 @@ impl Core {
         }
     }
 
-    fn get_env(
-        &self,
-        tx: tokio::sync::oneshot::Sender<Result<ArcStr, VarError>>,
-        key: ArcOsStr,
-    ) {
+    fn get_env(&self, tx: tokio::sync::oneshot::Sender<Result<ArcStr, VarError>>, key: ArcOsStr) {
         let _ = tx.send(std::env::var(key).map(|s| ArcStr::from(&s)));
     }
 }

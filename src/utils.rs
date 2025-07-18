@@ -222,31 +222,6 @@ impl<'de> Deserialize<'de> for ArcOsStr {
     }
 }
 
-/// A thread-safe reference-counted file handle with read-write lock.
-/// This type provides synchronized access to file operations across multiple threads.
-///
-/// # Examples
-/// ```ignore
-/// let file = tokio::fs::File::open("example.txt").await?;
-/// let shared_file = ArcFile::from(file);
-/// ```
-#[derive(Debug, Clone)]
-pub struct ArcFile(Arc<RwLock<File>>);
-
-impl From<File> for ArcFile {
-    fn from(file: File) -> Self {
-        Self(Arc::new(RwLock::new(file)))
-    }
-}
-
-impl Deref for ArcFile {
-    type Target = RwLock<File>;
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
-
 /// A thread-safe, reference-counted, fixed-size slice type.
 ///
 /// `ArcSlice<T>` wraps an `Arc<[T]>`, allowing immutable slices to be cheaply and safely shared across threads.

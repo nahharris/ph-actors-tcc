@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use tempfile::tempfile;
 use tokio::fs::File;
 
-use crate::{ArcFile, ArcPath};
+use crate::ArcPath;
 
 use super::Fs;
 
@@ -20,8 +20,7 @@ async fn test_fs_open_close() {
     let file = File::create(&file_path).await.unwrap();
     drop(file);
 
-    fs.open_file(path.clone()).await.unwrap();
-    fs.close_file(path.clone()).await;
+    let _ = fs.open_file(path.clone()).await.unwrap();
 
     // Cleanup
     fs.remove_file(path).await.unwrap();
@@ -61,8 +60,7 @@ async fn test_fs_remove_file() {
 
     // Create directory and file
     fs.mkdir(dir_path.clone()).await.unwrap();
-    fs.open_file(file_path.clone()).await.unwrap();
-    fs.close_file(file_path.clone()).await;
+    let _ = fs.open_file(file_path.clone()).await.unwrap();
 
     // Verify file exists in directory
     let entries = fs.read_dir(dir_path.clone()).await.unwrap();
@@ -83,30 +81,13 @@ async fn test_fs_remove_file() {
 
 #[tokio::test]
 async fn test_fs_mock() {
-    let mut files = HashMap::new();
+    let fs = Fs::mock();
     let path = ArcPath::from("test.txt");
-    let std_file = tempfile().expect("Failed to create a temporary file");
-    let tokio_file = tokio::fs::File::from_std(std_file);
-    let file = ArcFile::from(tokio_file);
-    files.insert(path.clone(), file);
 
-    let fs = Fs::mock(files);
-
-    // Test file operations
-    let _ = fs.open_file(path.clone()).await.unwrap();
-    fs.close_file(path.clone()).await;
-
-    // Test unsupported operations
-    assert!(matches!(
-        fs.read_dir(ArcPath::from("test")).await,
-        Err(e) if e.kind() == std::io::ErrorKind::Unsupported
-    ));
-    assert!(matches!(
-        fs.mkdir(ArcPath::from("test")).await,
-        Err(e) if e.kind() == std::io::ErrorKind::Unsupported
-    ));
-    assert!(matches!(
-        fs.rmdir(ArcPath::from("test")).await,
-        Err(e) if e.kind() == std::io::ErrorKind::Unsupported
-    ));
+    // Test file operations (should succeed)
+    assert!(fs.open_file(path.clone()).await.is_ok());
+    assert!(fs.read_dir(path.clone()).await.is_err());
+    assert!(fs.mkdir(path.clone()).await.is_err());
+    assert!(fs.rmdir(path.clone()).await.is_err());
+    assert!(fs.remove_file(path.clone()).await.is_ok());
 }

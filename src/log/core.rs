@@ -3,7 +3,7 @@ use tokio::{io::AsyncWriteExt, task::JoinHandle};
 
 use super::data::{LogLevel, LogMessage};
 use super::message::Message;
-use crate::{ArcFile, ArcPath, fs::Fs};
+use crate::{ArcPath, fs::Fs};
 
 /// The core of the logging system that manages logging to both stderr and log files.
 ///
@@ -36,9 +36,9 @@ pub struct LogCore {
     /// Path to the current timestamped log file
     log_path: ArcPath,
     /// Handle to the current log file
-    log_file: ArcFile,
+    log_file: tokio::fs::File,
     /// Handle to the "latest" log file
-    latest_log_file: ArcFile,
+    latest_log_file: tokio::fs::File,
     /// Buffer of messages to be printed to stderr
     logs_to_print: Vec<LogMessage>,
     /// Minimum level of messages to be printed to stderr
@@ -112,21 +112,24 @@ impl LogCore {
     }
 
     async fn log(&mut self, message: LogMessage) {
-        let mut lock = self.log_file.write().await;
-        lock.write_all(format!("{}\n", &message).as_bytes())
+        use tokio::io::AsyncWriteExt;
+        self.log_file
+            .write_all(format!("{}\n", &message).as_bytes())
             .await
             .expect("Failed to write to the current log file");
 
-        lock.flush()
+        self.log_file
+            .flush()
             .await
             .expect("Failed to flush the current log file");
 
-        let mut lock = self.latest_log_file.write().await;
-        lock.write_all(format!("{}\n", &message).as_bytes())
+        self.latest_log_file
+            .write_all(format!("{}\n", &message).as_bytes())
             .await
             .expect("Failed to write to the latest log file");
 
-        lock.flush()
+        self.latest_log_file
+            .flush()
             .await
             .expect("Failed to flush the latest log file");
 
@@ -193,7 +196,7 @@ mod tests {
     use std::collections::HashMap;
 
     fn mock_fs() -> Fs {
-        Fs::mock(HashMap::new())
+        Fs::mock()
     }
 
     fn temp_log_dir() -> ArcPath {

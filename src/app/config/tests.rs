@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use crate::{
-    ArcFile, ArcPath,
+    ArcPath,
     app::config::{Config, PathOpt, USizeOpt, data::Data},
     env::Env,
     fs::Fs,
@@ -18,7 +18,7 @@ async fn test_mock_config_creation() {
 #[tokio::test]
 async fn test_actual_config_creation() {
     let env = Env::mock();
-    let fs = Fs::mock(HashMap::new());
+    let fs = Fs::mock();
     let path = ArcPath::from("test_config.json");
     let config = Config::spawn(env, fs, path);
     assert!(matches!(config, Config::Actual(_)));
@@ -63,17 +63,16 @@ async fn test_mock_usize_operations() {
 #[tokio::test]
 async fn test_actual_config_load_save() -> Result<()> {
     let env = Env::mock();
-    let mut file_cache = HashMap::new();
-    file_cache.insert(
-        ArcPath::from("config.toml"),
-        ArcFile::from(tokio::fs::File::open("samples/config.toml").await.unwrap()),
-    );
-    let fs = Fs::mock(file_cache);
-    let path = ArcPath::from("config.toml");
+    let fs = Fs::mock();
+    let path = ArcPath::from("test_config.toml");
+    let config = Config::spawn(env, fs.clone(), path.clone());
 
-    let config = Config::spawn(env, fs, path);
+    // Write a valid config TOML to the file before loading
+    let valid_toml = include_str!("../../../samples/config.toml");
+    let mut file = fs.open_file(path.clone()).await?;
+    use tokio::io::AsyncWriteExt;
+    file.write_all(valid_toml.as_bytes()).await?;
 
-    // Test load and save operations
     config.load().await?;
     config.save().await?;
     Ok(())
@@ -93,7 +92,7 @@ async fn test_mock_config_load_save() -> Result<()> {
 #[tokio::test]
 async fn test_actual_config_path_operations() {
     let env = Env::mock();
-    let fs = Fs::mock(HashMap::new());
+    let fs = Fs::mock();
     let path = ArcPath::from("test_config.json");
     let config = Config::spawn(env, fs, path);
 
@@ -107,7 +106,7 @@ async fn test_actual_config_path_operations() {
 #[tokio::test]
 async fn test_actual_config_log_level_operations() {
     let env = Env::mock();
-    let fs = Fs::mock(HashMap::new());
+    let fs = Fs::mock();
     let path = ArcPath::from("test_config.json");
     let config = Config::spawn(env, fs, path);
 
@@ -120,7 +119,7 @@ async fn test_actual_config_log_level_operations() {
 #[tokio::test]
 async fn test_actual_config_usize_operations() {
     let env = Env::mock();
-    let fs = Fs::mock(HashMap::new());
+    let fs = Fs::mock();
     let path = ArcPath::from("test_config.json");
     let config = Config::spawn(env, fs, path);
 

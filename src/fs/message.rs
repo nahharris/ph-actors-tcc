@@ -2,7 +2,7 @@ use std::collections::LinkedList;
 
 use tokio::sync::oneshot;
 
-use crate::{ArcFile, ArcPath};
+use crate::ArcPath;
 
 /// Messages that can be sent to a [`Fs`] actor.
 ///
@@ -13,13 +13,8 @@ pub enum Message {
     /// Opens a file and returns its handle
     OpenFile {
         /// Channel to send the result back to the caller
-        tx: oneshot::Sender<Result<ArcFile, tokio::io::Error>>,
+        tx: oneshot::Sender<Result<tokio::fs::File, tokio::io::Error>>,
         /// The path of the file to open
-        path: ArcPath,
-    },
-    /// Removes a file handle from the cache
-    CloseFile {
-        /// The path of the file to remove from cache
         path: ArcPath,
     },
     /// Removes a file from the filesystem

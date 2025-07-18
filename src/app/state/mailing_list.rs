@@ -1,6 +1,6 @@
+use anyhow::Context;
 use std::sync::Arc;
 use tokio::sync::Mutex;
-use anyhow::Context;
 
 mod core;
 pub mod message;
@@ -26,8 +26,8 @@ pub struct MockData {
 
 impl MailingListState {
     /// Spawns a new MailingListState actor.
-    pub fn spawn(lore: LoreApi, fs: Fs, config: Config, cache_path: crate::ArcPath) -> Self {
-        let core = core::Core::new(lore, fs, config, cache_path);
+    pub fn spawn(lore: LoreApi, fs: Fs, config: Config) -> Self {
+        let core = core::Core::new(lore, fs, config);
         let (state, _handle) = core.spawn();
         state
     }
@@ -42,7 +42,8 @@ impl MailingListState {
         match self {
             Self::Actual(sender) => {
                 let (tx, rx) = tokio::sync::oneshot::channel();
-                sender.send(Message::Get { index, tx })
+                sender
+                    .send(Message::Get { index, tx })
                     .await
                     .context("Sending message to MailingListState actor")
                     .expect("MailingListState actor died");
@@ -65,7 +66,8 @@ impl MailingListState {
         match self {
             Self::Actual(sender) => {
                 let (tx, rx) = tokio::sync::oneshot::channel();
-                sender.send(Message::GetSlice { range, tx })
+                sender
+                    .send(Message::GetSlice { range, tx })
                     .await
                     .context("Sending message to MailingListState actor")
                     .expect("MailingListState actor died");
@@ -84,7 +86,8 @@ impl MailingListState {
     pub async fn invalidate_cache(&self) {
         match self {
             Self::Actual(sender) => {
-                let _ = sender.send(Message::InvalidateCache)
+                let _ = sender
+                    .send(Message::InvalidateCache)
                     .await
                     .context("Sending message to MailingListState actor")
                     .expect("MailingListState actor died");
@@ -101,7 +104,8 @@ impl MailingListState {
         match self {
             Self::Actual(sender) => {
                 let (tx, rx) = tokio::sync::oneshot::channel();
-                sender.send(Message::PersistCache { tx })
+                sender
+                    .send(Message::PersistCache { tx })
                     .await
                     .context("Sending message to MailingListState actor")
                     .expect("MailingListState actor died");
@@ -118,7 +122,8 @@ impl MailingListState {
         match self {
             Self::Actual(sender) => {
                 let (tx, rx) = tokio::sync::oneshot::channel();
-                sender.send(Message::LoadCache { tx })
+                sender
+                    .send(Message::LoadCache { tx })
                     .await
                     .context("Sending message to MailingListState actor")
                     .expect("MailingListState actor died");
@@ -135,7 +140,8 @@ impl MailingListState {
         match self {
             Self::Actual(sender) => {
                 let (tx, rx) = tokio::sync::oneshot::channel();
-                let _ = sender.send(message::Message::Len { tx })
+                let _ = sender
+                    .send(message::Message::Len { tx })
                     .await
                     .context("Sending message to MailingListState actor")
                     .expect("MailingListState actor died");
@@ -156,7 +162,8 @@ impl MailingListState {
         match self {
             Self::Actual(sender) => {
                 let (tx, rx) = tokio::sync::oneshot::channel();
-                sender.send(message::Message::IsCacheValid { tx })
+                sender
+                    .send(message::Message::IsCacheValid { tx })
                     .await
                     .context("Sending message to MailingListState actor")
                     .expect("MailingListState actor died");

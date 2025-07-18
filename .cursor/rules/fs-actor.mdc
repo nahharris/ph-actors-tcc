@@ -1,7 +1,3 @@
----
-description: When dealing with filesystem operations
-alwaysApply: false
----
 # Filesystem Actor System
 
 This document explains how the filesystem actor system works in `src/fs.rs` and the `/fs` module for implementers who want to consume filesystem operations or extend the filesystem functionality.
@@ -26,7 +22,7 @@ The filesystem actor system uses the Actor Model pattern to provide thread-safe 
        ▼                   ▼                   ▼
 ┌─────────────┐    ┌─────────────┐    ┌─────────────┐
 │   Message   │    │   File      │    │   File      │
-│   Channel   │    │   Cache     │    │   System    │
+│   Channel   │    │   System    │    │   System    │
 └─────────────┘    └─────────────┘    └─────────────┘
 ```
 
@@ -46,12 +42,9 @@ let path = ArcPath::from("example.txt");
 let file = fs.open_file(path.clone()).await?;
 
 // Write to the file
-let mut write_guard = file.write().await;
-write_guard.write_all(b"Hello, World!").await?;
-write_guard.flush().await?;
-
-// Close the file (removes from cache)
-fs.close_file(path).await;
+use tokio::io::AsyncWriteExt;
+file.write_all(b"Hello, World!").await?;
+file.flush().await?;
 ```
 
 ### Thread Safety
@@ -62,7 +55,6 @@ The `Fs` type is designed to be safely shared between threads. Cloning is cheap 
 let fs = Fs::spawn();
 let fs_clone = fs.clone(); // Safe to clone and share
 
-// Use in different tasks
 tokio::spawn(async move {
     let file = fs_clone.open_file(ArcPath::from("data.txt")).await;
 });
@@ -74,18 +66,10 @@ For testing, use the mock implementation:
 
 ```rust
 use crate::fs::Fs;
-use crate::{ArcFile, ArcPath};
-use std::collections::HashMap;
+use crate::ArcPath;
 
-// Create mock with predefined files
-let mut files = HashMap::new();
-let test_file = ArcFile::mock(); // Assuming ArcFile has a mock method
-files.insert(ArcPath::from("test.txt"), test_file);
-
-let fs = Fs::mock(files);
-
-// Mock will return the predefined file
-let file = fs.open_file(ArcPath::from("test.txt")).await?;
+let fs = Fs::mock();
+assert!(fs.open_file(ArcPath::from("test.txt")).await.is_err());
 ```
 
 ### File Operations
@@ -97,26 +81,6 @@ Files are opened with write and create permissions by default:
 ```rust
 let file = fs.open_file(ArcPath::from("config.toml")).await?;
 // File is created if it doesn't exist, opened for writing
-```
-
-#### File Caching
-
-Files are cached to avoid repeated opening:
-
-```rust
-let path = ArcPath::from("data.txt");
-let file1 = fs.open_file(path.clone()).await?;
-let file2 = fs.open_file(path.clone()).await?;
-// file1 and file2 are the same ArcFile instance
-```
-
-#### Closing Files
-
-Closing removes the file from cache but doesn't immediately close the file:
-
-```rust
-fs.close_file(path.clone()).await;
-// File is removed from cache, but actual close happens when all ArcFile references are dropped
 ```
 
 #### Removing Files
@@ -172,14 +136,13 @@ let path = ArcPath::from(std_path);
 let path_clone = path.clone();
 ```
 
-### ArcFile
+### File
 
-File handles are wrapped in `ArcFile` (Arc<File>) for thread-safe access:
+File handles are `tokio::fs::File` for async read/write operations:
 
 ```rust
 let file = fs.open_file(ArcPath::from("example.txt")).await?;
-// file is ArcFile, can be cloned cheaply
-let file_clone = file.clone();
+file.write_all(b"data").await?;
 ```
 
 ## Adding New Filesystem Operations
@@ -194,7 +157,6 @@ Add a new message variant for the operation:
 #[derive(Debug)]
 pub enum Message {
     // ... existing variants ...
-    
     /// Copy a file from source to destination
     CopyFile {
         /// Channel to send the result back to the caller
@@ -214,9 +176,8 @@ Add message handling in the actor's message loop:
 ```rust
 match msg {
     // ... existing matches ...
-    
     CopyFile { tx, src, dst } => {
-        self.copy_file(tx, src, dst).await;
+        Self::copy_file(tx, src, dst).await;
     }
 }
 ```
@@ -228,10 +189,7 @@ Add the actual implementation in the Core:
 ```rust
 impl Core {
     // ... existing methods ...
-    
-    /// Copies a file from source to destination
     async fn copy_file(
-        &self,
         tx: tokio::sync::oneshot::Sender<Result<(), std::io::Error>>,
         src: ArcPath,
         dst: ArcPath,
@@ -248,9 +206,6 @@ Add public methods to the `Fs` enum:
 
 ```rust
 impl Fs {
-    // ... existing methods ...
-    
-    /// Copies a file from source to destination
     pub async fn copy_file(&self, src: ArcPath, dst: ArcPath) -> Result<(), std::io::Error> {
         match self {
             Self::Actual(sender) => {
@@ -261,41 +216,12 @@ impl Fs {
                     .expect("fs actor died");
                 rx.await.expect("fs actor died")
             }
-            Self::Mock(_) => {
-                // Mock implementation could copy from cache or return error
-                Err(std::io::Error::new(
-                    std::io::ErrorKind::Unsupported,
-                    "copy_file not supported in mock",
-                ))
-            }
+            Self::Mock => Err(std::io::Error::new(
+                std::io::ErrorKind::Unsupported,
+                "mock does not support copy_file",
+            )),
         }
     }
-}
-```
-
-### 5. Add Tests (`src/fs/tests.rs`)
-
-Add comprehensive tests for the new functionality:
-
-```rust
-#[tokio::test]
-async fn test_copy_file() {
-    let fs = Fs::spawn();
-    let src = ArcPath::from("source.txt");
-    let dst = ArcPath::from("destination.txt");
-    
-    // Create source file
-    let file = fs.open_file(src.clone()).await.unwrap();
-    let mut write_guard = file.write().await;
-    write_guard.write_all(b"test content").await.unwrap();
-    drop(write_guard);
-    
-    // Copy file
-    fs.copy_file(src, dst.clone()).await.unwrap();
-    
-    // Verify destination exists
-    let dst_file = fs.open_file(dst).await.unwrap();
-    // ... verify content
 }
 ```
 
@@ -444,8 +370,7 @@ tokio::spawn(async move {
 
 ## Performance Considerations
 
-- Files are cached to avoid repeated opening operations
-- File handles are shared using `Arc` for efficient memory usage
+- File handles are not cached; each open_file call returns a new handle
 - The actor pattern ensures thread safety without locks on the hot path
 - `ArcPath` provides cheap cloning for sharing between threads
 - Directory operations are not cached and go directly to the filesystem
@@ -465,6 +390,10 @@ The filesystem actor uses `std::io::Error` for error handling:
 The filesystem actor integrates with:
 
 - **Configuration System**: Reading/writing config files
+- **Logging System**: Creating log files and directories
+- **API Systems**: Caching responses to files
+- **Terminal System**: Reading user input files
+
 - **Logging System**: Creating log files and directories
 - **API Systems**: Caching responses to files
 - **Terminal System**: Reading user input files
