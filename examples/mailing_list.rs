@@ -23,13 +23,17 @@ async fn main() -> anyhow::Result<()> {
         config.path(PathOpt::CachePath).await.to_str().unwrap()
     );
     ml.load_cache().await?;
-    println!("Mailing lists cache valid: {}", ml.is_cache_valid().await?);
+    let valid = ml.is_cache_valid().await?;
+    println!("Mailing lists cache valid: {}", valid);
+    if !valid {
+        ml.invalidate_cache().await;
+    }
     let lists = ml.get_slice(0..3).await?;
     println!("Mailing lists length: {}", ml.len().await);
     let list_203 = ml.get(203).await?.unwrap();
-    println!("Mailing list 203: {:#?}", list_203);
+    println!("Mailing list 203: {list_203:#?}");
     println!("Mailing lists length: {}", ml.len().await);
-    println!("Mailing lists: {:#?}", lists);
+    println!("Mailing lists: {lists:#?}");
     ml.persist_cache().await?;
     Ok(())
 }

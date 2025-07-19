@@ -4,23 +4,37 @@ use ph::log::Log;
 use ph::net::Net;
 
 #[tokio::main]
-async fn main() {
+async fn main() -> anyhow::Result<()> {
     let config = Config::mock(Default::default());
     let log = Log::mock();
     let net = Net::spawn(config, log).await;
 
     let lore = LoreApi::spawn(net);
 
-    let lists = lore.get_available_lists().await.unwrap();
+    let lists = match lore.get_available_lists().await {
+        Ok(lists) => lists,
+        Err(e) => {
+            println!("Error getting mailing lists: {e}");
+            return Err(e);
+        }
+    };
     println!("Total mailing lists: {}", lists.len());
-    let item = lists.get(0).unwrap();
+    let item = lists.get(1).unwrap();
     let name = item.name.clone();
-    println!("First mailing list: {}", name);
+    println!("First mailing list: {name}");
 
-    let Some(patch_feed) = lore.get_patch_feed_page(name.clone(), 0).await.unwrap() else {
-        println!("No patch feed found");
-        return;
+    let patch_feed = match lore.get_patch_feed_page(name.clone(), 0).await {
+        Ok(Some(patch_feed)) => patch_feed,
+        Ok(None) => {
+            println!("No patch feed found");
+            return Err(anyhow::anyhow!("No patch feed found for {name}"));
+        }
+        Err(e) => {
+            println!("Error getting patch feed: {e}");
+            return Err(e);
+        }
     };
 
     println!("First patch from feed {}: {:#?}", name, patch_feed.items[0]);
+    Ok(())
 }
