@@ -100,7 +100,7 @@ impl Net {
             Net::Mock(responses) => {
                 let responses = responses.lock().await;
                 let key = MockRequestKey::get(url);
-                responses.get(&key).map(ArcStr::clone).ok_or_else(|| {
+                responses.get(&key).cloned().ok_or_else(|| {
                     anyhow::anyhow!("GET request not found in mock responses: {}", key.url)
                 })
             }
@@ -139,7 +139,7 @@ impl Net {
             Net::Mock(responses) => {
                 let responses = responses.lock().await;
                 let key = MockRequestKey::post(url);
-                responses.get(&key).map(ArcStr::clone).ok_or_else(|| {
+                responses.get(&key).cloned().ok_or_else(|| {
                     anyhow::anyhow!("POST request not found in mock responses: {}", key.url)
                 })
             }
@@ -178,7 +178,7 @@ impl Net {
             Net::Mock(responses) => {
                 let responses = responses.lock().await;
                 let key = MockRequestKey::put(url);
-                responses.get(&key).map(ArcStr::clone).ok_or_else(|| {
+                responses.get(&key).cloned().ok_or_else(|| {
                     anyhow::anyhow!("PUT request not found in mock responses: {}", key.url)
                 })
             }
@@ -210,7 +210,7 @@ impl Net {
             Net::Mock(responses) => {
                 let responses = responses.lock().await;
                 let key = MockRequestKey::delete(url);
-                responses.get(&key).map(ArcStr::clone).ok_or_else(|| {
+                responses.get(&key).cloned().ok_or_else(|| {
                     anyhow::anyhow!("DELETE request not found in mock responses: {}", key.url)
                 })
             }
@@ -249,7 +249,7 @@ impl Net {
             Net::Mock(responses) => {
                 let responses = responses.lock().await;
                 let key = MockRequestKey::patch(url);
-                responses.get(&key).map(ArcStr::clone).ok_or_else(|| {
+                responses.get(&key).cloned().ok_or_else(|| {
                     anyhow::anyhow!("PATCH request not found in mock responses: {}", key.url)
                 })
             }

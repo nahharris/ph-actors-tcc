@@ -91,7 +91,7 @@ impl Core {
                             .handle_get_patch_feed_page(&target_list, min_index)
                             .await
                             .with_context(|| {
-                                format!("GET patch feed failed for list: {}", target_list)
+                                format!("GET patch feed failed for list: {target_list}")
                             });
                         let _ = tx.send(response);
                     }
@@ -107,7 +107,7 @@ impl Core {
                             .handle_get_available_lists_page(min_index)
                             .await
                             .with_context(|| {
-                                format!("GET available lists failed for index: {}", min_index)
+                                format!("GET available lists failed for index: {min_index}")
                             });
                         let _ = tx.send(response);
                     }
@@ -121,8 +121,7 @@ impl Core {
                             .await
                             .with_context(|| {
                                 format!(
-                                    "GET patch HTML failed for list: {}, message: {}",
-                                    target_list, message_id
+                                    "GET patch HTML failed for list: {target_list}, message: {message_id}"
                                 )
                             });
                         let _ = tx.send(response);
@@ -137,8 +136,7 @@ impl Core {
                             .await
                             .with_context(|| {
                                 format!(
-                                    "GET raw patch failed for list: {}, message: {}",
-                                    target_list, message_id
+                                    "GET raw patch failed for list: {target_list}, message: {message_id}"
                                 )
                             });
                         let _ = tx.send(response);
@@ -153,8 +151,7 @@ impl Core {
                             .await
                             .with_context(|| {
                                 format!(
-                                    "GET patch metadata failed for list: {}, message: {}",
-                                    target_list, message_id
+                                    "GET patch metadata failed for list: {target_list}, message: {message_id}"
                                 )
                             });
                         let _ = tx.send(response);
@@ -184,9 +181,9 @@ impl Core {
         );
 
         let response = self.net.get(ArcStr::from(&url), Some(headers)).await?;
-
         // Check for end of feed indicator
-        if <ArcStr as AsRef<str>>::as_ref(&response) == "</feed>" {
+        if <ArcStr as AsRef<str>>::as_ref(&response) == "</feed>" || response.contains("[No results found]")
+        {
             return Ok(None);
         }
 

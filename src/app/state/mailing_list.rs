@@ -86,7 +86,7 @@ impl MailingListState {
     pub async fn invalidate_cache(&self) {
         match self {
             Self::Actual(sender) => {
-                let _ = sender
+                sender
                     .send(Message::InvalidateCache)
                     .await
                     .context("Sending message to MailingListState actor")
@@ -140,21 +140,23 @@ impl MailingListState {
         match self {
             Self::Actual(sender) => {
                 let (tx, rx) = tokio::sync::oneshot::channel();
-                let _ = sender
+                sender
                     .send(message::Message::Len { tx })
                     .await
                     .context("Sending message to MailingListState actor")
                     .expect("MailingListState actor died");
-                match rx.await {
-                    Ok(v) => v,
-                    Err(_) => 0,
-                }
+                (rx.await).unwrap_or_default()
             }
             Self::Mock(data) => {
                 let data = data.lock().await;
                 data.mailing_lists.len()
             }
         }
+    }
+
+    /// Returns true if the cache is empty.
+    pub async fn is_empty(&self) -> bool {
+        self.len().await == 0
     }
 
     /// Checks if the cache is still valid by comparing the last_update field of the 0th item.

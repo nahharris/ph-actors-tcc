@@ -1,4 +1,4 @@
-use std::{collections::HashMap, collections::LinkedList, io, sync::Arc};
+use std::{collections::LinkedList, io, sync::Arc};
 
 use anyhow::Context;
 use tokio::sync::mpsc::Sender;
@@ -22,7 +22,7 @@ mod tests;
 /// ```ignore
 /// let fs = Fs::spawn();
 /// let path = Arc::from(Path::new("example.txt"));
-/// let file = fs.open_file(path).await?;
+/// let file = fs.read_file(path).await?;
 /// ```
 ///
 /// # Thread Safety
@@ -65,26 +65,76 @@ impl Fs {
         }
     }
 
-    /// Opens a file (always opens a new handle).
-    pub async fn open_file(&self, path: ArcPath) -> Result<tokio::fs::File, io::Error> {
+    /// Opens a file for reading only (does not create if it doesn't exist).
+    pub async fn read_file(&self, path: ArcPath) -> Result<tokio::fs::File, io::Error> {
         match self {
             Self::Actual(sender) => {
                 let (tx, rx) = tokio::sync::oneshot::channel();
                 sender
-                    .send(message::Message::OpenFile { tx, path })
+                    .send(message::Message::ReadFile { tx, path })
                     .await
-                    .context("Opening file with Fs")
+                    .context("Opening file for reading with Fs")
                     .expect("fs actor died");
                 rx.await
-                    .context("Awaiting response for file open with Fs")
+                    .context("Awaiting response for file read with Fs")
                     .expect("fs actor died")
             }
             Self::Mock(_) => {
                 let real_path = self.mock_path(&path).await;
                 tokio::fs::OpenOptions::new()
                     .read(true)
+                    .open(real_path)
+                    .await
+            }
+        }
+    }
+
+    /// Opens a file for writing (truncates content, creates if needed).
+    pub async fn write_file(&self, path: ArcPath) -> Result<tokio::fs::File, io::Error> {
+        match self {
+            Self::Actual(sender) => {
+                let (tx, rx) = tokio::sync::oneshot::channel();
+                sender
+                    .send(message::Message::WriteFile { tx, path })
+                    .await
+                    .context("Opening file for writing with Fs")
+                    .expect("fs actor died");
+                rx.await
+                    .context("Awaiting response for file write with Fs")
+                    .expect("fs actor died")
+            }
+            Self::Mock(_) => {
+                let real_path = self.mock_path(&path).await;
+                tokio::fs::OpenOptions::new()
                     .write(true)
                     .create(true)
+                    .truncate(true)
+                    .open(real_path)
+                    .await
+            }
+        }
+    }
+
+    /// Opens a file for appending (creates if needed).
+    pub async fn append_file(&self, path: ArcPath) -> Result<tokio::fs::File, io::Error> {
+        match self {
+            Self::Actual(sender) => {
+                let (tx, rx) = tokio::sync::oneshot::channel();
+                sender
+                    .send(message::Message::AppendFile { tx, path })
+                    .await
+                    .context("Opening file for appending with Fs")
+                    .expect("fs actor died");
+                rx.await
+                    .context("Awaiting response for file append with Fs")
+                    .expect("fs actor died")
+            }
+            Self::Mock(_) => {
+                let real_path = self.mock_path(&path).await;
+                tokio::fs::OpenOptions::new()
+                    .write(true)
+                    .create(true)
+                    .append(true)
                     .open(real_path)
                     .await
             }

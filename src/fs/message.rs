@@ -10,11 +10,25 @@ use crate::ArcPath;
 /// through the actor system.
 #[derive(Debug)]
 pub enum Message {
-    /// Opens a file and returns its handle
-    OpenFile {
+    /// Opens a file for reading only (does not create if it doesn't exist)
+    ReadFile {
         /// Channel to send the result back to the caller
         tx: oneshot::Sender<Result<tokio::fs::File, tokio::io::Error>>,
-        /// The path of the file to open
+        /// The path of the file to open for reading
+        path: ArcPath,
+    },
+    /// Opens a file for writing (truncates content, creates if needed)
+    WriteFile {
+        /// Channel to send the result back to the caller
+        tx: oneshot::Sender<Result<tokio::fs::File, tokio::io::Error>>,
+        /// The path of the file to open for writing
+        path: ArcPath,
+    },
+    /// Opens a file for appending (creates if needed)
+    AppendFile {
+        /// Channel to send the result back to the caller
+        tx: oneshot::Sender<Result<tokio::fs::File, tokio::io::Error>>,
+        /// The path of the file to open for appending
         path: ArcPath,
     },
     /// Removes a file from the filesystem

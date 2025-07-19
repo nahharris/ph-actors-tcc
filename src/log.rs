@@ -161,7 +161,7 @@ impl Log {
             Self::Mock(messages) => tokio::spawn(async move {
                 let lock = messages.lock().await;
                 for message in lock.iter() {
-                    eprintln!("{}", message);
+                    eprintln!("{message}");
                 }
             }),
         }

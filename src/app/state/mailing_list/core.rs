@@ -6,7 +6,6 @@ use crate::{
 };
 use anyhow::Context;
 use serde::{Deserialize, Serialize};
-use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
 #[derive(Debug, Default, Serialize, Deserialize)]
 /// Structure for persisting the mailing list cache to disk.
@@ -83,10 +82,10 @@ impl Core {
 
     /// Checks if the cache is still valid by comparing the last_update field of the 0th item.
     async fn is_cache_valid(&self) -> anyhow::Result<bool> {
-        if let Some(first) = self.mailing_lists.get(0) {
+        if let Some(first) = self.mailing_lists.first() {
             let remote_page = self.lore.get_available_lists_page(0).await?;
             if let Some(page) = remote_page {
-                if let Some(remote_first) = page.items.get(0) {
+                if let Some(remote_first) = page.items.first() {
                     return Ok(remote_first.last_update == first.last_update);
                 }
             }
@@ -154,9 +153,9 @@ impl Core {
         }
         let mut file = self
             .fs
-            .open_file(self.config.path(PathOpt::CachePath).await)
+            .write_file(self.config.path(PathOpt::CachePath).await)
             .await
-            .context("Opening cache file")?;
+            .context("Opening cache file for writing")?;
         use tokio::io::AsyncWriteExt;
         file.write_all(toml.as_bytes())
             .await
@@ -173,9 +172,9 @@ impl Core {
         }
         let mut file = self
             .fs
-            .open_file(self.config.path(PathOpt::CachePath).await)
+            .read_file(self.config.path(PathOpt::CachePath).await)
             .await
-            .context("Opening cache file")?;
+            .context("Opening cache file for reading")?;
         let mut contents = String::new();
         use tokio::io::AsyncReadExt;
         file.read_to_string(&mut contents)

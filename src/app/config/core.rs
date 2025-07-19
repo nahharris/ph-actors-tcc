@@ -1,5 +1,3 @@
-use tokio::io::{AsyncReadExt, AsyncWriteExt};
-
 use crate::{ArcPath, env::Env, fs::Fs};
 
 use super::{data::Data, message::Message};
@@ -92,7 +90,7 @@ impl Core {
     /// # Returns
     /// `Ok(())` if the configuration was loaded successfully.
     async fn load(&mut self) -> anyhow::Result<()> {
-        let mut file = self.fs.open_file(self.path.clone()).await?;
+        let mut file = self.fs.read_file(self.path.clone()).await?;
         let mut contents = String::new();
         use tokio::io::AsyncReadExt;
         file.read_to_string(&mut contents).await?;
@@ -107,7 +105,7 @@ impl Core {
     /// `Ok(())` if the configuration was saved successfully.
     async fn save(&self) -> anyhow::Result<()> {
         let contents = toml::to_string(&self.data)?;
-        let mut file = self.fs.open_file(self.path.clone()).await?;
+        let mut file = self.fs.write_file(self.path.clone()).await?;
         use tokio::io::AsyncWriteExt;
         file.write_all(contents.as_bytes()).await?;
         Ok(())

@@ -1,5 +1,5 @@
 use anyhow::Context;
-use tokio::{io::AsyncWriteExt, task::JoinHandle};
+use tokio::task::JoinHandle;
 
 use super::data::{LogLevel, LogMessage};
 use super::message::Message;
@@ -65,12 +65,12 @@ impl LogCore {
             .with_context(|| format!("Failed to create log directory: {}", log_dir.display()))?;
 
         let log_file = fs
-            .open_file(log_path.clone())
+            .write_file(log_path.clone())
             .await
             .with_context(|| format!("Failed to create log file: {}", log_path.display()))?;
 
         let latest_log_path_clone = latest_log_path.clone();
-        let latest_log_file = fs.open_file(latest_log_path).await.with_context(|| {
+        let latest_log_file = fs.write_file(latest_log_path).await.with_context(|| {
             format!(
                 "Failed to create latest log file: {}",
                 latest_log_path_clone.display()
@@ -140,7 +140,7 @@ impl LogCore {
 
     fn flush(self) {
         for message in &self.logs_to_print {
-            eprintln!("{}", message);
+            eprintln!("{message}");
         }
         if !self.logs_to_print.is_empty() {
             eprintln!("Check the full log file: {}", self.log_path.display());
@@ -193,7 +193,6 @@ mod tests {
     use crate::ArcPath;
     use crate::fs::Fs;
     use crate::log::data::{LogLevel, LogMessage};
-    use std::collections::HashMap;
 
     fn mock_fs() -> Fs {
         Fs::mock()

@@ -96,7 +96,7 @@ impl Core {
                         let response = self
                             .handle_get_request(url.clone(), headers)
                             .await
-                            .with_context(|| format!("GET request failed for URL: {}", url));
+                            .with_context(|| format!("GET request failed for URL: {url}"));
                         let _ = tx.send(response);
                     }
                     Message::Post {
@@ -108,7 +108,7 @@ impl Core {
                         let response = self
                             .handle_post_request(url.clone(), headers, body)
                             .await
-                            .with_context(|| format!("POST request failed for URL: {}", url));
+                            .with_context(|| format!("POST request failed for URL: {url}"));
                         let _ = tx.send(response);
                     }
                     Message::Put {
@@ -120,14 +120,14 @@ impl Core {
                         let response = self
                             .handle_put_request(url.clone(), headers, body)
                             .await
-                            .with_context(|| format!("PUT request failed for URL: {}", url));
+                            .with_context(|| format!("PUT request failed for URL: {url}"));
                         let _ = tx.send(response);
                     }
                     Message::Delete { url, headers, tx } => {
                         let response = self
                             .handle_delete_request(url.clone(), headers)
                             .await
-                            .with_context(|| format!("DELETE request failed for URL: {}", url));
+                            .with_context(|| format!("DELETE request failed for URL: {url}"));
                         let _ = tx.send(response);
                     }
                     Message::Patch {
@@ -139,7 +139,7 @@ impl Core {
                         let response = self
                             .handle_patch_request(url.clone(), headers, body)
                             .await
-                            .with_context(|| format!("PATCH request failed for URL: {}", url));
+                            .with_context(|| format!("PATCH request failed for URL: {url}"));
                         let _ = tx.send(response);
                     }
                 }

@@ -57,10 +57,10 @@ impl Env {
     where
         V: Display,
     {
-        let value = format!("{}", value).into();
+        let value = format!("{value}").into();
         match self {
             Self::Actual(sender) => sender
-                .send(message::Message::SetEnv { key, value })
+                .send(message::Message::Set { key, value })
                 .await
                 .context("Setting environment variable with Env")
                 .expect("env actor died"),
@@ -76,7 +76,7 @@ impl Env {
     pub async fn unset_env(&self, key: ArcOsStr) {
         match self {
             Self::Actual(sender) => sender
-                .send(message::Message::UnsetEnv { key })
+                .send(message::Message::Unset { key })
                 .await
                 .context("Unsetting environment variable with Env")
                 .expect("env actor died"),
@@ -93,7 +93,7 @@ impl Env {
             Self::Actual(sender) => {
                 let (tx, rx) = tokio::sync::oneshot::channel();
                 sender
-                    .send(message::Message::GetEnv { tx, key })
+                    .send(message::Message::Get { tx, key })
                     .await
                     .context("Getting environment variable with Env")
                     .expect("env actor died");

@@ -1,5 +1,3 @@
-use std::collections::HashMap;
-
 use crate::{
     ArcPath,
     app::config::{Config, PathOpt, USizeOpt, data::Data},
@@ -69,7 +67,7 @@ async fn test_actual_config_load_save() -> Result<()> {
 
     // Write a valid config TOML to the file before loading
     let valid_toml = include_str!("../../../samples/config.toml");
-    let mut file = fs.open_file(path.clone()).await?;
+    let mut file = fs.write_file(path.clone()).await?;
     use tokio::io::AsyncWriteExt;
     file.write_all(valid_toml.as_bytes()).await?;
 

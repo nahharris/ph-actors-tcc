@@ -1,3 +1,4 @@
+use std::fmt;
 use std::process::ExitStatus;
 
 use crate::{ArcSlice, ArcStr};
@@ -33,18 +34,15 @@ impl Command {
             stdin,
         }
     }
+}
 
-    /// Returns the full command as a string for display purposes.
-    ///
-    /// # Returns
-    /// A string representation of the command with arguments.
-    pub fn to_string(&self) -> String {
-        let mut cmd = self.program.to_string();
+impl fmt::Display for Command {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.program)?;
         for arg in self.args.iter() {
-            cmd.push(' ');
-            cmd.push_str(arg);
+            write!(f, " {}", arg)?;
         }
-        cmd
+        Ok(())
     }
 }
 
@@ -77,9 +75,9 @@ impl From<ExitStatus> for Status {
 impl std::fmt::Display for Status {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Status::Success(code) => write!(f, "Success({})", code),
-            Status::Signal(signal) => write!(f, "Signal({})", signal),
-            Status::Failed(reason) => write!(f, "Failed({})", reason),
+            Status::Success(code) => write!(f, "Success({code})"),
+            Status::Signal(signal) => write!(f, "Signal({signal})"),
+            Status::Failed(reason) => write!(f, "Failed({reason})"),
         }
     }
 }
@@ -150,7 +148,7 @@ impl Result {
 
 impl std::fmt::Display for Result {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        writeln!(f, "Command: {}", self.command.to_string())?;
+        writeln!(f, "Command: {}", self.command)?;
         writeln!(f, "Status: {}", self.status)?;
         if !self.stdout.is_empty() {
             writeln!(f, "Stdout:")?;

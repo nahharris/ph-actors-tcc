@@ -3,7 +3,6 @@ use crate::api::lore::{LoreApi, LorePatchMetadata};
 use crate::{ArcPath, ArcStr, app::config::Config, fs::Fs};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
 #[derive(Debug, Default, Serialize, Deserialize)]
 /// Structure for persisting the patch metadata cache to disk.
@@ -84,10 +83,10 @@ impl Core {
     /// Checks if the cache is still valid for a given mailing list by comparing the last_update field of the 0th item.
     async fn is_cache_valid(&self, list: ArcStr) -> anyhow::Result<bool> {
         if let Some(cached) = self.patch_cache.get(&list) {
-            if let Some(first) = cached.get(0) {
+            if let Some(first) = cached.first() {
                 let remote_page = self.lore.get_patch_feed_page(list.clone(), 0).await?;
                 if let Some(page) = remote_page {
-                    if let Some(remote_first) = page.items.get(0) {
+                    if let Some(remote_first) = page.items.first() {
                         return Ok(remote_first.last_update == first.last_update);
                     }
                 }
@@ -102,10 +101,7 @@ impl Core {
         list: ArcStr,
         index: usize,
     ) -> anyhow::Result<Option<LorePatchMetadata>> {
-        let cache = self
-            .patch_cache
-            .entry(list.clone())
-            .or_insert_with(Vec::new);
+        let cache = self.patch_cache.entry(list.clone()).or_default();
         while cache.len() <= index {
             let min_index = cache.len();
             let page = self
@@ -130,10 +126,7 @@ impl Core {
         list: ArcStr,
         range: std::ops::Range<usize>,
     ) -> anyhow::Result<Vec<LorePatchMetadata>> {
-        let cache = self
-            .patch_cache
-            .entry(list.clone())
-            .or_insert_with(Vec::new);
+        let cache = self.patch_cache.entry(list.clone()).or_default();
         let end = range.end;
         while cache.len() < end {
             let min_index = cache.len();
@@ -159,7 +152,7 @@ impl Core {
             patch_cache: self.patch_cache.clone(),
         };
         let toml = toml::to_string(&cache)?;
-        let mut file = self.fs.open_file(self.cache_path.clone()).await?;
+        let mut file = self.fs.write_file(self.cache_path.clone()).await?;
         use tokio::io::AsyncWriteExt;
         file.write_all(toml.as_bytes()).await?;
         Ok(())
@@ -167,7 +160,7 @@ impl Core {
 
     /// Loads the cache from the filesystem (TOML).
     async fn load_cache(&mut self) -> anyhow::Result<()> {
-        let mut file = self.fs.open_file(self.cache_path.clone()).await?;
+        let mut file = self.fs.read_file(self.cache_path.clone()).await?;
         let mut contents = String::new();
         use tokio::io::AsyncReadExt;
         file.read_to_string(&mut contents).await?;

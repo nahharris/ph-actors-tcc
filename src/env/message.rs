@@ -1,6 +1,4 @@
-use std::{env::VarError, ffi::OsString};
-
-use tokio::sync::oneshot;
+use std::ffi::OsString;
 
 use crate::{ArcOsStr, ArcStr};
 
@@ -11,21 +9,21 @@ use crate::{ArcOsStr, ArcStr};
 #[derive(Debug)]
 pub enum Message {
     /// Sets an environment variable to a specified value
-    SetEnv {
+    Set {
         /// The environment variable name
         key: ArcOsStr,
         /// The value to set
         value: OsString,
     },
-    /// Removes an environment variable
-    UnsetEnv {
+    /// Unsets an environment variable
+    Unset {
         /// The environment variable name to remove
         key: ArcOsStr,
     },
-    /// Retrieves the value of an environment variable
-    GetEnv {
+    /// Gets an environment variable
+    Get {
         /// Channel to send the result back to the caller
-        tx: oneshot::Sender<Result<ArcStr, VarError>>,
+        tx: tokio::sync::oneshot::Sender<Result<ArcStr, std::env::VarError>>,
         /// The environment variable name to retrieve
         key: ArcOsStr,
     },

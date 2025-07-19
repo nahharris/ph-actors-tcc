@@ -1,6 +1,5 @@
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::{ffi::OsStr, fmt::Display, ops::Deref, path::Path, sync::Arc};
-use tokio::{fs::File, sync::RwLock};
 
 /// Installs custom panic and error hooks that restore the terminal state before printing errors.
 ///

@@ -39,13 +39,12 @@ pub fn parse_available_lists_html(
             let time = parts
                 .next()
                 .ok_or_else(|| anyhow!("Missing time in mailing list entry: '{}'", line))?;
-            let datetime_str = format!("{} {}", date, time);
+            let datetime_str = format!("{date} {time}");
             let last_update = NaiveDateTime::parse_from_str(&datetime_str, "%Y-%m-%d %H:%M")
                 .map(|ndt| DateTime::<Utc>::from_naive_utc_and_offset(ndt, Utc))
                 .with_context(|| {
                     format!(
-                        "Failed to parse date/time '{}' in mailing list entry: '{}'",
-                        datetime_str, line
+                        "Failed to parse date/time '{datetime_str}' in mailing list entry: '{line}'"
                     )
                 })?;
 
@@ -93,7 +92,7 @@ pub fn parse_available_lists_html(
             .as_str();
         let idx = idx_str
             .parse::<usize>()
-            .with_context(|| format!("Failed to parse next page index: '{}'", idx_str))?;
+            .with_context(|| format!("Failed to parse next page index: '{idx_str}'"))?;
         next_page_index = Some(idx);
     }
 
@@ -110,7 +109,7 @@ pub fn parse_available_lists_html(
                 let next_str = next.as_str().replace("-", "");
                 let idx = next_str
                     .parse::<usize>()
-                    .with_context(|| format!("Failed to parse next page index: '{}'", next_str))?;
+                    .with_context(|| format!("Failed to parse next page index: '{next_str}'"))?;
                 next_page_index = Some(idx);
             }
         }
@@ -119,7 +118,7 @@ pub fn parse_available_lists_html(
             let total_str = total.as_str().replace(",", "");
             let total_val = total_str
                 .parse::<usize>()
-                .with_context(|| format!("Failed to parse total items: '{}'", total_str))?;
+                .with_context(|| format!("Failed to parse total items: '{total_str}'"))?;
             total_items = Some(total_val);
         }
     }

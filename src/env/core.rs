@@ -41,9 +41,9 @@ impl Core {
             while let Some(msg) = rx.recv().await {
                 use Message::*;
                 match msg {
-                    SetEnv { key, value } => self.set_env(key, value),
-                    UnsetEnv { key } => self.unset_env(key),
-                    GetEnv { tx, key } => self.get_env(tx, key),
+                    Set { key, value } => self.set_env(key, value),
+                    Unset { key } => self.unset_env(key),
+                    Get { tx, key } => self.get_env(tx, key),
                 }
             }
         });

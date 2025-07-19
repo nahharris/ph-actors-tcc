@@ -122,8 +122,8 @@ impl LoreApi {
             }
             LoreApi::Mock(responses) => {
                 let responses = responses.lock().await;
-                let key = format!("patch_feed_page_{}_{}", target_list, min_index);
-                let xml = responses.get(&key).map(ArcStr::clone).ok_or_else(|| {
+                let key = format!("patch_feed_page_{target_list}_{min_index}");
+                let xml = responses.get(&key).cloned().ok_or_else(|| {
                     anyhow::anyhow!("Patch feed page not found in mock responses: {}", key)
                 })?;
                 // Parse the XML string into LorePage<LorePatchMetadata>
@@ -162,8 +162,8 @@ impl LoreApi {
             }
             LoreApi::Mock(responses) => {
                 let responses = responses.lock().await;
-                let key = format!("available_lists_page_{}", min_index);
-                let html = responses.get(&key).map(ArcStr::clone).ok_or_else(|| {
+                let key = format!("available_lists_page_{min_index}");
+                let html = responses.get(&key).cloned().ok_or_else(|| {
                     anyhow::anyhow!("Available lists page not found in mock responses: {}", key)
                 })?;
                 let page: LorePage<LoreMailingList> =
@@ -205,7 +205,7 @@ impl LoreApi {
                 let mut all_lists = Vec::new();
                 let mut min_index = 0;
                 loop {
-                    let key = format!("available_lists_page_{}", min_index);
+                    let key = format!("available_lists_page_{min_index}");
                     if let Some(html) = responses.get(&key) {
                         let page: LorePage<LoreMailingList> =
                             crate::api::lore::parse::parse_available_lists_html(html, min_index)?
@@ -268,8 +268,8 @@ impl LoreApi {
             }
             LoreApi::Mock(responses) => {
                 let responses = responses.lock().await;
-                let key = format!("patch_html_{}_{}", target_list, message_id);
-                responses.get(&key).map(ArcStr::clone).ok_or_else(|| {
+                let key = format!("patch_html_{target_list}_{message_id}");
+                responses.get(&key).cloned().ok_or_else(|| {
                     anyhow::anyhow!("Patch HTML not found in mock responses: {}", key)
                 })
             }
@@ -315,8 +315,8 @@ impl LoreApi {
             }
             LoreApi::Mock(responses) => {
                 let responses = responses.lock().await;
-                let key = format!("raw_patch_{}_{}", target_list, message_id);
-                responses.get(&key).map(ArcStr::clone).ok_or_else(|| {
+                let key = format!("raw_patch_{target_list}_{message_id}");
+                responses.get(&key).cloned().ok_or_else(|| {
                     anyhow::anyhow!("Raw patch not found in mock responses: {}", key)
                 })
             }
@@ -362,8 +362,8 @@ impl LoreApi {
             }
             LoreApi::Mock(responses) => {
                 let responses = responses.lock().await;
-                let key = format!("patch_metadata_{}_{}", target_list, message_id);
-                responses.get(&key).map(ArcStr::clone).ok_or_else(|| {
+                let key = format!("patch_metadata_{target_list}_{message_id}");
+                responses.get(&key).cloned().ok_or_else(|| {
                     anyhow::anyhow!("Patch metadata not found in mock responses: {}", key)
                 })
             }

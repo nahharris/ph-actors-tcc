@@ -24,7 +24,9 @@ impl Core {
             while let Some(msg) = rx.recv().await {
                 use Message::*;
                 match msg {
-                    OpenFile { tx, path } => Self::open_file(tx, path).await,
+                    ReadFile { tx, path } => Self::read_file(tx, path).await,
+                    WriteFile { tx, path } => Self::write_file(tx, path).await,
+                    AppendFile { tx, path } => Self::append_file(tx, path).await,
                     RemoveFile { tx, path } => Self::remove_file(tx, path).await,
                     ReadDir { tx, path } => Self::read_dir(tx, path).await,
                     MkDir { tx, path } => Self::mkdir(tx, path).await,
@@ -35,14 +37,38 @@ impl Core {
         (super::Fs::Actual(tx), handle)
     }
 
-    /// Opens a file (always opens a new handle).
-    async fn open_file(
+    /// Opens a file for reading only (does not create if it doesn't exist).
+    async fn read_file(
+        tx: tokio::sync::oneshot::Sender<Result<tokio::fs::File, tokio::io::Error>>,
+        path: ArcPath,
+    ) {
+        let res = OpenOptions::new().read(true).open(&path).await;
+        let _ = tx.send(res);
+    }
+
+    /// Opens a file for writing (truncates content, creates if needed).
+    async fn write_file(
         tx: tokio::sync::oneshot::Sender<Result<tokio::fs::File, tokio::io::Error>>,
         path: ArcPath,
     ) {
         let res = OpenOptions::new()
             .write(true)
             .create(true)
+            .truncate(true)
+            .open(&path)
+            .await;
+        let _ = tx.send(res);
+    }
+
+    /// Opens a file for appending (creates if needed).
+    async fn append_file(
+        tx: tokio::sync::oneshot::Sender<Result<tokio::fs::File, tokio::io::Error>>,
+        path: ArcPath,
+    ) {
+        let res = OpenOptions::new()
+            .write(true)
+            .create(true)
+            .append(true)
             .open(&path)
             .await;
         let _ = tx.send(res);
