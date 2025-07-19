@@ -1,8 +1,8 @@
 use ph::{
     api::LoreApi,
     app::{
+        cache::{mailing_list::MailingListCache, patch_meta::PatchMetaCache},
         config::{Config, PathOpt},
-        state::{mailing_list::MailingListState, patch_meta::PatchMetaState},
     },
     fs::Fs,
     log::Log,
@@ -18,8 +18,8 @@ async fn main() -> anyhow::Result<()> {
     let fs = Fs::spawn();
     let net = Net::spawn(config.clone(), log.clone()).await;
     let lore = LoreApi::spawn(net);
-    let ml = MailingListState::spawn(lore.clone(), fs.clone(), config.clone());
-    let pm = PatchMetaState::spawn(lore, fs.clone(), config.clone());
+    let ml = MailingListCache::spawn(lore.clone(), fs.clone(), config.clone());
+    let pm = PatchMetaCache::spawn(lore, fs.clone(), config.clone());
 
     let cache_path = config.path(PathOpt::CachePath).await;
     if !cache_path.exists() {

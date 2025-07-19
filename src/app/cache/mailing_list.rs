@@ -10,11 +10,11 @@ use crate::app::config::Config;
 use crate::fs::Fs;
 use message::Message;
 
-/// The MailingListState actor provides a demand-driven, cached list of mailing lists.
+/// The MailingListCache actor provides a demand-driven, cached list of mailing lists.
 ///
 /// Clients can fetch a single item by index or a slice of consecutive items. If an item is not cached, the actor fetches the next page from the API.
 #[derive(Debug, Clone)]
-pub enum MailingListState {
+pub enum MailingListCache {
     Actual(tokio::sync::mpsc::Sender<Message>),
     Mock(Arc<Mutex<MockData>>),
 }
@@ -24,15 +24,15 @@ pub struct MockData {
     pub mailing_lists: Vec<LoreMailingList>,
 }
 
-impl MailingListState {
-    /// Spawns a new MailingListState actor.
+impl MailingListCache {
+    /// Spawns a new MailingListCache actor.
     pub fn spawn(lore: LoreApi, fs: Fs, config: Config) -> Self {
         let core = core::Core::new(lore, fs, config);
         let (state, _handle) = core.spawn();
         state
     }
 
-    /// Creates a new mock MailingListState actor for testing.
+    /// Creates a new mock MailingListCache actor for testing.
     pub fn mock(data: MockData) -> Self {
         Self::Mock(Arc::new(Mutex::new(data)))
     }
@@ -45,11 +45,11 @@ impl MailingListState {
                 sender
                     .send(Message::Get { index, tx })
                     .await
-                    .context("Sending message to MailingListState actor")
-                    .expect("MailingListState actor died");
+                    .context("Sending message to MailingListCache actor")
+                    .expect("MailingListCache actor died");
                 rx.await
-                    .context("Awaiting response from MailingListState actor")
-                    .expect("MailingListState actor died")
+                    .context("Awaiting response from MailingListCache actor")
+                    .expect("MailingListCache actor died")
             }
             Self::Mock(data) => {
                 let data = data.lock().await;
@@ -69,11 +69,11 @@ impl MailingListState {
                 sender
                     .send(Message::GetSlice { range, tx })
                     .await
-                    .context("Sending message to MailingListState actor")
-                    .expect("MailingListState actor died");
+                    .context("Sending message to MailingListCache actor")
+                    .expect("MailingListCache actor died");
                 rx.await
-                    .context("Awaiting response from MailingListState actor")
-                    .expect("MailingListState actor died")
+                    .context("Awaiting response from MailingListCache actor")
+                    .expect("MailingListCache actor died")
             }
             Self::Mock(data) => {
                 let data = data.lock().await;
@@ -89,8 +89,8 @@ impl MailingListState {
                 sender
                     .send(Message::InvalidateCache)
                     .await
-                    .context("Sending message to MailingListState actor")
-                    .expect("MailingListState actor died");
+                    .context("Sending message to MailingListCache actor")
+                    .expect("MailingListCache actor died");
             }
             Self::Mock(data) => {
                 let mut data = data.lock().await;
@@ -107,11 +107,11 @@ impl MailingListState {
                 sender
                     .send(Message::PersistCache { tx })
                     .await
-                    .context("Sending message to MailingListState actor")
-                    .expect("MailingListState actor died");
+                    .context("Sending message to MailingListCache actor")
+                    .expect("MailingListCache actor died");
                 rx.await
-                    .context("Awaiting response from MailingListState actor")
-                    .expect("MailingListState actor died")
+                    .context("Awaiting response from MailingListCache actor")
+                    .expect("MailingListCache actor died")
             }
             Self::Mock(_) => Ok(()),
         }
@@ -125,11 +125,11 @@ impl MailingListState {
                 sender
                     .send(Message::LoadCache { tx })
                     .await
-                    .context("Sending message to MailingListState actor")
-                    .expect("MailingListState actor died");
+                    .context("Sending message to MailingListCache actor")
+                    .expect("MailingListCache actor died");
                 rx.await
-                    .context("Awaiting response from MailingListState actor")
-                    .expect("MailingListState actor died")
+                    .context("Awaiting response from MailingListCache actor")
+                    .expect("MailingListCache actor died")
             }
             Self::Mock(_) => Ok(()),
         }
@@ -143,8 +143,8 @@ impl MailingListState {
                 sender
                     .send(message::Message::Len { tx })
                     .await
-                    .context("Sending message to MailingListState actor")
-                    .expect("MailingListState actor died");
+                    .context("Sending message to MailingListCache actor")
+                    .expect("MailingListCache actor died");
                 (rx.await).unwrap_or_default()
             }
             Self::Mock(data) => {
@@ -167,11 +167,11 @@ impl MailingListState {
                 sender
                     .send(message::Message::IsCacheValid { tx })
                     .await
-                    .context("Sending message to MailingListState actor")
-                    .expect("MailingListState actor died");
+                    .context("Sending message to MailingListCache actor")
+                    .expect("MailingListCache actor died");
                 rx.await
-                    .context("Awaiting response from MailingListState actor")
-                    .expect("MailingListState actor died")
+                    .context("Awaiting response from MailingListCache actor")
+                    .expect("MailingListCache actor died")
             }
             Self::Mock(_) => {
                 // Always true for mock

@@ -182,7 +182,8 @@ impl Core {
 
         let response = self.net.get(ArcStr::from(&url), Some(headers)).await?;
         // Check for end of feed indicator
-        if <ArcStr as AsRef<str>>::as_ref(&response) == "</feed>" || response.contains("[No results found]")
+        if <ArcStr as AsRef<str>>::as_ref(&response) == "</feed>"
+            || response.contains("[No results found]")
         {
             return Ok(None);
         }

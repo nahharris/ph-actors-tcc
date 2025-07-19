@@ -11,36 +11,36 @@ use crate::fs::Fs;
 use anyhow::Context;
 use message::Message;
 
-/// The PatchMetaState actor provides a demand-driven, cached map of patch metadata per mailing list.
+/// The PatchMetaCache actor provides a demand-driven, cached map of patch metadata per mailing list.
 ///
 /// Clients can fetch a single item by index or a slice of consecutive items for a given list. If an item is not cached, the actor fetches the next page from the API.
 #[derive(Debug, Clone)]
-pub enum PatchMetaState {
+pub enum PatchMetaCache {
     Actual(tokio::sync::mpsc::Sender<Message>),
     Mock(Arc<Mutex<MockData>>),
 }
 
-/// Mock data for PatchMetaState, used for testing.
+/// Mock data for PatchMetaCache, used for testing.
 #[derive(Debug, Default)]
 pub struct MockData {
     pub patch_cache: std::collections::HashMap<ArcStr, Vec<LorePatchMetadata>>,
 }
 
-impl PatchMetaState {
-    /// Spawns a new PatchMetaState actor.
+impl PatchMetaCache {
+    /// Spawns a new PatchMetaCache actor.
     pub fn spawn(lore: LoreApi, fs: Fs, config: Config) -> Self {
         let core = core::Core::new(lore, fs, config);
         let (state, _handle) = core.spawn();
         state
     }
 
-    /// Creates a new mock PatchMetaState actor for testing.
+    /// Creates a new mock PatchMetaCache actor for testing.
     ///
     /// # Arguments
     /// * `data` - The mock data to use for the actor.
     ///
     /// # Returns
-    /// A new PatchMetaState actor using the provided mock data.
+    /// A new PatchMetaCache actor using the provided mock data.
     pub fn mock(data: MockData) -> Self {
         Self::Mock(Arc::new(Mutex::new(data)))
     }
@@ -57,11 +57,11 @@ impl PatchMetaState {
                 sender
                     .send(Message::Get { list, index, tx })
                     .await
-                    .context("Sending message to PatchMetaState actor")
-                    .expect("PatchMetaState actor died");
+                    .context("Sending message to PatchMetaCache actor")
+                    .expect("PatchMetaCache actor died");
                 rx.await
-                    .context("Awaiting response from PatchMetaState actor")
-                    .expect("PatchMetaState actor died")
+                    .context("Awaiting response from PatchMetaCache actor")
+                    .expect("PatchMetaCache actor died")
             }
             Self::Mock(data) => {
                 let data = data.lock().await;
@@ -86,11 +86,11 @@ impl PatchMetaState {
                 sender
                     .send(Message::GetSlice { list, range, tx })
                     .await
-                    .context("Sending message to PatchMetaState actor")
-                    .expect("PatchMetaState actor died");
+                    .context("Sending message to PatchMetaCache actor")
+                    .expect("PatchMetaCache actor died");
                 rx.await
-                    .context("Awaiting response from PatchMetaState actor")
-                    .expect("PatchMetaState actor died")
+                    .context("Awaiting response from PatchMetaCache actor")
+                    .expect("PatchMetaCache actor died")
             }
             Self::Mock(data) => {
                 let data = data.lock().await;
@@ -124,11 +124,11 @@ impl PatchMetaState {
                 sender
                     .send(Message::PersistCache { tx })
                     .await
-                    .context("Sending message to PatchMetaState actor")
-                    .expect("PatchMetaState actor died");
+                    .context("Sending message to PatchMetaCache actor")
+                    .expect("PatchMetaCache actor died");
                 rx.await
-                    .context("Awaiting response from PatchMetaState actor")
-                    .expect("PatchMetaState actor died")
+                    .context("Awaiting response from PatchMetaCache actor")
+                    .expect("PatchMetaCache actor died")
             }
             Self::Mock(_) => Ok(()),
         }
@@ -142,11 +142,11 @@ impl PatchMetaState {
                 sender
                     .send(Message::LoadCache { tx })
                     .await
-                    .context("Sending message to PatchMetaState actor")
-                    .expect("PatchMetaState actor died");
+                    .context("Sending message to PatchMetaCache actor")
+                    .expect("PatchMetaCache actor died");
                 rx.await
-                    .context("Awaiting response from PatchMetaState actor")
-                    .expect("PatchMetaState actor died")
+                    .context("Awaiting response from PatchMetaCache actor")
+                    .expect("PatchMetaCache actor died")
             }
             Self::Mock(_) => Ok(()),
         }
@@ -175,11 +175,11 @@ impl PatchMetaState {
                 sender
                     .send(message::Message::IsCacheValid { list, tx })
                     .await
-                    .context("Sending message to PatchMetaState actor")
-                    .expect("PatchMetaState actor died");
+                    .context("Sending message to PatchMetaCache actor")
+                    .expect("PatchMetaCache actor died");
                 rx.await
-                    .context("Awaiting response from PatchMetaState actor")
-                    .expect("PatchMetaState actor died")
+                    .context("Awaiting response from PatchMetaCache actor")
+                    .expect("PatchMetaCache actor died")
             }
             Self::Mock(_) => {
                 // Always true for mock

@@ -15,7 +15,7 @@ pub struct CacheData {
     pub mailing_lists: Vec<LoreMailingList>,
 }
 
-/// Core implementation for the MailingListState actor.
+/// Core implementation for the MailingListCache actor.
 pub struct Core {
     /// Lore API actor for fetching mailing lists
     pub lore: LoreApi,
@@ -28,7 +28,7 @@ pub struct Core {
 }
 
 impl Core {
-    /// Creates a new core instance for MailingListState.
+    /// Creates a new core instance for MailingListCache.
     pub fn new(lore: LoreApi, fs: Fs, config: Config) -> Self {
         Self {
             lore,
@@ -39,7 +39,7 @@ impl Core {
     }
 
     /// Spawns the actor and returns the interface and task handle.
-    pub fn spawn(mut self) -> (super::MailingListState, tokio::task::JoinHandle<()>) {
+    pub fn spawn(mut self) -> (super::MailingListCache, tokio::task::JoinHandle<()>) {
         let (tx, mut rx) = tokio::sync::mpsc::channel(32);
         let handle = tokio::spawn(async move {
             while let Some(msg) = rx.recv().await {
@@ -73,7 +73,7 @@ impl Core {
                 }
             }
         });
-        (super::MailingListState::Actual(tx), handle)
+        (super::MailingListCache::Actual(tx), handle)
     }
 
     /// Returns the number of cached mailing lists.

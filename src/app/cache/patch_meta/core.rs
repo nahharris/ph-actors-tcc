@@ -15,7 +15,7 @@ pub struct CacheData {
     pub patch_cache: HashMap<ArcStr, Vec<LorePatchMetadata>>,
 }
 
-/// Core implementation for the PatchMetaState actor.
+/// Core implementation for the PatchMetaCache actor.
 pub struct Core {
     /// Lore API actor for fetching patch metadata
     pub lore: LoreApi,
@@ -28,7 +28,7 @@ pub struct Core {
 }
 
 impl Core {
-    /// Creates a new core instance for PatchMetaState.
+    /// Creates a new core instance for PatchMetaCache.
     pub fn new(lore: LoreApi, fs: Fs, config: Config) -> Self {
         Self {
             lore,
@@ -39,7 +39,7 @@ impl Core {
     }
 
     /// Spawns the actor and returns the interface and task handle.
-    pub fn spawn(mut self) -> (super::PatchMetaState, tokio::task::JoinHandle<()>) {
+    pub fn spawn(mut self) -> (super::PatchMetaCache, tokio::task::JoinHandle<()>) {
         let (tx, mut rx) = tokio::sync::mpsc::channel(32);
         let handle = tokio::spawn(async move {
             while let Some(msg) = rx.recv().await {
@@ -73,7 +73,7 @@ impl Core {
                 }
             }
         });
-        (super::PatchMetaState::Actual(tx), handle)
+        (super::PatchMetaCache::Actual(tx), handle)
     }
 
     /// Returns the number of cached patch metadata items for a given mailing list.

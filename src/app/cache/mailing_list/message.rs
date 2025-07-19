@@ -1,7 +1,7 @@
 use crate::api::lore::LoreMailingList;
 use tokio::sync::oneshot;
 
-/// Messages for the MailingListState actor.
+/// Messages for the MailingListCache actor.
 #[derive(Debug)]
 pub enum Message {
     /// Get a single mailing list by index (demand-driven)

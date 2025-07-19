@@ -2,7 +2,7 @@ use crate::ArcStr;
 use crate::api::lore::LorePatchMetadata;
 use tokio::sync::oneshot;
 
-/// Messages for the PatchMetaState actor.
+/// Messages for the PatchMetaCache actor.
 #[derive(Debug)]
 pub enum Message {
     /// Get a single patch metadata item by index for a given mailing list (demand-driven)
@@ -18,9 +18,7 @@ pub enum Message {
         tx: oneshot::Sender<anyhow::Result<Vec<LorePatchMetadata>>>,
     },
     /// Invalidate the current cache
-    InvalidateCache {
-        list: ArcStr,
-    },
+    InvalidateCache { list: ArcStr },
     /// Persist the cache to the filesystem
     PersistCache {
         tx: oneshot::Sender<anyhow::Result<()>>,
