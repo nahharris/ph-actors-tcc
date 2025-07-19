@@ -18,7 +18,9 @@ pub enum Message {
         tx: oneshot::Sender<anyhow::Result<Vec<LorePatchMetadata>>>,
     },
     /// Invalidate the current cache
-    InvalidateCache,
+    InvalidateCache {
+        list: ArcStr,
+    },
     /// Persist the cache to the filesystem
     PersistCache {
         tx: oneshot::Sender<anyhow::Result<()>>,

@@ -28,8 +28,8 @@ pub struct MockData {
 
 impl PatchMetaState {
     /// Spawns a new PatchMetaState actor.
-    pub async fn spawn(lore: LoreApi, fs: Fs, config: Config, cache_path: crate::ArcPath) -> Self {
-        let core = core::Core::new(lore, fs, config, cache_path);
+    pub fn spawn(lore: LoreApi, fs: Fs, config: Config) -> Self {
+        let core = core::Core::new(lore, fs, config);
         let (state, _handle) = core.spawn();
         state
     }
@@ -104,14 +104,14 @@ impl PatchMetaState {
     }
 
     /// Invalidates the current cache.
-    pub async fn invalidate_cache(&self) {
+    pub async fn invalidate_cache(&self, list: ArcStr) {
         match self {
             Self::Actual(sender) => {
-                let _ = sender.send(Message::InvalidateCache).await;
+                let _ = sender.send(Message::InvalidateCache { list }).await;
             }
             Self::Mock(data) => {
                 let mut data = data.lock().await;
-                data.patch_cache.clear();
+                data.patch_cache.remove(&list);
             }
         }
     }

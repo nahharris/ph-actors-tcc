@@ -1,6 +1,10 @@
 use super::message::Message;
 use crate::api::lore::{LoreApi, LorePatchMetadata};
-use crate::{ArcPath, ArcStr, app::config::Config, fs::Fs};
+use crate::{
+    ArcPath, ArcStr,
+    app::config::{Config, PathOpt},
+    fs::Fs,
+};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
@@ -19,21 +23,18 @@ pub struct Core {
     pub fs: Fs,
     /// Config actor for config path
     pub config: Config,
-    /// Path to the cache file (from config)
-    pub cache_path: ArcPath,
     /// Cached patch metadata per mailing list
     pub patch_cache: HashMap<ArcStr, Vec<LorePatchMetadata>>,
 }
 
 impl Core {
     /// Creates a new core instance for PatchMetaState.
-    pub fn new(lore: LoreApi, fs: Fs, config: Config, cache_path: ArcPath) -> Self {
+    pub fn new(lore: LoreApi, fs: Fs, config: Config) -> Self {
         Self {
             lore,
             fs,
             config,
-            cache_path,
-            patch_cache: HashMap::new(),
+            patch_cache: Default::default(),
         }
     }
 
@@ -51,8 +52,8 @@ impl Core {
                         let res = self.get_slice(list, range).await;
                         let _ = tx.send(res);
                     }
-                    Message::InvalidateCache => {
-                        self.patch_cache.clear();
+                    Message::InvalidateCache { list } => {
+                        self.patch_cache.remove(&list);
                     }
                     Message::PersistCache { tx } => {
                         let res = self.persist_cache().await;
@@ -152,7 +153,8 @@ impl Core {
             patch_cache: self.patch_cache.clone(),
         };
         let toml = toml::to_string(&cache)?;
-        let mut file = self.fs.write_file(self.cache_path.clone()).await?;
+
+        let mut file = self.fs.write_file(self.cache_path().await).await?;
         use tokio::io::AsyncWriteExt;
         file.write_all(toml.as_bytes()).await?;
         Ok(())
@@ -160,12 +162,25 @@ impl Core {
 
     /// Loads the cache from the filesystem (TOML).
     async fn load_cache(&mut self) -> anyhow::Result<()> {
-        let mut file = self.fs.read_file(self.cache_path.clone()).await?;
+        let cache_path = self.cache_path().await;
+        if !cache_path.exists() {
+            return Ok(());
+        }
+        let mut file = self.fs.read_file(cache_path).await?;
         let mut contents = String::new();
         use tokio::io::AsyncReadExt;
         file.read_to_string(&mut contents).await?;
         let cache: CacheData = toml::from_str(&contents)?;
         self.patch_cache = cache.patch_cache;
         Ok(())
+    }
+
+    async fn cache_path(&self) -> ArcPath {
+        self.config
+            .path(PathOpt::CachePath)
+            .await
+            .join("patch_meta.toml")
+            .as_path()
+            .into()
     }
 }
