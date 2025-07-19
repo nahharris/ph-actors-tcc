@@ -1,4 +1,5 @@
 use super::message::Message;
+use crate::ArcPath;
 use crate::api::lore::{LoreApi, LoreMailingList};
 use crate::{
     app::config::{Config, PathOpt},
@@ -141,19 +142,11 @@ impl Core {
             mailing_lists: self.mailing_lists.clone(),
         };
         let toml = toml::to_string(&cache)?;
-        // Ensure the parent directory exists before opening the file
-        let cache_path = self.config.path(PathOpt::CachePath).await;
-        if let Some(parent) = cache_path.parent()
-            && !parent.exists()
-        {
-            self.fs
-                .mkdir(parent.into())
-                .await
-                .context("Creating cache directory")?;
-        }
+        let cache_path = self.cache_path().await;
+
         let mut file = self
             .fs
-            .write_file(self.config.path(PathOpt::CachePath).await)
+            .write_file(cache_path)
             .await
             .context("Opening cache file for writing")?;
         use tokio::io::AsyncWriteExt;
@@ -166,13 +159,13 @@ impl Core {
     /// Loads the cache from the filesystem (TOML).
     async fn load_cache(&mut self) -> anyhow::Result<()> {
         // Ensure the cache file exists before opening it
-        let cache_path = self.config.path(PathOpt::CachePath).await;
+        let cache_path = self.cache_path().await;
         if !cache_path.exists() {
             return Ok(());
         }
         let mut file = self
             .fs
-            .read_file(self.config.path(PathOpt::CachePath).await)
+            .read_file(cache_path)
             .await
             .context("Opening cache file for reading")?;
         let mut contents = String::new();
@@ -183,5 +176,14 @@ impl Core {
         let cache: CacheData = toml::from_str(&contents).context("Deserializing cache file")?;
         self.mailing_lists = cache.mailing_lists;
         Ok(())
+    }
+
+    async fn cache_path(&self) -> ArcPath {
+        self.config
+            .path(PathOpt::CachePath)
+            .await
+            .join("mailing_lists.toml")
+            .as_path()
+            .into()
     }
 }
