@@ -38,4 +38,8 @@ pub struct LorePatchMetadata {
     pub title: ArcStr,
     /// The link to the patch
     pub link: ArcStr,
+    /// The mailing list which the patch belongs to
+    pub list: ArcStr,
+    /// The message ID of the patch
+    pub message_id: ArcStr,
 }

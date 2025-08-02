@@ -28,14 +28,15 @@ async fn main() -> anyhow::Result<()> {
 
     println!("Cache path: {}", cache_path.to_str().unwrap());
 
-    ml.load_cache()
-        .await
-        .context("Loading mailing list cache")?;
-    pm.load_cache().await.context("Loading patch meta cache")?;
+    let load_ml_cache = ml.load_cache().await.context("Loading mailing list cache");
+    let load_pm_cache = pm.load_cache().await.context("Loading patch meta cache");
 
-    let valid = ml.is_cache_valid().await?;
+    let valid = load_ml_cache.is_ok() && ml.is_cache_valid().await.is_ok();
     println!("Mailing lists cache valid: {}", valid);
     if !valid {
+        if let Err(e) = load_ml_cache {
+            println!("Error loading mailing list cache: {e}");
+        }
         ml.invalidate_cache().await;
     }
 
@@ -43,9 +44,12 @@ async fn main() -> anyhow::Result<()> {
     println!("Mailing list 0: {list:#?}");
     ml.persist_cache().await?;
 
-    let valid = pm.is_cache_valid(list.name.clone()).await?;
+    let valid = load_pm_cache.is_ok() && pm.is_cache_valid(list.name.clone()).await.is_ok();
     println!("Patch meta cache valid: {}", valid);
     if !valid {
+        if let Err(e) = load_pm_cache {
+            println!("Error loading patch meta cache: {e}");
+        }
         pm.invalidate_cache(list.name.clone()).await;
     }
 

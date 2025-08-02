@@ -35,6 +35,20 @@ async fn main() -> anyhow::Result<()> {
         }
     };
 
-    println!("First patch from feed {}: {:#?}", name, patch_feed.items[0]);
+    let meta = &patch_feed.items[0];
+    println!("First patch from feed {}: {:#?}", name, meta);
+
+    let raw_patch = match lore
+        .get_patch_metadata(meta.list.clone(), meta.message_id.clone())
+        .await
+    {
+        Ok(raw_patch) => raw_patch,
+        Err(e) => {
+            println!("Error getting raw patch: {e}");
+            return Err(e);
+        }
+    };
+    println!("Raw patch: {raw_patch}");
+
     Ok(())
 }

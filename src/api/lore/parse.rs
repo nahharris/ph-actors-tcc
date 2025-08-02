@@ -186,6 +186,8 @@ pub fn parse_patch_feed_xml(
     use anyhow::Context;
     use chrono::{DateTime, Utc};
     let feed: Feed = from_str(xml).context("Failed to parse patch feed XML")?;
+    let list_message_id_regex = Regex::new(r"https://lore.kernel.org/([^/]+)/([^/]+)/")
+        .context("Failed to compile list message ID regex")?;
 
     let items = feed
         .entries
@@ -194,12 +196,23 @@ pub fn parse_patch_feed_xml(
             let datetime = DateTime::parse_from_rfc3339(&entry.updated)
                 .map(|dt| dt.with_timezone(&Utc))
                 .context("Failed to parse patch datetime")?;
+            let link = entry.link.href.unwrap_or_default();
+            let captures = list_message_id_regex
+                .captures(&link)
+                .context("Failed to capture list message ID")?;
+            let list = captures.get(1).context("Failed to capture list")?.as_str();
+            let message_id = captures
+                .get(2)
+                .context("Failed to capture message ID")?
+                .as_str();
             Ok(LorePatchMetadata {
                 author: ArcStr::from(&entry.author.name),
                 email: ArcStr::from(&entry.author.email),
                 last_update: datetime,
                 title: ArcStr::from(&entry.title),
-                link: ArcStr::from(&entry.link.href.unwrap_or_default()),
+                link: ArcStr::from(&link),
+                list: ArcStr::from(list),
+                message_id: ArcStr::from(message_id),
             })
         })
         .collect::<Result<Vec<_>, anyhow::Error>>()?;
