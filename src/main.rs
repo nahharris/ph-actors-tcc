@@ -2,6 +2,7 @@ use std::path::Path;
 
 use clap::{Parser, Subcommand};
 use ph::api::lore::LoreApi;
+use ph::app::cache::{mailing_list::MailingListCache, patch_meta::PatchMetaCache};
 use ph::app::config::{Config, PathOpt, USizeOpt};
 use ph::env::Env;
 use ph::fs::Fs;
@@ -88,17 +89,29 @@ async fn main() -> anyhow::Result<()> {
     )
     .await?;
 
-    let net = Net::spawn(config, log.clone()).await;
+    let net = Net::spawn(config.clone(), log.clone()).await;
     let lore = LoreApi::spawn(net);
+
+    // Initialize cache actors
+    let mailing_list_cache = MailingListCache::spawn(lore.clone(), fs.clone(), config.clone());
+    let patch_meta_cache = PatchMetaCache::spawn(lore.clone(), fs.clone(), config.clone());
+
+    // Load existing cache data
+    if let Err(e) = mailing_list_cache.load_cache().await {
+        log.warn(&format!("Failed to load mailing list cache: {}", e));
+    }
+    if let Err(e) = patch_meta_cache.load_cache().await {
+        log.warn(&format!("Failed to load patch metadata cache: {}", e));
+    }
 
     log.info("Starting patch-hub CLI");
 
     match cli.command {
         Commands::Lists { page, count } => {
-            handle_lists_command(&lore, page, count).await?;
+            handle_lists_command(&mailing_list_cache, page, count).await?;
         }
         Commands::Feed { list, page, count } => {
-            handle_feed_command(&lore, list, page, count).await?;
+            handle_feed_command(&patch_meta_cache, list, page, count).await?;
         }
         Commands::Patch {
             list,
@@ -109,53 +122,60 @@ async fn main() -> anyhow::Result<()> {
         }
     }
 
-    Ok(())
-}
-
-/// Handle the lists command to display available mailing lists
-async fn handle_lists_command(lore: &LoreApi, page: usize, count: usize) -> anyhow::Result<()> {
-    println!("Fetching mailing lists (page {}, count {})...", page, count);
-
-    let lists_page = lore.get_available_lists_page(page).await?;
-
-    match lists_page {
-        Some(page_data) => {
-            let start_index = page * count;
-            let end_index = (page * count + count).min(page_data.items.len());
-            let items_to_show = &page_data.items[start_index..end_index];
-
-            println!(
-                "Mailing Lists (Page {}, showing items {} to {} of {}):",
-                page,
-                start_index + 1,
-                end_index,
-                page_data.items.len()
-            );
-            println!("Total items: {:?}", page_data.total_items);
-            println!("Next page: {:?}", page_data.next_page_index);
-            println!();
-
-            for (i, list) in items_to_show.iter().enumerate() {
-                let global_index = start_index + i + 1;
-                println!("{}. {} - {}", global_index, list.name, list.description);
-                println!(
-                    "   Last update: {}",
-                    list.last_update.format("%Y-%m-%d %H:%M:%S UTC")
-                );
-                println!();
-            }
-        }
-        None => {
-            println!("No mailing lists found for page {}", page);
-        }
+    // Persist cache data before exiting
+    if let Err(e) = mailing_list_cache.persist_cache().await {
+        log.warn(&format!("Failed to persist mailing list cache: {}", e));
+    }
+    if let Err(e) = patch_meta_cache.persist_cache().await {
+        log.warn(&format!("Failed to persist patch metadata cache: {}", e));
     }
 
     Ok(())
 }
 
-/// Handle the feed command to display patch feed for a mailing list
+/// Handle the lists command to display available mailing lists using cache
+async fn handle_lists_command(
+    cache: &MailingListCache,
+    page: usize,
+    count: usize,
+) -> anyhow::Result<()> {
+    println!("Fetching mailing lists (page {}, count {})...", page, count);
+
+    let start_index = page * count;
+    let end_index = start_index + count;
+    let range = start_index..end_index;
+
+    let lists = cache.get_slice(range).await?;
+
+    if lists.is_empty() {
+        println!("No mailing lists found for page {}", page);
+        return Ok(());
+    }
+
+    println!(
+        "Mailing Lists (Page {}, showing items {} to {}):",
+        page,
+        start_index + 1,
+        start_index + lists.len()
+    );
+    println!();
+
+    for (i, list) in lists.iter().enumerate() {
+        let global_index = start_index + i + 1;
+        println!("{}. {} - {}", global_index, list.name, list.description);
+        println!(
+            "   Last update: {}",
+            list.last_update.format("%Y-%m-%d %H:%M:%S UTC")
+        );
+        println!();
+    }
+
+    Ok(())
+}
+
+/// Handle the feed command to display patch feed for a mailing list using cache
 async fn handle_feed_command(
-    lore: &LoreApi,
+    cache: &PatchMetaCache,
     list: String,
     page: usize,
     count: usize,
@@ -166,42 +186,37 @@ async fn handle_feed_command(
     );
 
     let list_name = ArcStr::from(list.clone());
-    let patch_feed = lore.get_patch_feed_page(list_name.clone(), page).await?;
+    let start_index = page * count;
+    let end_index = start_index + count;
+    let range = start_index..end_index;
 
-    match patch_feed {
-        Some(feed) => {
-            let start_index = page * count;
-            let end_index = (page * count + count).min(feed.items.len());
-            let items_to_show = &feed.items[start_index..end_index];
+    let patches = cache.get_slice(list_name.clone(), range).await?;
 
-            println!(
-                "Patch Feed for '{}' (Page {}, showing items {} to {} of {}):",
-                list,
-                page,
-                start_index + 1,
-                end_index,
-                feed.items.len()
-            );
-            println!("Total items: {:?}", feed.total_items);
-            println!("Next page: {:?}", feed.next_page_index);
-            println!();
+    if patches.is_empty() {
+        println!("No patch feed found for '{}' on page {}", list, page);
+        return Ok(());
+    }
 
-            for (i, patch) in items_to_show.iter().enumerate() {
-                let global_index = start_index + i + 1;
-                println!("{}. {}", global_index, patch.title);
-                println!("   Author: {} <{}>", patch.author, patch.email);
-                println!(
-                    "   Date: {}",
-                    patch.last_update.format("%Y-%m-%d %H:%M:%S UTC")
-                );
-                println!("   Message ID: {}", patch.message_id);
-                println!("   Link: {}", patch.link);
-                println!();
-            }
-        }
-        None => {
-            println!("No patch feed found for '{}' on page {}", list, page);
-        }
+    println!(
+        "Patch Feed for '{}' (Page {}, showing items {} to {}):",
+        list,
+        page,
+        start_index + 1,
+        start_index + patches.len()
+    );
+    println!();
+
+    for (i, patch) in patches.iter().enumerate() {
+        let global_index = start_index + i + 1;
+        println!("{}. {}", global_index, patch.title);
+        println!("   Author: {} <{}>", patch.author, patch.email);
+        println!(
+            "   Date: {}",
+            patch.last_update.format("%Y-%m-%d %H:%M:%S UTC")
+        );
+        println!("   Message ID: {}", patch.message_id);
+        println!("   Link: {}", patch.link);
+        println!();
     }
 
     Ok(())

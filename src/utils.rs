@@ -1,5 +1,5 @@
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
-use std::{ffi::OsStr, fmt::Display, ops::Deref, path::Path, sync::Arc};
+use std::{ffi::OsStr, fmt::Display, ops::Deref, path::Path, str::FromStr, sync::Arc};
 
 /// Installs custom panic and error hooks that restore the terminal state before printing errors.
 ///
@@ -399,5 +399,73 @@ where
     {
         let v = Vec::<T>::deserialize(deserializer)?;
         Ok(Self(Arc::new(v)))
+    }
+}
+
+/// A sequence number in a series of patches.
+///
+/// This is used to represent the current sequence number and total number of patches in a series.
+///
+/// # Examples
+/// ```ignore
+/// let sequence = SequenceNumber { current: 1, total: 10 };
+/// assert_eq!(sequence.current, 1);
+/// assert_eq!(sequence.total, 10);
+/// ```
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+pub struct SequenceNumber {
+    /// The current sequence number
+    pub current: usize,
+    /// The total number of patches in the series
+    pub total: usize,
+}
+
+impl SequenceNumber {
+    /// Creates a new sequence number.
+    pub fn new(current: usize, total: usize) -> Self {
+        Self { current, total }
+    }
+}
+
+impl Display for SequenceNumber {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}/{}", self.current, self.total)
+    }
+}
+
+impl<T, U> From<(T, U)> for SequenceNumber
+where
+    T: Into<usize>,
+    U: Into<usize>,
+{
+    fn from((current, total): (T, U)) -> Self {
+        Self {
+            current: current.into(),
+            total: total.into(),
+        }
+    }
+}
+
+impl<T, U> Into<(T, U)> for SequenceNumber
+where
+    T: From<usize>,
+    U: From<usize>,
+{
+    fn into(self) -> (T, U) {
+        (self.current.into(), self.total.into())
+    }
+}
+
+impl FromStr for SequenceNumber {
+    type Err = anyhow::Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let parts: Vec<&str> = s.split('/').collect();
+        if parts.len() != 2 {
+            return Err(anyhow::anyhow!("Invalid sequence number format"));
+        }
+        let current = parts[0].parse::<usize>()?;
+        let total = parts[1].parse::<usize>()?;
+        Ok(Self { current, total })
     }
 }

@@ -1,4 +1,4 @@
-use crate::ArcStr;
+use crate::{ArcStr, SequenceNumber};
 use chrono::{DateTime, Utc};
 
 /// Represents a paginated response of available mailing lists from the Lore Kernel Archive.
@@ -36,6 +36,10 @@ pub struct LorePatchMetadata {
     pub last_update: DateTime<Utc>,
     /// The title of the patch
     pub title: ArcStr,
+    /// The version of the patch
+    pub version: usize,
+    /// The sequence number of the patch
+    pub sequence: Option<SequenceNumber>,
     /// The link to the patch
     pub link: ArcStr,
     /// The mailing list which the patch belongs to

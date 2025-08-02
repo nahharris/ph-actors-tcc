@@ -1,5 +1,5 @@
 use super::data::{LoreMailingList, LorePage, LorePatchMetadata};
-use crate::ArcStr;
+use crate::{ArcStr, SequenceNumber};
 use chrono::{DateTime, NaiveDateTime, Utc};
 use regex::Regex;
 use serde::Deserialize;
@@ -135,6 +135,69 @@ pub fn parse_available_lists_html(
     }))
 }
 
+/// Parses a patch title to extract version and sequence information.
+///
+/// The patch title must start with one of the following patterns:
+/// - [PATCH]: version 1, simple series (1 out of 1 patch)
+/// - [PATCH x/y]: version 1, patch x in a series of y patches
+/// - [PATCH vZ]: version Z, simple series
+/// - [PATCH vZ x/y]: version Z, patch x in a series of y patches
+///
+/// # Arguments
+/// * `title` - The patch title to parse
+///
+/// # Returns
+/// A tuple of (version, sequence_number) where:
+/// - version: The patch version (defaults to 1 if not specified)
+/// - sequence_number: The sequence number in the series (None if simple series)
+///
+/// # Errors
+/// Returns an error if the title doesn't match any expected pattern.
+pub fn parse_patch_title(title: &str) -> anyhow::Result<(usize, Option<SequenceNumber>)> {
+    use anyhow::{Context, anyhow};
+
+    // Regex to match patch title patterns with named captures
+    let patch_regex = Regex::new(
+        r"^\[PATCH\s*(?:v(?P<version>\d+))?\s*(?:(?P<current>\d+)/(?P<total>\d+))?\s*\]",
+    )
+    .context("Failed to compile patch title regex")?;
+
+    if let Some(captures) = patch_regex.captures(title) {
+        // Extract version (defaults to 1 if not specified)
+        let version = if let Some(version_match) = captures.name("version") {
+            version_match.as_str().parse::<usize>().with_context(|| {
+                format!(
+                    "Failed to parse version number: '{}'",
+                    version_match.as_str()
+                )
+            })?
+        } else {
+            1
+        };
+
+        // Extract sequence information
+        let sequence = if let (Some(current_match), Some(total_match)) =
+            (captures.name("current"), captures.name("total"))
+        {
+            let seq_str = format!("{}/{}", current_match.as_str(), total_match.as_str());
+            seq_str
+                .parse::<SequenceNumber>()
+                .with_context(|| format!("Failed to parse sequence number: '{}'", seq_str))
+                .map(Some)?
+        } else {
+            None
+        };
+
+        Ok((version, sequence))
+    } else {
+        // If the title doesn't match the expected pattern, skip it
+        Err(anyhow!(
+            "Patch title does not match expected format: '{}'",
+            title
+        ))
+    }
+}
+
 /// Parses the XML patch feed into structured data using serde_xml_rs.
 ///
 /// # Arguments
@@ -192,30 +255,34 @@ pub fn parse_patch_feed_xml(
     let items = feed
         .entries
         .into_iter()
-        .map(|entry| {
+        .filter_map(|entry| {
+            // Parse patch title to extract version and sequence information
+            let (version, sequence) = parse_patch_title(&entry.title).ok()?;
+
             let datetime = DateTime::parse_from_rfc3339(&entry.updated)
                 .map(|dt| dt.with_timezone(&Utc))
-                .context("Failed to parse patch datetime")?;
-            let link = entry.link.href.unwrap_or_default();
-            let captures = list_message_id_regex
-                .captures(&link)
-                .context("Failed to capture list message ID")?;
-            let list = captures.get(1).context("Failed to capture list")?.as_str();
-            let message_id = captures
-                .get(2)
-                .context("Failed to capture message ID")?
-                .as_str();
-            Ok(LorePatchMetadata {
+                .ok()?;
+
+            let link = entry.link.href?;
+            let captures = list_message_id_regex.captures(&link)?;
+
+            let list = captures.get(1)?.as_str();
+
+            let message_id = captures.get(2)?.as_str();
+
+            Some(LorePatchMetadata {
                 author: ArcStr::from(&entry.author.name),
                 email: ArcStr::from(&entry.author.email),
                 last_update: datetime,
                 title: ArcStr::from(&entry.title),
+                version,
+                sequence,
                 link: ArcStr::from(&link),
                 list: ArcStr::from(list),
                 message_id: ArcStr::from(message_id),
             })
         })
-        .collect::<Result<Vec<_>, anyhow::Error>>()?;
+        .collect::<Vec<_>>();
 
     Ok(LorePage {
         start_index,
@@ -223,4 +290,85 @@ pub fn parse_patch_feed_xml(
         total_items: Some(items.len()),
         items,
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_parse_patch_title_simple() {
+        let title = "[PATCH] Add new feature";
+        let result = parse_patch_title(title).unwrap();
+        assert_eq!(result.0, 1); // version
+        assert_eq!(result.1, None); // sequence
+    }
+
+    #[test]
+    fn test_parse_patch_title_with_sequence() {
+        let title = "[PATCH 2/5] Add new feature";
+        let result = parse_patch_title(title).unwrap();
+        assert_eq!(result.0, 1); // version
+        assert_eq!(result.1, Some(SequenceNumber::new(2, 5))); // sequence
+    }
+
+    #[test]
+    fn test_parse_patch_title_with_version() {
+        let title = "[PATCH v3] Add new feature";
+        let result = parse_patch_title(title).unwrap();
+        assert_eq!(result.0, 3); // version
+        assert_eq!(result.1, None); // sequence
+    }
+
+    #[test]
+    fn test_parse_patch_title_with_version_and_sequence() {
+        let title = "[PATCH v2 3/7] Add new feature";
+        let result = parse_patch_title(title).unwrap();
+        assert_eq!(result.0, 2); // version
+        assert_eq!(result.1, Some(SequenceNumber::new(3, 7))); // sequence
+    }
+
+    #[test]
+    fn test_parse_patch_title_with_extra_spaces() {
+        let title = "[PATCH  v4  1/10  ] Add new feature";
+        let result = parse_patch_title(title).unwrap();
+        assert_eq!(result.0, 4); // version
+        assert_eq!(result.1, Some(SequenceNumber::new(1, 10))); // sequence
+    }
+
+    #[test]
+    fn test_parse_patch_title_invalid_format() {
+        let title = "Invalid patch title";
+        let result = parse_patch_title(title);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_parse_patch_title_malformed_sequence() {
+        let title = "[PATCH 1/] Add new feature";
+        let result = parse_patch_title(title);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_parse_patch_title_malformed_version() {
+        let title = "[PATCH v] Add new feature";
+        let result = parse_patch_title(title);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_parse_patch_title_sequence_capture_verification() {
+        // Test that the named captures correctly extract sequence numbers
+        let title = "[PATCH 3/7] Add new feature";
+        let result = parse_patch_title(title).unwrap();
+        assert_eq!(result.0, 1); // version defaults to 1
+        assert_eq!(result.1, Some(SequenceNumber::new(3, 7))); // sequence 3/7
+
+        // Test with version and sequence
+        let title = "[PATCH v2 5/10] Add new feature";
+        let result = parse_patch_title(title).unwrap();
+        assert_eq!(result.0, 2); // version 2
+        assert_eq!(result.1, Some(SequenceNumber::new(5, 10))); // sequence 5/10
+    }
 }
