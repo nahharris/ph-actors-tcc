@@ -1,0 +1,609 @@
+---
+alwaysApply: true
+---
+
+# Patch Hub Codebase Overview
+
+## Project Description
+
+Patch Hub is a CLI tool for interacting with the Lore Kernel Archive, built using Rust with an actor-based architecture. The application provides a command-line interface for browsing mailing lists, viewing patch feeds, and retrieving patch content from the Linux kernel development community.
+
+## Architecture Overview
+
+### Core Design Principles
+
+1. **Actor Pattern**: All system components are implemented as actors using message passing for thread-safe operations
+2. **Async/Await**: Full async support using Tokio runtime for high-performance I/O
+3. **Modular Design**: Clear separation of concerns with well-defined module boundaries
+4. **Mock Support**: Comprehensive testing through mock implementations
+5. **Error Handling**: Consistent error propagation using `anyhow::Result`
+
+### High-Level Architecture
+
+```
+┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
+│   CLI Layer     │    │   API Layer     │    │  System Layer   │
+│   (main.rs)     │    │   (api/)        │    │   (env/, fs/,   │
+│                 │    │                 │    │    log/, net/,  │
+│ - Command       │    │ - Lore API      │    │    shell/)      │
+│   parsing       │    │ - HTTP client   │    │                 │
+│ - User output   │    │ - Response      │    │ - Environment   │
+│                 │    │   parsing       │    │ - Filesystem    │
+└─────────────────┘    └─────────────────┘    │ - Logging       │
+         │                       │            │ - Network       │
+         │                       │            │ - Shell         │
+         ▼                       ▼            └─────────────────┘
+┌─────────────────┐    ┌─────────────────┐              │
+│  Application    │    │   Utilities     │              │
+│   Layer         │    │   (utils/)      │              │
+│   (app/)        │    │                 │              │
+│                 │    │ - Thread-safe   │              │
+│ - Configuration │    │   types         │              │
+│ - Caching       │    │ - Helper        │              │
+│                 │    │   functions     │              │
+└─────────────────┘    │ - Macros        │              │
+                       └─────────────────┘              │
+                                │                       │
+                                └───────────────────────┘
+```
+
+## Module Dependencies
+
+### Dependency Graph
+
+```
+main.rs
+├── api/lore/          # Lore API client
+│   └── net/           # HTTP operations
+├── app/config/        # Configuration management
+│   ├── env/           # Environment variables
+│   └── fs/            # File operations
+├── app/cache/         # Caching mechanisms
+│   └── fs/            # File operations
+├── log/               # Logging system
+│   └── fs/            # File operations
+└── utils/             # Common utilities
+```
+
+### Actor Communication Flow
+
+```
+CLI Commands
+    │
+    ▼
+Lore API Actor
+    │
+    ▼
+Network Actor ──► Log Actor
+    │
+    ▼
+Configuration Actor
+    │
+    ▼
+Environment Actor
+    │
+    ▼
+Filesystem Actor
+```
+
+## Key Components
+
+### 1. CLI Interface (`src/main.rs`)
+
+**Purpose**: Command-line interface and application entry point
+
+**Commands**:
+- `lists` - Display available mailing lists with pagination
+- `feed` - Show patch feed for a specific mailing list
+- `patch` - Retrieve and display patch content (raw or HTML)
+
+**Features**:
+- Command-line argument parsing with clap
+- Actor initialization and lifecycle management
+- User-friendly output formatting
+- Error handling and graceful degradation
+
+### 2. API Layer (`src/api/`)
+
+**Purpose**: High-level interfaces for external services
+
+**Components**:
+- **Lore API**: Interface to the Lore Kernel Archive
+  - Mailing list retrieval
+  - Patch feed fetching
+  - Patch content retrieval
+  - Response parsing and data transformation
+
+**Features**:
+- HTTP client with configuration
+- Response caching
+- Error handling and retries
+- Mock implementations for testing
+
+### 3. Application Layer (`src/app/`)
+
+**Purpose**: Application-specific functionality
+
+**Components**:
+- **Configuration**: TOML-based configuration management
+  - Environment variable integration
+  - Automatic configuration file creation
+  - Type-safe configuration options
+- **Cache**: Application data caching
+  - Patch metadata caching
+  - Mailing list data caching
+  - Persistent cache storage
+
+### 4. System Layer
+
+**Purpose**: Core system functionality through actors
+
+**Actors**:
+- **Environment** (`src/env/`): Environment variable management
+- **Filesystem** (`src/fs/`): File system operations with caching
+- **Logging** (`src/log/`): Structured logging with file rotation
+- **Network** (`src/net/`): HTTP operations with configuration
+- **Shell** (`src/shell/`): External program execution
+
+### 5. Utilities (`src/utils/`)
+
+**Purpose**: Common functionality and patterns
+
+**Components**:
+- Thread-safe data types (`ArcStr`, `ArcOsStr`, `ArcPath`)
+- Helper functions and constants
+- Panic handling and error utilities
+- Custom macros for code generation
+
+## Data Flow
+
+### 1. Application Startup
+
+```
+1. Parse CLI arguments
+2. Initialize system actors (env, fs)
+3. Load configuration
+4. Initialize logging actor
+5. Initialize network actor
+6. Initialize Lore API actor
+7. Execute command
+```
+
+### 2. Command Execution
+
+```
+1. Validate command parameters
+2. Call appropriate API methods
+3. Handle pagination and data processing
+4. Format output for user
+5. Handle errors gracefully
+```
+
+### 3. API Request Flow
+
+```
+1. CLI command → Lore API actor
+2. Lore API actor → Network actor
+3. Network actor → HTTP request
+4. Response → Response parsing
+5. Parsed data → CLI output
+```
+
+## Configuration Management
+
+### Configuration Hierarchy
+
+1. **Default Values**: Hard-coded defaults in code
+2. **Configuration File**: `~/.config/patch-hub/config.toml`
+3. **Environment Variables**: Override specific settings
+4. **Command Line**: Runtime overrides
+
+### Configuration Options
+
+- **Logging**: Log level, directory, rotation settings
+- **Network**: Timeouts, retry counts, user agent
+- **Cache**: Size limits, TTL, cleanup intervals
+- **Paths**: Log directory, cache directory, config directory
+
+## Error Handling Strategy
+
+### Error Types
+
+- **Actor Errors**: Channel communication failures, actor death
+- **System Errors**: File I/O, network connectivity, permissions
+- **API Errors**: HTTP status codes, malformed responses
+- **Configuration Errors**: Invalid values, missing files
+
+### Error Recovery
+
+- **Graceful Degradation**: Fallback to default values
+- **Retry Logic**: Automatic retries for transient failures
+- **User Feedback**: Clear error messages and suggestions
+- **Logging**: Comprehensive error logging for debugging
+
+## Testing Strategy
+
+### Test Organization
+
+- **Unit Tests**: Individual component testing with mocks
+- **Integration Tests**: Cross-component interaction testing
+- **Mock Tests**: Actor communication and message handling
+- **Performance Tests**: Throughput and latency measurements
+
+### Mock Implementations
+
+- **Environment**: In-memory environment variable storage
+- **Filesystem**: In-memory file system
+- **Network**: Simulated HTTP responses
+- **Shell**: Command result simulation
+- **Logging**: No-op implementation
+
+## Performance Characteristics
+
+### Actor Benefits
+
+- **Thread Safety**: No locks, message passing for synchronization
+- **Scalability**: Easy to add more actors for parallel processing
+- **Resource Management**: Efficient resource pooling and cleanup
+- **Memory Efficiency**: Arc types for cheap cloning across threads
+
+### Optimization Strategies
+
+- **Caching**: Response caching to reduce API calls
+- **Pagination**: Efficient handling of large datasets
+- **Connection Pooling**: Reuse HTTP connections
+- **Lazy Loading**: Load resources on demand
+
+## Security Considerations
+
+### Input Validation
+
+- **Command Line**: Validate and sanitize user input
+- **File Paths**: Path traversal protection
+- **URLs**: URL validation and encoding
+- **Environment Variables**: Filter sensitive information
+
+### Resource Management
+
+- **File Handles**: Proper cleanup and limits
+- **Network Connections**: Connection pooling and timeouts
+- **Memory**: Monitor memory usage and implement limits
+- **Processes**: Timeout and cleanup for external processes
+
+## Development Workflow
+
+### Code Organization
+
+- **Module Structure**: Clear separation of concerns
+- **Documentation**: Comprehensive module documentation
+- **Testing**: Co-located tests with implementation
+- **Error Handling**: Consistent error propagation
+
+### Best Practices
+
+- **Actor Pattern**: Consistent actor implementation
+- **Async/Await**: Full async support throughout
+- **Error Handling**: Meaningful error messages and recovery
+- **Testing**: Comprehensive test coverage with mocks
+- **Performance**: Monitor and optimize critical paths
+
+## Future Enhancements
+
+### Potential Improvements
+
+- **Plugin System**: Extensible architecture for custom commands
+- **Interactive Mode**: TUI interface for browsing
+- **Offline Support**: Enhanced caching for offline access
+- **Multi-format Output**: JSON, YAML, and other formats
+- **Advanced Filtering**: Complex query and filter capabilities
+
+### Scalability Considerations
+
+- **Horizontal Scaling**: Multiple instances for high load
+- **Caching Layer**: Distributed caching for shared state
+- **API Rate Limiting**: Respect API limits and implement backoff
+- **Resource Monitoring**: Comprehensive monitoring and alerting
+
+This overview provides a comprehensive understanding of the Patch Hub codebase architecture, enabling developers and tools like Cursor to effectively work with and extend the codebase. # Patch Hub Codebase Overview
+
+## Project Description
+
+Patch Hub is a CLI tool for interacting with the Lore Kernel Archive, built using Rust with an actor-based architecture. The application provides a command-line interface for browsing mailing lists, viewing patch feeds, and retrieving patch content from the Linux kernel development community.
+
+## Architecture Overview
+
+### Core Design Principles
+
+1. **Actor Pattern**: All system components are implemented as actors using message passing for thread-safe operations
+2. **Async/Await**: Full async support using Tokio runtime for high-performance I/O
+3. **Modular Design**: Clear separation of concerns with well-defined module boundaries
+4. **Mock Support**: Comprehensive testing through mock implementations
+5. **Error Handling**: Consistent error propagation using `anyhow::Result`
+
+### High-Level Architecture
+
+```
+┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
+│   CLI Layer     │    │   API Layer     │    │  System Layer   │
+│   (main.rs)     │    │   (api/)        │    │   (env/, fs/,   │
+│                 │    │                 │    │    log/, net/,  │
+│ - Command       │    │ - Lore API      │    │    shell/)      │
+│   parsing       │    │ - HTTP client   │    │                 │
+│ - User output   │    │ - Response      │    │ - Environment   │
+│                 │    │   parsing       │    │ - Filesystem    │
+└─────────────────┘    └─────────────────┘    │ - Logging       │
+         │                       │            │ - Network       │
+         │                       │            │ - Shell         │
+         ▼                       ▼            └─────────────────┘
+┌─────────────────┐    ┌─────────────────┐              │
+│  Application    │    │   Utilities     │              │
+│   Layer         │    │   (utils/)      │              │
+│   (app/)        │    │                 │              │
+│                 │    │ - Thread-safe   │              │
+│ - Configuration │    │   types         │              │
+│ - Caching       │    │ - Helper        │              │
+│                 │    │   functions     │              │
+└─────────────────┘    │ - Macros        │              │
+                       └─────────────────┘              │
+                                │                       │
+                                └───────────────────────┘
+```
+
+## Module Dependencies
+
+### Dependency Graph
+
+```
+main.rs
+├── api/lore/          # Lore API client
+│   └── net/           # HTTP operations
+├── app/config/        # Configuration management
+│   ├── env/           # Environment variables
+│   └── fs/            # File operations
+├── app/cache/         # Caching mechanisms
+│   └── fs/            # File operations
+├── log/               # Logging system
+│   └── fs/            # File operations
+└── utils/             # Common utilities
+```
+
+### Actor Communication Flow
+
+```
+CLI Commands
+    │
+    ▼
+Lore API Actor
+    │
+    ▼
+Network Actor ──► Log Actor
+    │
+    ▼
+Configuration Actor
+    │
+    ▼
+Environment Actor
+    │
+    ▼
+Filesystem Actor
+```
+
+## Key Components
+
+### 1. CLI Interface (`src/main.rs`)
+
+**Purpose**: Command-line interface and application entry point
+
+**Commands**:
+- `lists` - Display available mailing lists with pagination
+- `feed` - Show patch feed for a specific mailing list
+- `patch` - Retrieve and display patch content (raw or HTML)
+
+**Features**:
+- Command-line argument parsing with clap
+- Actor initialization and lifecycle management
+- User-friendly output formatting
+- Error handling and graceful degradation
+
+### 2. API Layer (`src/api/`)
+
+**Purpose**: High-level interfaces for external services
+
+**Components**:
+- **Lore API**: Interface to the Lore Kernel Archive
+  - Mailing list retrieval
+  - Patch feed fetching
+  - Patch content retrieval
+  - Response parsing and data transformation
+
+**Features**:
+- HTTP client with configuration
+- Response caching
+- Error handling and retries
+- Mock implementations for testing
+
+### 3. Application Layer (`src/app/`)
+
+**Purpose**: Application-specific functionality
+
+**Components**:
+- **Configuration**: TOML-based configuration management
+  - Environment variable integration
+  - Automatic configuration file creation
+  - Type-safe configuration options
+- **Cache**: Application data caching
+  - Patch metadata caching
+  - Mailing list data caching
+  - Persistent cache storage
+
+### 4. System Layer
+
+**Purpose**: Core system functionality through actors
+
+**Actors**:
+- **Environment** (`src/env/`): Environment variable management
+- **Filesystem** (`src/fs/`): File system operations with caching
+- **Logging** (`src/log/`): Structured logging with file rotation
+- **Network** (`src/net/`): HTTP operations with configuration
+- **Shell** (`src/shell/`): External program execution
+
+### 5. Utilities (`src/utils/`)
+
+**Purpose**: Common functionality and patterns
+
+**Components**:
+- Thread-safe data types (`ArcStr`, `ArcOsStr`, `ArcPath`)
+- Helper functions and constants
+- Panic handling and error utilities
+- Custom macros for code generation
+
+## Data Flow
+
+### 1. Application Startup
+
+```
+1. Parse CLI arguments
+2. Initialize system actors (env, fs)
+3. Load configuration
+4. Initialize logging actor
+5. Initialize network actor
+6. Initialize Lore API actor
+7. Execute command
+```
+
+### 2. Command Execution
+
+```
+1. Validate command parameters
+2. Call appropriate API methods
+3. Handle pagination and data processing
+4. Format output for user
+5. Handle errors gracefully
+```
+
+### 3. API Request Flow
+
+```
+1. CLI command → Lore API actor
+2. Lore API actor → Network actor
+3. Network actor → HTTP request
+4. Response → Response parsing
+5. Parsed data → CLI output
+```
+
+## Configuration Management
+
+### Configuration Hierarchy
+
+1. **Default Values**: Hard-coded defaults in code
+2. **Configuration File**: `~/.config/patch-hub/config.toml`
+3. **Environment Variables**: Override specific settings
+4. **Command Line**: Runtime overrides
+
+### Configuration Options
+
+- **Logging**: Log level, directory, rotation settings
+- **Network**: Timeouts, retry counts, user agent
+- **Cache**: Size limits, TTL, cleanup intervals
+- **Paths**: Log directory, cache directory, config directory
+
+## Error Handling Strategy
+
+### Error Types
+
+- **Actor Errors**: Channel communication failures, actor death
+- **System Errors**: File I/O, network connectivity, permissions
+- **API Errors**: HTTP status codes, malformed responses
+- **Configuration Errors**: Invalid values, missing files
+
+### Error Recovery
+
+- **Graceful Degradation**: Fallback to default values
+- **Retry Logic**: Automatic retries for transient failures
+- **User Feedback**: Clear error messages and suggestions
+- **Logging**: Comprehensive error logging for debugging
+
+## Testing Strategy
+
+### Test Organization
+
+- **Unit Tests**: Individual component testing with mocks
+- **Integration Tests**: Cross-component interaction testing
+- **Mock Tests**: Actor communication and message handling
+- **Performance Tests**: Throughput and latency measurements
+
+### Mock Implementations
+
+- **Environment**: In-memory environment variable storage
+- **Filesystem**: In-memory file system
+- **Network**: Simulated HTTP responses
+- **Shell**: Command result simulation
+- **Logging**: No-op implementation
+
+## Performance Characteristics
+
+### Actor Benefits
+
+- **Thread Safety**: No locks, message passing for synchronization
+- **Scalability**: Easy to add more actors for parallel processing
+- **Resource Management**: Efficient resource pooling and cleanup
+- **Memory Efficiency**: Arc types for cheap cloning across threads
+
+### Optimization Strategies
+
+- **Caching**: Response caching to reduce API calls
+- **Pagination**: Efficient handling of large datasets
+- **Connection Pooling**: Reuse HTTP connections
+- **Lazy Loading**: Load resources on demand
+
+## Security Considerations
+
+### Input Validation
+
+- **Command Line**: Validate and sanitize user input
+- **File Paths**: Path traversal protection
+- **URLs**: URL validation and encoding
+- **Environment Variables**: Filter sensitive information
+
+### Resource Management
+
+- **File Handles**: Proper cleanup and limits
+- **Network Connections**: Connection pooling and timeouts
+- **Memory**: Monitor memory usage and implement limits
+- **Processes**: Timeout and cleanup for external processes
+
+## Development Workflow
+
+### Code Organization
+
+- **Module Structure**: Clear separation of concerns
+- **Documentation**: Comprehensive module documentation
+- **Testing**: Co-located tests with implementation
+- **Error Handling**: Consistent error propagation
+
+### Best Practices
+
+- **Actor Pattern**: Consistent actor implementation
+- **Async/Await**: Full async support throughout
+- **Error Handling**: Meaningful error messages and recovery
+- **Testing**: Comprehensive test coverage with mocks
+- **Performance**: Monitor and optimize critical paths
+
+## Future Enhancements
+
+### Potential Improvements
+
+- **Plugin System**: Extensible architecture for custom commands
+- **Interactive Mode**: TUI interface for browsing
+- **Offline Support**: Enhanced caching for offline access
+- **Multi-format Output**: JSON, YAML, and other formats
+- **Advanced Filtering**: Complex query and filter capabilities
+
+### Scalability Considerations
+
+- **Horizontal Scaling**: Multiple instances for high load
+- **Caching Layer**: Distributed caching for shared state
+- **API Rate Limiting**: Respect API limits and implement backoff
+- **Resource Monitoring**: Comprehensive monitoring and alerting
+
+This overview provides a comprehensive understanding of the Patch Hub codebase architecture, enabling developers and tools like Cursor to effectively work with and extend the codebase. 

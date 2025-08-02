@@ -1,0 +1,885 @@
+---
+description: Relates to common utilities across the application
+alwaysApply: false
+---
+# Utilities and Common Patterns Documentation
+
+## Overview
+
+The utilities module provides common functionality, data types, and patterns used throughout the codebase. It includes thread-safe data types, helper functions, and macros that support the actor-based architecture.
+
+## Utilities Module (`src/utils.rs`)
+
+### Purpose
+Provides common utilities, thread-safe data types, and helper functions used across the application.
+
+### Key Components
+
+#### Thread-Safe Data Types
+```rust
+/// Thread-safe string type using Arc<str>
+pub type ArcStr = Arc<str>;
+
+/// Thread-safe OS string type using Arc<OsStr>
+pub type ArcOsStr = Arc<OsStr>;
+
+/// Thread-safe path type using Arc<Path>
+pub type ArcPath = Arc<Path>;
+```
+
+#### Constants
+```rust
+/// Default buffer size used for various operations
+pub const BUFFER_SIZE: usize = 128;
+
+/// Default timeout for network operations
+pub const DEFAULT_TIMEOUT: Duration = Duration::from_secs(30);
+
+/// Default retry count for failed operations
+pub const DEFAULT_RETRY_COUNT: usize = 3;
+```
+
+#### Panic Handling
+```rust
+/// Installs a panic hook for graceful error handling
+pub fn install_panic_hook() -> anyhow::Result<()> {
+    std::panic::set_hook(Box::new(|panic_info| {
+        eprintln!("Panic occurred: {:?}", panic_info);
+        // Additional panic handling logic
+    }));
+    Ok(())
+}
+```
+
+#### Common Helper Functions
+```rust
+/// Creates a thread-safe string from a regular string
+pub fn to_arc_str(s: impl Into<String>) -> ArcStr {
+    Arc::from(s.into())
+}
+
+/// Creates a thread-safe path from a regular path
+pub fn to_arc_path(p: impl AsRef<Path>) -> ArcPath {
+    Arc::from(p.as_ref())
+}
+
+/// Validates and sanitizes a URL
+pub fn validate_url(url: &str) -> anyhow::Result<()> {
+    // URL validation logic
+    Ok(())
+}
+
+/// Formats a duration for human-readable output
+pub fn format_duration(duration: Duration) -> String {
+    // Duration formatting logic
+    format!("{:?}", duration)
+}
+```
+
+## Macros Module (`src/macros.rs`)
+
+### Purpose
+Provides custom macros for code generation and common patterns.
+
+### Key Macros
+
+#### Actor Message Generation
+```rust
+/// Macro to generate common actor message patterns
+#[macro_export]
+macro_rules! actor_message {
+    ($name:ident, $operation:ident, $params:ty, $result:ty) => {
+        pub enum $name {
+            $operation {
+                tx: oneshot::Sender<Result<$result, Error>>,
+                params: $params,
+            },
+        }
+    };
+}
+```
+
+#### Error Handling
+```rust
+/// Macro for consistent error handling patterns
+#[macro_export]
+macro_rules! handle_actor_error {
+    ($result:expr, $actor_name:expr) => {
+        match $result {
+            Ok(value) => value,
+            Err(e) => {
+                log::error!("{} actor error: {:?}", $actor_name, e);
+                return Err(e.into());
+            }
+        }
+    };
+}
+```
+
+#### Testing Helpers
+```rust
+/// Macro for creating mock data in tests
+#[macro_export]
+macro_rules! mock_data {
+    ($($key:expr => $value:expr),*) => {
+        {
+            let mut data = HashMap::new();
+            $(data.insert($key.into(), $value.into());)*
+            data
+        }
+    };
+}
+```
+
+## Common Patterns
+
+### 1. Actor Lifecycle Management
+
+#### Actor Creation Pattern
+```rust
+pub struct Actor {
+    interface: PublicInterface,
+    _handle: JoinHandle<()>,
+}
+
+impl Actor {
+    pub fn spawn(dependencies: Dependencies) -> Self {
+        let (interface, handle) = Core::new(dependencies).spawn();
+        Self {
+            interface,
+            _handle: handle,
+        }
+    }
+    
+    pub fn interface(&self) -> &PublicInterface {
+        &self.interface
+    }
+}
+```
+
+#### Actor Shutdown Pattern
+```rust
+impl Drop for Actor {
+    fn drop(&mut self) {
+        // Graceful shutdown logic
+        if let Some(handle) = self._handle.take() {
+            handle.abort();
+        }
+    }
+}
+```
+
+### 2. Error Propagation Patterns
+
+#### Consistent Error Types
+```rust
+#[derive(Debug, thiserror::Error)]
+pub enum Error {
+    #[error("Not found: {0}")]
+    NotFound(String),
+    
+    #[error("Permission denied: {0}")]
+    PermissionDenied(String),
+    
+    #[error("Invalid input: {0}")]
+    InvalidInput(String),
+    
+    #[error("System error: {0}")]
+    SystemError(String),
+    
+    #[error("Actor died")]
+    ActorDied,
+    
+    #[error("Network error: {0}")]
+    NetworkError(#[from] reqwest::Error),
+    
+    #[error("IO error: {0}")]
+    IoError(#[from] std::io::Error),
+}
+```
+
+#### Error Handling in Actors
+```rust
+impl Core {
+    async fn handle_message(&mut self, message: Message) {
+        let result = match message {
+            Message::Operation { tx, params } => {
+                self.perform_operation(params).await
+            }
+        };
+        
+        if let Err(e) = tx.send(result) {
+            log::error!("Failed to send response: {:?}", e);
+        }
+    }
+}
+```
+
+### 3. Configuration Patterns
+
+#### Configuration Validation
+```rust
+impl ConfigData {
+    pub fn validate(&self) -> anyhow::Result<()> {
+        // Validate log level
+        if self.log_level == LogLevel::Debug && !cfg!(debug_assertions) {
+            return Err(anyhow::anyhow!("Debug logging not available in release"));
+        }
+        
+        // Validate paths
+        for (opt, path) in &self.paths {
+            if !path.exists() {
+                log::warn!("Path for {:?} does not exist: {:?}", opt, path);
+            }
+        }
+        
+        // Validate sizes
+        for (opt, size) in &self.sizes {
+            if *size == 0 {
+                return Err(anyhow::anyhow!("Size for {:?} cannot be zero", opt));
+            }
+        }
+        
+        Ok(())
+    }
+}
+```
+
+#### Configuration Defaults
+```rust
+impl Default for ConfigData {
+    fn default() -> Self {
+        Self {
+            log_level: LogLevel::Info,
+            paths: HashMap::new(),
+            sizes: HashMap::new(),
+            network: NetworkConfig::default(),
+            cache: CacheConfig::default(),
+        }
+    }
+}
+
+impl Default for NetworkConfig {
+    fn default() -> Self {
+        Self {
+            timeout: DEFAULT_TIMEOUT,
+            retry_count: DEFAULT_RETRY_COUNT,
+            user_agent: Arc::from("patch-hub/1.0.0"),
+        }
+    }
+}
+```
+
+### 4. Testing Patterns
+
+#### Mock Actor Creation
+```rust
+pub fn create_mock_actor<T>(mock_data: T::MockData) -> T::Interface
+where
+    T: ActorTrait,
+{
+    T::mock(mock_data)
+}
+
+pub trait ActorTrait {
+    type Interface;
+    type MockData;
+    
+    fn mock(data: Self::MockData) -> Self::Interface;
+}
+```
+
+#### Test Utilities
+```rust
+pub struct TestContext {
+    pub temp_dir: TempDir,
+    pub mock_env: HashMap<ArcOsStr, ArcOsStr>,
+    pub mock_fs: HashMap<ArcPath, Vec<u8>>,
+}
+
+impl TestContext {
+    pub fn new() -> anyhow::Result<Self> {
+        let temp_dir = tempfile::tempdir()?;
+        Ok(Self {
+            temp_dir,
+            mock_env: HashMap::new(),
+            mock_fs: HashMap::new(),
+        })
+    }
+    
+    pub fn with_env(mut self, key: &str, value: &str) -> Self {
+        self.mock_env.insert(key.into(), value.into());
+        self
+    }
+    
+    pub fn with_file(mut self, path: &str, content: &[u8]) -> Self {
+        self.mock_fs.insert(path.into(), content.to_vec());
+        self
+    }
+}
+```
+
+### 5. Performance Patterns
+
+#### Lazy Initialization
+```rust
+pub struct LazyActor<T> {
+    inner: OnceCell<T>,
+    factory: Box<dyn Fn() -> anyhow::Result<T> + Send + Sync>,
+}
+
+impl<T> LazyActor<T> {
+    pub fn new<F>(factory: F) -> Self
+    where
+        F: Fn() -> anyhow::Result<T> + Send + Sync + 'static,
+    {
+        Self {
+            inner: OnceCell::new(),
+            factory: Box::new(factory),
+        }
+    }
+    
+    pub async fn get(&self) -> anyhow::Result<&T> {
+        self.inner.get_or_try_init(|| (self.factory)())
+    }
+}
+```
+
+#### Connection Pooling
+```rust
+pub struct ConnectionPool<T> {
+    connections: Arc<Mutex<VecDeque<T>>>,
+    max_size: usize,
+    factory: Box<dyn Fn() -> anyhow::Result<T> + Send + Sync>,
+}
+
+impl<T> ConnectionPool<T> {
+    pub async fn get(&self) -> anyhow::Result<PooledConnection<T>> {
+        let mut connections = self.connections.lock().await;
+        
+        if let Some(conn) = connections.pop_front() {
+            Ok(PooledConnection::new(conn, self.connections.clone()))
+        } else {
+            let conn = (self.factory)()?;
+            Ok(PooledConnection::new(conn, self.connections.clone()))
+        }
+    }
+}
+```
+
+### 6. Logging Patterns
+
+#### Structured Logging
+```rust
+pub fn log_operation(operation: &str, params: &impl Debug, result: &Result<impl Debug, impl Debug>) {
+    match result {
+        Ok(value) => {
+            log::info!(
+                "Operation '{}' completed successfully: {:?}",
+                operation,
+                value
+            );
+        }
+        Err(e) => {
+            log::error!(
+                "Operation '{}' failed with params {:?}: {:?}",
+                operation,
+                params,
+                e
+            );
+        }
+    }
+}
+```
+
+#### Performance Logging
+```rust
+pub async fn log_performance<F, T>(operation: &str, f: F) -> anyhow::Result<T>
+where
+    F: Future<Output = anyhow::Result<T>>,
+{
+    let start = Instant::now();
+    let result = f.await;
+    let duration = start.elapsed();
+    
+    match &result {
+        Ok(_) => {
+            log::debug!("Operation '{}' completed in {:?}", operation, duration);
+        }
+        Err(e) => {
+            log::warn!("Operation '{}' failed after {:?}: {:?}", operation, duration, e);
+        }
+    }
+    
+    result
+}
+```
+
+## Best Practices
+
+### 1. Thread Safety
+- Always use `Arc` types for shared data
+- Prefer message passing over shared state
+- Use `Mutex` only when necessary for mock implementations
+
+### 2. Error Handling
+- Use `anyhow::Result` for error propagation
+- Provide meaningful error messages
+- Handle actor death gracefully
+
+### 3. Performance
+- Use lazy initialization for expensive resources
+- Implement connection pooling for network operations
+- Monitor and log performance metrics
+
+### 4. Testing
+- Use mock implementations for unit tests
+- Create comprehensive test utilities
+- Test error scenarios and edge cases
+
+### 5. Configuration
+- Validate configuration at load time
+- Provide sensible defaults
+- Support environment variable overrides
+
+This documentation provides comprehensive context for the utilities and common patterns used throughout the codebase, enabling Cursor to understand the helper functions, macros, and architectural patterns. # Utilities and Common Patterns Documentation
+
+## Overview
+
+The utilities module provides common functionality, data types, and patterns used throughout the codebase. It includes thread-safe data types, helper functions, and macros that support the actor-based architecture.
+
+## Utilities Module (`src/utils.rs`)
+
+### Purpose
+Provides common utilities, thread-safe data types, and helper functions used across the application.
+
+### Key Components
+
+#### Thread-Safe Data Types
+```rust
+/// Thread-safe string type using Arc<str>
+pub type ArcStr = Arc<str>;
+
+/// Thread-safe OS string type using Arc<OsStr>
+pub type ArcOsStr = Arc<OsStr>;
+
+/// Thread-safe path type using Arc<Path>
+pub type ArcPath = Arc<Path>;
+```
+
+#### Constants
+```rust
+/// Default buffer size used for various operations
+pub const BUFFER_SIZE: usize = 128;
+
+/// Default timeout for network operations
+pub const DEFAULT_TIMEOUT: Duration = Duration::from_secs(30);
+
+/// Default retry count for failed operations
+pub const DEFAULT_RETRY_COUNT: usize = 3;
+```
+
+#### Panic Handling
+```rust
+/// Installs a panic hook for graceful error handling
+pub fn install_panic_hook() -> anyhow::Result<()> {
+    std::panic::set_hook(Box::new(|panic_info| {
+        eprintln!("Panic occurred: {:?}", panic_info);
+        // Additional panic handling logic
+    }));
+    Ok(())
+}
+```
+
+#### Common Helper Functions
+```rust
+/// Creates a thread-safe string from a regular string
+pub fn to_arc_str(s: impl Into<String>) -> ArcStr {
+    Arc::from(s.into())
+}
+
+/// Creates a thread-safe path from a regular path
+pub fn to_arc_path(p: impl AsRef<Path>) -> ArcPath {
+    Arc::from(p.as_ref())
+}
+
+/// Validates and sanitizes a URL
+pub fn validate_url(url: &str) -> anyhow::Result<()> {
+    // URL validation logic
+    Ok(())
+}
+
+/// Formats a duration for human-readable output
+pub fn format_duration(duration: Duration) -> String {
+    // Duration formatting logic
+    format!("{:?}", duration)
+}
+```
+
+## Macros Module (`src/macros.rs`)
+
+### Purpose
+Provides custom macros for code generation and common patterns.
+
+### Key Macros
+
+#### Actor Message Generation
+```rust
+/// Macro to generate common actor message patterns
+#[macro_export]
+macro_rules! actor_message {
+    ($name:ident, $operation:ident, $params:ty, $result:ty) => {
+        pub enum $name {
+            $operation {
+                tx: oneshot::Sender<Result<$result, Error>>,
+                params: $params,
+            },
+        }
+    };
+}
+```
+
+#### Error Handling
+```rust
+/// Macro for consistent error handling patterns
+#[macro_export]
+macro_rules! handle_actor_error {
+    ($result:expr, $actor_name:expr) => {
+        match $result {
+            Ok(value) => value,
+            Err(e) => {
+                log::error!("{} actor error: {:?}", $actor_name, e);
+                return Err(e.into());
+            }
+        }
+    };
+}
+```
+
+#### Testing Helpers
+```rust
+/// Macro for creating mock data in tests
+#[macro_export]
+macro_rules! mock_data {
+    ($($key:expr => $value:expr),*) => {
+        {
+            let mut data = HashMap::new();
+            $(data.insert($key.into(), $value.into());)*
+            data
+        }
+    };
+}
+```
+
+## Common Patterns
+
+### 1. Actor Lifecycle Management
+
+#### Actor Creation Pattern
+```rust
+pub struct Actor {
+    interface: PublicInterface,
+    _handle: JoinHandle<()>,
+}
+
+impl Actor {
+    pub fn spawn(dependencies: Dependencies) -> Self {
+        let (interface, handle) = Core::new(dependencies).spawn();
+        Self {
+            interface,
+            _handle: handle,
+        }
+    }
+    
+    pub fn interface(&self) -> &PublicInterface {
+        &self.interface
+    }
+}
+```
+
+#### Actor Shutdown Pattern
+```rust
+impl Drop for Actor {
+    fn drop(&mut self) {
+        // Graceful shutdown logic
+        if let Some(handle) = self._handle.take() {
+            handle.abort();
+        }
+    }
+}
+```
+
+### 2. Error Propagation Patterns
+
+#### Consistent Error Types
+```rust
+#[derive(Debug, thiserror::Error)]
+pub enum Error {
+    #[error("Not found: {0}")]
+    NotFound(String),
+    
+    #[error("Permission denied: {0}")]
+    PermissionDenied(String),
+    
+    #[error("Invalid input: {0}")]
+    InvalidInput(String),
+    
+    #[error("System error: {0}")]
+    SystemError(String),
+    
+    #[error("Actor died")]
+    ActorDied,
+    
+    #[error("Network error: {0}")]
+    NetworkError(#[from] reqwest::Error),
+    
+    #[error("IO error: {0}")]
+    IoError(#[from] std::io::Error),
+}
+```
+
+#### Error Handling in Actors
+```rust
+impl Core {
+    async fn handle_message(&mut self, message: Message) {
+        let result = match message {
+            Message::Operation { tx, params } => {
+                self.perform_operation(params).await
+            }
+        };
+        
+        if let Err(e) = tx.send(result) {
+            log::error!("Failed to send response: {:?}", e);
+        }
+    }
+}
+```
+
+### 3. Configuration Patterns
+
+#### Configuration Validation
+```rust
+impl ConfigData {
+    pub fn validate(&self) -> anyhow::Result<()> {
+        // Validate log level
+        if self.log_level == LogLevel::Debug && !cfg!(debug_assertions) {
+            return Err(anyhow::anyhow!("Debug logging not available in release"));
+        }
+        
+        // Validate paths
+        for (opt, path) in &self.paths {
+            if !path.exists() {
+                log::warn!("Path for {:?} does not exist: {:?}", opt, path);
+            }
+        }
+        
+        // Validate sizes
+        for (opt, size) in &self.sizes {
+            if *size == 0 {
+                return Err(anyhow::anyhow!("Size for {:?} cannot be zero", opt));
+            }
+        }
+        
+        Ok(())
+    }
+}
+```
+
+#### Configuration Defaults
+```rust
+impl Default for ConfigData {
+    fn default() -> Self {
+        Self {
+            log_level: LogLevel::Info,
+            paths: HashMap::new(),
+            sizes: HashMap::new(),
+            network: NetworkConfig::default(),
+            cache: CacheConfig::default(),
+        }
+    }
+}
+
+impl Default for NetworkConfig {
+    fn default() -> Self {
+        Self {
+            timeout: DEFAULT_TIMEOUT,
+            retry_count: DEFAULT_RETRY_COUNT,
+            user_agent: Arc::from("patch-hub/1.0.0"),
+        }
+    }
+}
+```
+
+### 4. Testing Patterns
+
+#### Mock Actor Creation
+```rust
+pub fn create_mock_actor<T>(mock_data: T::MockData) -> T::Interface
+where
+    T: ActorTrait,
+{
+    T::mock(mock_data)
+}
+
+pub trait ActorTrait {
+    type Interface;
+    type MockData;
+    
+    fn mock(data: Self::MockData) -> Self::Interface;
+}
+```
+
+#### Test Utilities
+```rust
+pub struct TestContext {
+    pub temp_dir: TempDir,
+    pub mock_env: HashMap<ArcOsStr, ArcOsStr>,
+    pub mock_fs: HashMap<ArcPath, Vec<u8>>,
+}
+
+impl TestContext {
+    pub fn new() -> anyhow::Result<Self> {
+        let temp_dir = tempfile::tempdir()?;
+        Ok(Self {
+            temp_dir,
+            mock_env: HashMap::new(),
+            mock_fs: HashMap::new(),
+        })
+    }
+    
+    pub fn with_env(mut self, key: &str, value: &str) -> Self {
+        self.mock_env.insert(key.into(), value.into());
+        self
+    }
+    
+    pub fn with_file(mut self, path: &str, content: &[u8]) -> Self {
+        self.mock_fs.insert(path.into(), content.to_vec());
+        self
+    }
+}
+```
+
+### 5. Performance Patterns
+
+#### Lazy Initialization
+```rust
+pub struct LazyActor<T> {
+    inner: OnceCell<T>,
+    factory: Box<dyn Fn() -> anyhow::Result<T> + Send + Sync>,
+}
+
+impl<T> LazyActor<T> {
+    pub fn new<F>(factory: F) -> Self
+    where
+        F: Fn() -> anyhow::Result<T> + Send + Sync + 'static,
+    {
+        Self {
+            inner: OnceCell::new(),
+            factory: Box::new(factory),
+        }
+    }
+    
+    pub async fn get(&self) -> anyhow::Result<&T> {
+        self.inner.get_or_try_init(|| (self.factory)())
+    }
+}
+```
+
+#### Connection Pooling
+```rust
+pub struct ConnectionPool<T> {
+    connections: Arc<Mutex<VecDeque<T>>>,
+    max_size: usize,
+    factory: Box<dyn Fn() -> anyhow::Result<T> + Send + Sync>,
+}
+
+impl<T> ConnectionPool<T> {
+    pub async fn get(&self) -> anyhow::Result<PooledConnection<T>> {
+        let mut connections = self.connections.lock().await;
+        
+        if let Some(conn) = connections.pop_front() {
+            Ok(PooledConnection::new(conn, self.connections.clone()))
+        } else {
+            let conn = (self.factory)()?;
+            Ok(PooledConnection::new(conn, self.connections.clone()))
+        }
+    }
+}
+```
+
+### 6. Logging Patterns
+
+#### Structured Logging
+```rust
+pub fn log_operation(operation: &str, params: &impl Debug, result: &Result<impl Debug, impl Debug>) {
+    match result {
+        Ok(value) => {
+            log::info!(
+                "Operation '{}' completed successfully: {:?}",
+                operation,
+                value
+            );
+        }
+        Err(e) => {
+            log::error!(
+                "Operation '{}' failed with params {:?}: {:?}",
+                operation,
+                params,
+                e
+            );
+        }
+    }
+}
+```
+
+#### Performance Logging
+```rust
+pub async fn log_performance<F, T>(operation: &str, f: F) -> anyhow::Result<T>
+where
+    F: Future<Output = anyhow::Result<T>>,
+{
+    let start = Instant::now();
+    let result = f.await;
+    let duration = start.elapsed();
+    
+    match &result {
+        Ok(_) => {
+            log::debug!("Operation '{}' completed in {:?}", operation, duration);
+        }
+        Err(e) => {
+            log::warn!("Operation '{}' failed after {:?}: {:?}", operation, duration, e);
+        }
+    }
+    
+    result
+}
+```
+
+## Best Practices
+
+### 1. Thread Safety
+- Always use `Arc` types for shared data
+- Prefer message passing over shared state
+- Use `Mutex` only when necessary for mock implementations
+
+### 2. Error Handling
+- Use `anyhow::Result` for error propagation
+- Provide meaningful error messages
+- Handle actor death gracefully
+
+### 3. Performance
+- Use lazy initialization for expensive resources
+- Implement connection pooling for network operations
+- Monitor and log performance metrics
+
+### 4. Testing
+- Use mock implementations for unit tests
+- Create comprehensive test utilities
+- Test error scenarios and edge cases
+
+### 5. Configuration
+- Validate configuration at load time
+- Provide sensible defaults
+- Support environment variable overrides
+
+This documentation provides comprehensive context for the utilities and common patterns used throughout the codebase, enabling Cursor to understand the helper functions, macros, and architectural patterns. 
