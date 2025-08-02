@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use data::Data;
-pub use data::{PathOpt, USizeOpt};
+pub use data::{PathOpt, Renderer, RendererOpt, USizeOpt};
 use message::Message;
 use tokio::sync::Mutex;
 
@@ -238,6 +238,50 @@ impl Config {
             Self::Mock(data) => {
                 let mut data = data.lock().await;
                 data.set_usize(opt, value);
+            }
+        }
+    }
+
+    /// Gets a renderer configuration value.
+    ///
+    /// # Arguments
+    /// * `opt` - The renderer option to retrieve
+    ///
+    /// # Returns
+    /// The requested renderer value.
+    pub async fn renderer(&self, opt: RendererOpt) -> Renderer {
+        match self {
+            Self::Actual(sender) => {
+                let (tx, rx) = tokio::sync::oneshot::channel();
+                sender
+                    .send(Message::GetRenderer { opt, tx })
+                    .await
+                    .context("Getting renderer value with Config actor")
+                    .expect("Config actor died");
+                rx.await
+                    .context("Awaiting response for renderer value with Config actor")
+                    .expect("Config actor died")
+            }
+            Self::Mock(data) => {
+                let data = data.lock().await;
+                data.renderer(opt)
+            }
+        }
+    }
+
+    /// Sets a renderer configuration value.
+    ///
+    /// # Arguments
+    /// * `opt` - The renderer option to set
+    /// * `renderer` - The new renderer value
+    pub async fn set_renderer(&self, opt: RendererOpt, renderer: Renderer) {
+        match self {
+            Self::Actual(sender) => {
+                let _ = sender.send(Message::SetRenderer { opt, renderer }).await;
+            }
+            Self::Mock(data) => {
+                let mut data = data.lock().await;
+                data.set_renderer(opt, renderer);
             }
         }
     }

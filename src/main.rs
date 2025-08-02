@@ -8,6 +8,8 @@ use ph::env::Env;
 use ph::fs::Fs;
 use ph::log::Log;
 use ph::net::Net;
+use ph::render::Render;
+use ph::shell::Shell;
 use ph::utils::install_panic_hook;
 
 use ph::{ArcOsStr, ArcPath, ArcStr};
@@ -92,6 +94,10 @@ async fn main() -> anyhow::Result<()> {
     let net = Net::spawn(config.clone(), log.clone()).await;
     let lore = LoreApi::spawn(net);
 
+    // Initialize shell and render actors
+    let shell = Shell::spawn(log.clone()).await?;
+    let render = Render::spawn(shell, config.clone()).await?;
+
     // Initialize cache actors
     let mailing_list_cache = MailingListCache::spawn(lore.clone(), fs.clone(), config.clone());
     let patch_meta_cache = PatchMetaCache::spawn(lore.clone(), fs.clone(), config.clone());
@@ -118,7 +124,7 @@ async fn main() -> anyhow::Result<()> {
             message_id,
             html,
         } => {
-            handle_patch_command(&lore, list, message_id, html).await?;
+            handle_patch_command(&lore, &render, list, message_id, html).await?;
         }
     }
 
@@ -225,6 +231,7 @@ async fn handle_feed_command(
 /// Handle the patch command to display patch content
 async fn handle_patch_command(
     lore: &LoreApi,
+    render: &Render,
     list: String,
     message_id: String,
     html: bool,
@@ -243,10 +250,16 @@ async fn handle_patch_command(
         lore.get_raw_patch(list_name, msg_id).await?
     };
 
-    println!("Patch content:");
-    println!("{}", "=".repeat(80));
-    println!("{}", content);
-    println!("{}", "=".repeat(80));
+    if html {
+        println!("Patch content:");
+        println!("{}", "=".repeat(80));
+        println!("{}", content);
+        println!("{}", "=".repeat(80));
+    } else {
+        // Use the render actor to render the raw patch content
+        let rendered_content = render.render_patch(content).await?;
+        println!("{}", rendered_content);
+    }
 
     Ok(())
 }

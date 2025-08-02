@@ -2,7 +2,7 @@ use tokio::sync::oneshot;
 
 use crate::{ArcPath, log::LogLevel};
 
-use super::data::{PathOpt, USizeOpt};
+use super::data::{PathOpt, Renderer, RendererOpt, USizeOpt};
 
 /// Messages that can be sent to the configuration actor.
 ///
@@ -58,5 +58,19 @@ pub enum Message {
         opt: USizeOpt,
         /// The new numeric value
         size: usize,
+    },
+    /// Get a renderer configuration value
+    GetRenderer {
+        /// The renderer option to retrieve
+        opt: RendererOpt,
+        /// Channel to send the result back to the caller
+        tx: oneshot::Sender<Renderer>,
+    },
+    /// Set a renderer configuration value
+    SetRenderer {
+        /// The renderer option to set
+        opt: RendererOpt,
+        /// The new renderer value
+        renderer: Renderer,
     },
 }

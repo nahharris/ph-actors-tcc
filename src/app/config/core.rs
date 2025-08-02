@@ -79,6 +79,13 @@ impl Core {
                     Message::SetUSize { opt, size } => {
                         self.data.set_usize(opt, size);
                     }
+                    Message::GetRenderer { opt, tx } => {
+                        let res = self.data.renderer(opt);
+                        let _ = tx.send(res);
+                    }
+                    Message::SetRenderer { opt, renderer } => {
+                        self.data.set_renderer(opt, renderer);
+                    }
                 }
             }
         });

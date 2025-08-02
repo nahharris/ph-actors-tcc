@@ -3,3 +3,4 @@ log_dir = "/tmp/ph/logs"
 log_level = "Info"
 max_age = 30
 timeout = 30
+patch_renderer = "Bat"

@@ -2,6 +2,40 @@ use serde::{Deserialize, Serialize};
 
 use crate::{ArcPath, log::LogLevel};
 
+/// Available renderers for patch content.
+#[derive(Default, Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum Renderer {
+    /// Use the `bat` program for syntax highlighting
+    #[default]
+    Bat,
+    /// Use the `delta` program for diff highlighting
+    Delta,
+}
+
+impl Renderer {
+    /// Gets the program name for this renderer.
+    ///
+    /// # Returns
+    /// The program name as a string.
+    pub fn program_name(&self) -> &'static str {
+        match self {
+            Renderer::Bat => "bat",
+            Renderer::Delta => "delta",
+        }
+    }
+
+    /// Gets the default arguments for this renderer.
+    ///
+    /// # Returns
+    /// A vector of default arguments for the renderer.
+    pub fn default_args(&self) -> Vec<&'static str> {
+        match self {
+            Renderer::Bat => vec!["--language=diff", "--paging=never", "--style=plain", "--color=always"],
+            Renderer::Delta => vec!["--paging=never", "--side-by-side=false"],
+        }
+    }
+}
+
 /// Options for path-based configuration values that can be accessed and modified.
 #[derive(Debug, Clone, Copy)]
 pub enum PathOpt {
@@ -18,6 +52,13 @@ pub enum USizeOpt {
     MaxAge,
     /// Timeout for network requests in seconds
     Timeout,
+}
+
+/// Options for renderer configuration values that can be accessed and modified.
+#[derive(Debug, Clone, Copy)]
+pub enum RendererOpt {
+    /// The renderer to use for patch content
+    PatchRenderer,
 }
 
 /// The configuration data structure that holds all configurable values.
@@ -39,6 +80,8 @@ pub struct Data {
     max_age: usize,
     /// Timeout for network requests in seconds
     timeout: usize,
+    /// The renderer to use for patch content
+    patch_renderer: Renderer,
 }
 
 impl Default for Data {
@@ -49,6 +92,7 @@ impl Default for Data {
             log_level: LogLevel::Warning,
             max_age: 0,
             timeout: 30,
+            patch_renderer: Renderer::default(),
         }
     }
 }
@@ -119,6 +163,30 @@ impl Data {
         match opt {
             USizeOpt::MaxAge => self.max_age = value,
             USizeOpt::Timeout => self.timeout = value,
+        }
+    }
+
+    /// Gets a renderer configuration value.
+    ///
+    /// # Arguments
+    /// * `opt` - The renderer option to retrieve
+    ///
+    /// # Returns
+    /// The requested renderer value.
+    pub fn renderer(&self, opt: RendererOpt) -> Renderer {
+        match opt {
+            RendererOpt::PatchRenderer => self.patch_renderer,
+        }
+    }
+
+    /// Sets a renderer configuration value.
+    ///
+    /// # Arguments
+    /// * `opt` - The renderer option to set
+    /// * `renderer` - The new renderer value
+    pub fn set_renderer(&mut self, opt: RendererOpt, renderer: Renderer) {
+        match opt {
+            RendererOpt::PatchRenderer => self.patch_renderer = renderer,
         }
     }
 }
