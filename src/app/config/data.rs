@@ -5,8 +5,10 @@ use crate::{ArcPath, log::LogLevel};
 /// Available renderers for patch content.
 #[derive(Default, Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Renderer {
-    /// Use the `bat` program for syntax highlighting
+    /// Do not use an external renderer; show raw content
     #[default]
+    None,
+    /// Use the `bat` program for syntax highlighting
     Bat,
     /// Use the `delta` program for diff highlighting
     Delta,
@@ -19,6 +21,7 @@ impl Renderer {
     /// The program name as a string.
     pub fn program_name(&self) -> &'static str {
         match self {
+            Renderer::None => "",
             Renderer::Bat => "bat",
             Renderer::Delta => "delta",
         }
@@ -30,7 +33,13 @@ impl Renderer {
     /// A vector of default arguments for the renderer.
     pub fn default_args(&self) -> Vec<&'static str> {
         match self {
-            Renderer::Bat => vec!["--language=diff", "--paging=never", "--style=plain", "--color=always"],
+            Renderer::None => vec![],
+            Renderer::Bat => vec![
+                "--language=diff",
+                "--paging=never",
+                "--style=numbers",
+                "--color=always",
+            ],
             Renderer::Delta => vec!["--paging=never", "--side-by-side=false"],
         }
     }

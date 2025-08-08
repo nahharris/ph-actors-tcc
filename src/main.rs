@@ -4,12 +4,14 @@ use clap::{Parser, Subcommand};
 use ph::api::lore::LoreApi;
 use ph::app::cache::{mailing_list::MailingListCache, patch_meta::PatchMetaCache};
 use ph::app::config::{Config, PathOpt, USizeOpt};
+use ph::app::ui::AppUi;
 use ph::env::Env;
 use ph::fs::Fs;
 use ph::log::Log;
 use ph::net::Net;
 use ph::render::Render;
 use ph::shell::Shell;
+use ph::terminal::Terminal;
 use ph::utils::install_panic_hook;
 
 use ph::{ArcOsStr, ArcPath, ArcStr};
@@ -19,7 +21,7 @@ use ph::{ArcOsStr, ArcPath, ArcStr};
 #[command(about = "A CLI tool for interacting with the Lore Kernel Archive")]
 struct Cli {
     #[command(subcommand)]
-    command: Commands,
+    command: Option<Commands>,
 }
 
 #[derive(Subcommand)]
@@ -113,18 +115,35 @@ async fn main() -> anyhow::Result<()> {
     log.info("Starting patch-hub CLI");
 
     match cli.command {
-        Commands::Lists { page, count } => {
+        Some(Commands::Lists { page, count }) => {
             handle_lists_command(&mailing_list_cache, page, count).await?;
         }
-        Commands::Feed { list, page, count } => {
+        Some(Commands::Feed { list, page, count }) => {
             handle_feed_command(&patch_meta_cache, list, page, count).await?;
         }
-        Commands::Patch {
+        Some(Commands::Patch {
             list,
             message_id,
             html,
-        } => {
+        }) => {
             handle_patch_command(&lore, &render, list, message_id, html).await?;
+        }
+        None => {
+            // TUI mode
+            let (ui_tx, ui_rx) = tokio::sync::mpsc::channel(64);
+            let (terminal, ui_exit) = Terminal::spawn(log.clone(), ui_tx.clone())?;
+            let (app, _handle) = AppUi::spawn(
+                log.clone(),
+                terminal,
+                mailing_list_cache.clone(),
+                patch_meta_cache.clone(),
+                lore.clone(),
+                render.clone(),
+                ui_rx,
+            );
+            app.run().await?;
+            // Block main until UI exits (Esc), then continue to persist caches
+            let _ = ui_exit.await;
         }
     }
 
@@ -138,6 +157,8 @@ async fn main() -> anyhow::Result<()> {
 
     Ok(())
 }
+
+// no-op helper removed
 
 /// Handle the lists command to display available mailing lists using cache
 async fn handle_lists_command(

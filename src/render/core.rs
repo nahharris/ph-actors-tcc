@@ -74,6 +74,11 @@ impl Core {
             .renderer(crate::app::config::RendererOpt::PatchRenderer)
             .await;
 
+        if matches!(renderer, crate::app::config::Renderer::None) {
+            // No external renderer: return raw content
+            return Ok(content);
+        }
+
         // Get the program name and default arguments
         let program = ArcStr::from(renderer.program_name());
         let default_args = renderer.default_args();

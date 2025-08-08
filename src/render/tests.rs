@@ -23,8 +23,14 @@ async fn test_renderer_default_args() {
 
 #[tokio::test]
 async fn test_mock_render() {
-    let render = Render::mock(HashMap::from([(ArcStr::from("test patch content"), ArcStr::from("rendered content"))]));
+    let render = Render::mock(HashMap::from([(
+        ArcStr::from("test patch content"),
+        ArcStr::from("rendered content"),
+    )]));
 
-    let result = render.render_patch(ArcStr::from("test patch content")).await.unwrap();
+    let result = render
+        .render_patch(ArcStr::from("test patch content"))
+        .await
+        .unwrap();
     assert_eq!(result, ArcStr::from("rendered content"));
 }
