@@ -12,12 +12,11 @@ use crate::log::Log;
 /// UI key events emitted by the terminal.
 #[derive(Debug, Clone, Copy)]
 pub enum UiEvent {
-    Up,
-    Down,
     Left,
     Right,
-    Enter,
     Esc,
+    SelectionChange(usize),
+    SelectionSubmit(usize),
 }
 
 /// A high-level description of the screen to render.
@@ -73,6 +72,7 @@ impl Terminal {
 
         // Spawn the Cursive loop in its own thread and obtain its callback sink.
         let (sink_tx, sink_rx) = std::sync::mpsc::channel();
+        let ui_events_async = ui_events.clone();
         let (exit_tx, exit_rx) = tokio::sync::oneshot::channel::<()>();
         thread::spawn(move || {
             let mut siv = cursive::crossterm();
@@ -85,11 +85,8 @@ impl Terminal {
                 }
             };
 
-            siv.add_global_callback(Event::Key(Key::Up), fwd(UiEvent::Up));
-            siv.add_global_callback(Event::Key(Key::Down), fwd(UiEvent::Down));
             siv.add_global_callback(Event::Key(Key::Left), fwd(UiEvent::Left));
             siv.add_global_callback(Event::Key(Key::Right), fwd(UiEvent::Right));
-            siv.add_global_callback(Event::Key(Key::Enter), fwd(UiEvent::Enter));
             siv.add_global_callback(Event::Key(Key::Esc), fwd(UiEvent::Esc));
 
             let cb_sink = siv.cb_sink().clone();
@@ -112,6 +109,7 @@ impl Terminal {
             while let Some(msg) = rx.recv().await {
                 match msg {
                     Message::Show(screen) => {
+                        let ev_tx_outer = ui_events_async.clone();
                         let _ = cb_sink.send(Box::new(move |s: &mut Cursive| match screen {
                             Screen::Loading(text) => {
                                 s.pop_layer();
@@ -129,11 +127,19 @@ impl Terminal {
                                 selected,
                             } => {
                                 s.pop_layer();
-                                let mut list = SelectView::<String>::new();
-                                for it in items {
+                                let mut list = SelectView::<usize>::new();
+                                for (i, it) in items.into_iter().enumerate() {
                                     let label = format!("{} - {}", it.name, it.description);
-                                    list.add_item(label, String::new());
+                                    list.add_item(label, i);
                                 }
+                                let tx_sel = ev_tx_outer.clone();
+                                list.set_on_select(move |_siv, idx| {
+                                    let _ = tx_sel.try_send(UiEvent::SelectionChange(*idx));
+                                });
+                                let tx_submit = ev_tx_outer.clone();
+                                list.set_on_submit(move |_siv, idx| {
+                                    let _ = tx_submit.try_send(UiEvent::SelectionSubmit(*idx));
+                                });
                                 let len = list.len();
                                 let idx = selected.min(len.saturating_sub(1));
                                 let _ = list.set_selection(idx);
@@ -149,11 +155,19 @@ impl Terminal {
                                 selected,
                             } => {
                                 s.pop_layer();
-                                let mut listv = SelectView::<String>::new();
-                                for p in items {
+                                let mut listv = SelectView::<usize>::new();
+                                for (i, p) in items.into_iter().enumerate() {
                                     let label = format!("{} — {} <{}>", p.title, p.author, p.email);
-                                    listv.add_item(label, String::new());
+                                    listv.add_item(label, i);
                                 }
+                                let tx_sel = ev_tx_outer.clone();
+                                listv.set_on_select(move |_siv, idx| {
+                                    let _ = tx_sel.try_send(UiEvent::SelectionChange(*idx));
+                                });
+                                let tx_submit = ev_tx_outer.clone();
+                                listv.set_on_submit(move |_siv, idx| {
+                                    let _ = tx_submit.try_send(UiEvent::SelectionSubmit(*idx));
+                                });
                                 let len = listv.len();
                                 let idx = selected.min(len.saturating_sub(1));
                                 let _ = listv.set_selection(idx);
@@ -190,7 +204,7 @@ impl Terminal {
         match self {
             Terminal::Actual(tx) => tx
                 .send(Message::Show(screen))
-                    .await
+                .await
                 .context("Sending Show message to terminal"),
             Terminal::Mock => Ok(()),
         }

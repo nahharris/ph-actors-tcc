@@ -146,6 +146,8 @@ async fn render_feed(
             list.to_string(),
             st.feed_page
         ));
+        // Invalidate feed cache so next open refetches
+        cache.invalidate_cache(list.clone()).await;
     } else {
         log.info(format!("Feed: fetched {} items", items.len()));
     }
@@ -163,6 +165,7 @@ async fn render_patch(
     lore: &LoreApi,
     render: &Render,
     log: &Log,
+    feed_cache: &PatchMetaCache,
     list: ArcStr,
     msg_id: ArcStr,
     title: ArcStr,
@@ -187,6 +190,8 @@ async fn render_patch(
                             list.to_string(),
                             msg_id.to_string()
                         ));
+                        // Invalidate cache so next attempt refetches
+                        feed_cache.invalidate_cache(list.clone()).await;
                     } else {
                         log.info(format!("Patch: rendered chars={}", rendered.len()));
                     }
@@ -198,6 +203,7 @@ async fn render_patch(
                 }
                 Err(e) => {
                     log.error(format!("Patch: render error: {}", e));
+                    feed_cache.invalidate_cache(list.clone()).await;
                     term.show(Screen::Error(ArcStr::from("Failed to render patch")))
                         .await
                 }
@@ -205,6 +211,7 @@ async fn render_patch(
         }
         Err(e) => {
             log.error(format!("Patch: fetch error: {}", e));
+            feed_cache.invalidate_cache(list.clone()).await;
             term.show(Screen::Error(ArcStr::from("Failed to load patch")))
                 .await
         }
@@ -222,13 +229,8 @@ async fn handle_event(
     st: &mut State,
 ) {
     match (st.view, ev) {
-        (ViewKind::Lists, UiEvent::Up) => {
-            st.list_selected = st.list_selected.saturating_sub(1);
-            let _ = render_lists(term, list_cache, _log, st).await;
-        }
-        (ViewKind::Lists, UiEvent::Down) => {
-            st.list_selected = st.list_selected.saturating_add(1);
-            let _ = render_lists(term, list_cache, _log, st).await;
+        (ViewKind::Lists, UiEvent::SelectionChange(idx)) => {
+            st.list_selected = idx;
         }
         (ViewKind::Lists, UiEvent::Left) => {
             st.list_page = st.list_page.saturating_sub(1);
@@ -240,12 +242,12 @@ async fn handle_event(
             st.list_selected = 0;
             let _ = render_lists(term, list_cache, _log, st).await;
         }
-        (ViewKind::Lists, UiEvent::Enter) => {
+        (ViewKind::Lists, UiEvent::SelectionSubmit(idx)) => {
             // Resolve selected list name
             let start = st.list_page * 20;
             let end = start + 20;
             if let Ok(items) = list_cache.get_slice(start..end).await {
-                if let Some(selected) = items.get(st.list_selected) {
+                if let Some(selected) = items.get(idx) {
                     _log.info(format!(
                         "UI: Lists -> Feed list={} (reset page/sel)",
                         selected.name
@@ -268,17 +270,8 @@ async fn handle_event(
                 }
             }
         }
-        (ViewKind::Feed, UiEvent::Up) => {
-            st.feed_selected = st.feed_selected.saturating_sub(1);
-            if let Some(list) = st.feed_list.clone() {
-                let _ = render_feed(term, feed_cache, _log, st, list).await;
-            }
-        }
-        (ViewKind::Feed, UiEvent::Down) => {
-            st.feed_selected = st.feed_selected.saturating_add(1);
-            if let Some(list) = st.feed_list.clone() {
-                let _ = render_feed(term, feed_cache, _log, st, list).await;
-            }
+        (ViewKind::Feed, UiEvent::SelectionChange(idx)) => {
+            st.feed_selected = idx;
         }
         (ViewKind::Feed, UiEvent::Left) => {
             st.feed_page = st.feed_page.saturating_sub(1);
@@ -294,12 +287,12 @@ async fn handle_event(
                 let _ = render_feed(term, feed_cache, _log, st, list).await;
             }
         }
-        (ViewKind::Feed, UiEvent::Enter) => {
+        (ViewKind::Feed, UiEvent::SelectionSubmit(idx)) => {
             if let Some(list) = st.feed_list.clone() {
                 let start = st.feed_page * 20;
                 let end = start + 20;
                 if let Ok(items) = feed_cache.get_slice(list.clone(), start..end).await {
-                    if let Some(sel) = items.get(st.feed_selected) {
+                    if let Some(sel) = items.get(idx) {
                         _log.info(format!(
                             "UI: Feed -> Patch title='{}' list={} msg_id={}",
                             sel.title,
@@ -312,6 +305,7 @@ async fn handle_event(
                             lore,
                             render,
                             _log,
+                            feed_cache,
                             list,
                             ArcStr::from(sel.message_id.clone()),
                             ArcStr::from(sel.title.clone()),
