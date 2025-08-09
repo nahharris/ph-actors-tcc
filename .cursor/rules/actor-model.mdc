@@ -1,7 +1,5 @@
 ---
-description: Apply for implementation of actors
-globs: 
-alwaysApply: false
+alwaysApply: true
 ---
 # Creating New Actors
 
@@ -13,7 +11,9 @@ Each actor must consist of three main components:
 
 1. **Core** (`something/core.rs`) - Internal implementation and state management
 2. **Message** (`something/message.rs`) - Message types for actor communication  
-3. **Public Interface** (main module `something.rs`) - Unified API with real and mock implementations
+3. **Data** (`something/data.rs`) - Data structures associated with the actor
+4. **Public Interface** (main module `something.rs`) - Unified API with real and mock implementations
+5. **README.md** (`something/README.md`), beyond `///` documentation, you must write a README.md file for the actor
 
 ## Core Component (`core.rs`)
 
@@ -123,6 +123,15 @@ impl PublicInterface {
 }
 ```
 
+## README.md
+
+The documentation for the actor should be in the format to help the AI Coding Agent to understand:
+
+- What scope that actor (what is its responsibilities and what's not)
+- What this actor depends on
+- What it's capable of
+- How to extend the functionality of the actor
+
 ## Thread Safety Requirements
 
 - All state must be managed internally within the actor
@@ -146,8 +155,10 @@ impl PublicInterface {
 
 ## Dependencies
 
+The actors are designed for concurrency and parallelism, but we'll use `tokio` instead of `std`. 
+
 - Use `tokio::sync::mpsc` for main message channel
 - Use `tokio::sync::oneshot` for response channels  
-- Use `tokio::task` for spawning actor tasks
+- Use `tokio::task` for spawning actor tasks (never use threads, unless it's impossible to do it differently)
 - Use `tokio::sync::Mutex` for mock shared state
 - Use `anyhow` for error handling and context

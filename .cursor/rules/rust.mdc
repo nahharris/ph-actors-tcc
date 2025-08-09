@@ -7,3 +7,5 @@ alwaysApply: false
 - Run `cargo fmt` before finishing to make sure the code you wrote is properly formatted, it will auto fix it
 - Run `cargo test` to check if your implementation is not breaking the program
 - Always add documentation to the functions, data structures and modules you create. But avoid adding other kind of comments to not polute the view, only add for unusual pieces of code
+- Never use `something/mod.rs` files, instead have a `something.rs` and a `something/` containing submodules
+- 
