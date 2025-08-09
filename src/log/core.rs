@@ -5,6 +5,8 @@ use super::data::{LogLevel, LogMessage};
 use super::message::Message;
 use crate::{ArcPath, fs::Fs};
 
+const SCOPE: &str = "log";
+
 /// The core of the logging system that manages logging to both stderr and log files.
 ///
 /// This struct provides thread-safe logging capabilities through an actor pattern.
@@ -155,6 +157,7 @@ impl LogCore {
         let Ok(logs) = self.fs.read_dir(self.log_dir.clone()).await else {
             self.log(LogMessage {
                 level: LogLevel::Error,
+                scope: SCOPE,
                 message: "Failed to read the logs directory during garbage collection".into(),
             })
             .await;
@@ -178,6 +181,7 @@ impl LogCore {
             let age = age.as_secs() / 60 / 60 / 24;
             if age as usize > self.max_age && self.fs.remove_file(log.clone()).await.is_err() {
                 self.log(LogMessage {
+                    scope: SCOPE,
                     message: format!("Failed to remove the log file: {}", log.to_string_lossy()),
                     level: LogLevel::Warning,
                 })
@@ -224,6 +228,7 @@ mod tests {
             .unwrap();
         let msg = LogMessage {
             level: LogLevel::Info,
+            scope: SCOPE,
             message: "test".to_string(),
         };
         log_core.log(msg.clone()).await;
@@ -241,12 +246,14 @@ mod tests {
             .unwrap();
         let msg = LogMessage {
             level: LogLevel::Info,
+            scope: SCOPE,
             message: "info".to_string(),
         };
         log_core.log(msg.clone()).await;
         assert!(log_core.logs_to_print.is_empty());
         let msg2 = LogMessage {
             level: LogLevel::Warning,
+            scope: SCOPE,
             message: "warn".to_string(),
         };
         log_core.log(msg2.clone()).await;

@@ -30,4 +30,9 @@ pub enum Message {
     IsCacheValid {
         tx: oneshot::Sender<anyhow::Result<bool>>,
     },
+    /// Check if the cache contains the given range (without fetching)
+    ContainsRange {
+        range: std::ops::Range<usize>,
+        tx: oneshot::Sender<bool>,
+    },
 }

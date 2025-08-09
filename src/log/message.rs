@@ -23,6 +23,7 @@ mod tests {
     fn test_message_log_variant() {
         let msg = LogMessage {
             level: LogLevel::Info,
+            scope: "test",
             message: "test".to_string(),
         };
         let m = Message::Log(msg.clone());

@@ -8,6 +8,7 @@ use crate::ArcStr;
 use crate::api::lore::{LoreApi, LorePatchMetadata};
 use crate::app::config::Config;
 use crate::fs::Fs;
+use crate::log::Log;
 use anyhow::Context;
 use message::Message;
 
@@ -28,8 +29,8 @@ pub struct MockData {
 
 impl PatchMetaCache {
     /// Spawns a new PatchMetaCache actor.
-    pub fn spawn(lore: LoreApi, fs: Fs, config: Config) -> Self {
-        let core = core::Core::new(lore, fs, config);
+    pub fn spawn(lore: LoreApi, fs: Fs, config: Config, log: Log) -> Self {
+        let core = core::Core::new(lore, fs, config, log);
         let (state, _handle) = core.spawn();
         state
     }
@@ -184,6 +185,31 @@ impl PatchMetaCache {
             Self::Mock(_) => {
                 // Always true for mock
                 Ok(true)
+            }
+        }
+    }
+
+    /// Checks if the cache contains the given range for a mailing list without fetching new data.
+    /// This is a fast operation that doesn't trigger API calls.
+    pub async fn contains_range(&self, list: ArcStr, range: std::ops::Range<usize>) -> bool {
+        match self {
+            Self::Actual(sender) => {
+                let (tx, rx) = tokio::sync::oneshot::channel();
+                sender
+                    .send(Message::ContainsRange { list, range, tx })
+                    .await
+                    .context("Sending message to PatchMetaCache actor")
+                    .expect("PatchMetaCache actor died");
+                rx.await
+                    .context("Awaiting response from PatchMetaCache actor")
+                    .expect("PatchMetaCache actor died")
+            }
+            Self::Mock(data) => {
+                let data = data.lock().await;
+                data.patch_cache
+                    .get(&list)
+                    .map(|v| v.len() >= range.end)
+                    .unwrap_or(false)
             }
         }
     }

@@ -3,25 +3,37 @@ use std::{fmt::Display, str::FromStr};
 
 /// Describes a message to be logged.
 ///
-/// Contains both the message content and its associated log level.
+/// Contains the message content, its associated log level, and a scope for categorization.
 /// This struct is used internally by the logger to manage log entries.
 ///
 /// # Examples
 /// ```ignore
 /// let msg = LogMessage {
 ///     level: LogLevel::Info,
+///     scope: "app",
 ///     message: "Application started".to_string(),
 /// };
 /// ```
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 pub struct LogMessage {
     pub level: LogLevel,
+    pub scope: &'static str,
     pub message: String,
 }
 
 impl std::fmt::Display for LogMessage {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "[{}] {}", self.level, self.message)
+        let now = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap_or_default();
+        let timestamp = chrono::DateTime::from_timestamp(now.as_secs() as i64, now.subsec_nanos())
+            .unwrap_or_default()
+            .format("%Y-%m-%d %H:%M:%S UTC");
+        write!(
+            f,
+            "[{}] [{}] [{}] {}",
+            timestamp, self.level, self.scope, self.message
+        )
     }
 }
 
@@ -109,6 +121,7 @@ mod tests {
     fn test_log_message_display() {
         let msg = LogMessage {
             level: LogLevel::Error,
+            scope: "test",
             message: "fail".to_string(),
         };
         assert_eq!(msg.to_string(), "[ERROR] fail");
@@ -118,14 +131,17 @@ mod tests {
     fn test_log_message_ordering_and_equality() {
         let a = LogMessage {
             level: LogLevel::Info,
+            scope: "test",
             message: "a".to_string(),
         };
         let b = LogMessage {
             level: LogLevel::Warning,
+            scope: "test",
             message: "b".to_string(),
         };
         let c = LogMessage {
             level: LogLevel::Info,
+            scope: "test",
             message: "a".to_string(),
         };
         assert!(a < b);

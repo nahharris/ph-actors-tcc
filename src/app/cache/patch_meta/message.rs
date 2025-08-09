@@ -37,4 +37,10 @@ pub enum Message {
         list: ArcStr,
         tx: oneshot::Sender<anyhow::Result<bool>>,
     },
+    /// Check if the cache contains the given range for a mailing list (without fetching)
+    ContainsRange {
+        list: ArcStr,
+        range: std::ops::Range<usize>,
+        tx: oneshot::Sender<bool>,
+    },
 }

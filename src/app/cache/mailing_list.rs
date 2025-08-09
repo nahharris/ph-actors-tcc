@@ -8,6 +8,7 @@ pub mod message;
 use crate::api::lore::{LoreApi, LoreMailingList};
 use crate::app::config::Config;
 use crate::fs::Fs;
+use crate::log::Log;
 use message::Message;
 
 /// The MailingListCache actor provides a demand-driven, cached list of mailing lists.
@@ -26,8 +27,8 @@ pub struct MockData {
 
 impl MailingListCache {
     /// Spawns a new MailingListCache actor.
-    pub fn spawn(lore: LoreApi, fs: Fs, config: Config) -> Self {
-        let core = core::Core::new(lore, fs, config);
+    pub fn spawn(lore: LoreApi, fs: Fs, config: Config, log: Log) -> Self {
+        let core = core::Core::new(lore, fs, config, log);
         let (state, _handle) = core.spawn();
         state
     }
@@ -176,6 +177,28 @@ impl MailingListCache {
             Self::Mock(_) => {
                 // Always true for mock
                 Ok(true)
+            }
+        }
+    }
+
+    /// Checks if the cache contains the given range without fetching new data.
+    /// This is a fast operation that doesn't trigger API calls.
+    pub async fn contains_range(&self, range: std::ops::Range<usize>) -> bool {
+        match self {
+            Self::Actual(sender) => {
+                let (tx, rx) = tokio::sync::oneshot::channel();
+                sender
+                    .send(Message::ContainsRange { range, tx })
+                    .await
+                    .context("Sending message to MailingListCache actor")
+                    .expect("MailingListCache actor died");
+                rx.await
+                    .context("Awaiting response from MailingListCache actor")
+                    .expect("MailingListCache actor died")
+            }
+            Self::Mock(data) => {
+                let data = data.lock().await;
+                data.mailing_lists.len() >= range.end
             }
         }
     }

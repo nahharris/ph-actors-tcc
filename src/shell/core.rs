@@ -5,6 +5,8 @@ use super::data::{Command as ShellCommand, Result, Status};
 use super::message::Message;
 use crate::ArcStr;
 
+const SCOPE: &str = "shell";
+
 /// The core of the Shell actor, responsible for executing external programs.
 ///
 /// This struct provides thread-safe access to shell operations through an actor pattern.
@@ -72,7 +74,8 @@ impl Core {
         command: ShellCommand,
     ) {
         let command_str = command.to_string();
-        self.log.info(format!("Executing command: {command_str}"));
+        self.log
+            .info(SCOPE, format!("Executing command: {command_str}"));
 
         let mut cmd = Command::new(&command.program);
         for arg in command.args.iter() {
@@ -100,7 +103,8 @@ impl Core {
                         )
                         .await
                         {
-                            self.log.error(format!("Failed to write to stdin: {e}"));
+                            self.log
+                                .error(SCOPE, format!("Failed to write to stdin: {e}"));
                             let _ =
                                 tx.send(Err(anyhow::anyhow!("Failed to write to stdin: {}", e)));
                             return;
@@ -121,37 +125,49 @@ impl Core {
 
                         match &result.status {
                             Status::Success(0) => {
-                                self.log
-                                    .info(format!("Command completed successfully: {command_str}"));
+                                self.log.info(
+                                    SCOPE,
+                                    format!("Command completed successfully: {command_str}"),
+                                );
                             }
                             Status::Success(code) => {
-                                self.log.warn(format!(
-                                    "Command completed with exit code {code}: {command_str}"
-                                ));
+                                self.log.warn(
+                                    SCOPE,
+                                    format!(
+                                        "Command completed with exit code {code}: {command_str}"
+                                    ),
+                                );
                             }
                             Status::Signal(signal) => {
-                                self.log.error(format!(
-                                    "Command terminated by signal {signal}: {command_str}"
-                                ));
+                                self.log.error(
+                                    SCOPE,
+                                    format!("Command terminated by signal {signal}: {command_str}"),
+                                );
                             }
                             Status::Failed(reason) => {
-                                self.log
-                                    .error(format!("Command failed: {command_str} - {reason}"));
+                                self.log.error(
+                                    SCOPE,
+                                    format!("Command failed: {command_str} - {reason}"),
+                                );
                             }
                         }
 
                         Ok(result)
                     }
                     Err(e) => {
-                        self.log
-                            .error(format!("Failed to wait for command: {command_str} - {e}"));
+                        self.log.error(
+                            SCOPE,
+                            format!("Failed to wait for command: {command_str} - {e}"),
+                        );
                         Err(anyhow::anyhow!("Failed to wait for command: {}", e))
                     }
                 }
             }
             Err(e) => {
-                self.log
-                    .error(format!("Failed to spawn command: {command_str} - {e}"));
+                self.log.error(
+                    SCOPE,
+                    format!("Failed to spawn command: {command_str} - {e}"),
+                );
                 Err(anyhow::anyhow!("Failed to spawn command: {}", e))
             }
         };

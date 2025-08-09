@@ -67,7 +67,7 @@ impl Log {
         Self::Mock(Arc::new(Mutex::new(VecDeque::new())))
     }
 
-    fn log(&self, message: String, level: LogLevel) {
+    fn log(&self, scope: &'static str, message: String, level: LogLevel) {
         match self {
             Log::Actual(sender) => {
                 let sender = sender.clone();
@@ -75,6 +75,7 @@ impl Log {
                     sender
                         .send(message::Message::Log(LogMessage {
                             level,
+                            scope,
                             message: message.to_string(),
                         }))
                         .await
@@ -87,6 +88,7 @@ impl Log {
                     let mut lock = messages.lock().await;
                     lock.push_back(LogMessage {
                         level,
+                        scope,
                         message: message.to_string(),
                     });
                 });
@@ -95,28 +97,32 @@ impl Log {
     }
 
     /// Log a message with the `INFO` level
-    pub fn info<M: Display>(&self, message: M) {
-        self.log(message.to_string(), LogLevel::Info);
+    pub fn info<M: Display>(&self, scope: &'static str, message: M) {
+        self.log(scope, message.to_string(), LogLevel::Info);
     }
 
     /// Log a message with the `WARNING` level
-    pub fn warn<M: Display>(&self, message: M) {
-        self.log(message.to_string(), LogLevel::Warning);
+    pub fn warn<M: Display>(&self, scope: &'static str, message: M) {
+        self.log(scope, message.to_string(), LogLevel::Warning);
     }
 
     /// Log a message with the `ERROR` level
-    pub fn error<M: Display>(&self, message: M) {
-        self.log(message.to_string(), LogLevel::Error);
+    pub fn error<M: Display>(&self, scope: &'static str, message: M) {
+        self.log(scope, message.to_string(), LogLevel::Error);
     }
 
     /// Log an info message if the result is an error
     /// and return the result as is
     #[allow(dead_code)]
-    pub fn info_on_error<T, E: Display>(&self, result: Result<T, E>) -> Result<T, E> {
+    pub fn info_on_error<T, E: Display>(
+        &self,
+        scope: &'static str,
+        result: Result<T, E>,
+    ) -> Result<T, E> {
         match result {
             Ok(value) => Ok(value),
             Err(err) => {
-                self.log(err.to_string(), LogLevel::Info);
+                self.log(scope, err.to_string(), LogLevel::Info);
                 Err(err)
             }
         }
@@ -125,11 +131,15 @@ impl Log {
     /// Log a warning message if the result is an error
     /// and return the result as is
     #[allow(dead_code)]
-    pub fn warn_on_error<T, E: Display>(&self, result: Result<T, E>) -> Result<T, E> {
+    pub fn warn_on_error<T, E: Display>(
+        &self,
+        scope: &'static str,
+        result: Result<T, E>,
+    ) -> Result<T, E> {
         match result {
             Ok(value) => Ok(value),
             Err(err) => {
-                self.log(err.to_string(), LogLevel::Warning);
+                self.log(scope, err.to_string(), LogLevel::Warning);
                 Err(err)
             }
         }
@@ -137,11 +147,15 @@ impl Log {
 
     /// Log an error message if the result is an error
     /// and return the result as is
-    pub fn error_on_error<T, E: Display>(&self, result: Result<T, E>) -> Result<T, E> {
+    pub fn error_on_error<T, E: Display>(
+        &self,
+        scope: &'static str,
+        result: Result<T, E>,
+    ) -> Result<T, E> {
         match result {
             Ok(value) => Ok(value),
             Err(err) => {
-                self.log(err.to_string(), LogLevel::Error);
+                self.log(scope, err.to_string(), LogLevel::Error);
                 Err(err)
             }
         }

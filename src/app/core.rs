@@ -20,6 +20,7 @@ use super::data::{AppState, Command};
 use super::message::Message;
 
 const BUFFER_SIZE: usize = 64;
+const SCOPE: &str = "app";
 
 /// Core implementation of the App actor
 #[derive(Debug)]
@@ -88,18 +89,23 @@ impl Core {
         let render = Render::spawn(shell.clone(), config.clone()).await?;
 
         // Initialize cache actors
-        let mailing_list_cache = MailingListCache::spawn(lore.clone(), fs.clone(), config.clone());
-        let patch_meta_cache = PatchMetaCache::spawn(lore.clone(), fs.clone(), config.clone());
+        let mailing_list_cache =
+            MailingListCache::spawn(lore.clone(), fs.clone(), config.clone(), log.clone());
+        let patch_meta_cache =
+            PatchMetaCache::spawn(lore.clone(), fs.clone(), config.clone(), log.clone());
 
         // Load existing cache data
         if let Err(e) = mailing_list_cache.load_cache().await {
-            log.warn(&format!("Failed to load mailing list cache: {}", e));
+            log.warn(SCOPE, &format!("Failed to load mailing list cache: {}", e));
         }
         if let Err(e) = patch_meta_cache.load_cache().await {
-            log.warn(&format!("Failed to load patch metadata cache: {}", e));
+            log.warn(
+                SCOPE,
+                &format!("Failed to load patch metadata cache: {}", e),
+            );
         }
 
-        log.info("App actor initialized successfully");
+        log.info(SCOPE, "App actor initialized successfully");
 
         Ok(Self {
             state: AppState {
@@ -231,19 +237,23 @@ impl Core {
 
     /// Handle graceful shutdown
     pub async fn handle_shutdown(&self) -> Result<()> {
-        self.log.info("Shutting down application");
+        self.log.info(SCOPE, "Shutting down application");
 
         // Persist cache data before exiting
         if let Err(e) = self.mailing_list_cache.persist_cache().await {
-            self.log
-                .warn(&format!("Failed to persist mailing list cache: {}", e));
+            self.log.warn(
+                SCOPE,
+                &format!("Failed to persist mailing list cache: {}", e),
+            );
         }
         if let Err(e) = self.patch_meta_cache.persist_cache().await {
-            self.log
-                .warn(&format!("Failed to persist patch metadata cache: {}", e));
+            self.log.warn(
+                SCOPE,
+                &format!("Failed to persist patch metadata cache: {}", e),
+            );
         }
 
-        self.log.info("Application shutdown complete");
+        self.log.info(SCOPE, "Application shutdown complete");
         Ok(())
     }
 

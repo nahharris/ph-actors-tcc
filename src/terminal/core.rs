@@ -11,6 +11,8 @@ use super::data::{Screen, UiEvent};
 use super::message::Message;
 use crate::log::Log;
 
+const SCOPE: &str = "terminal";
+
 /// Core implementation of the terminal actor that manages the Cursive UI.
 pub struct Core {
     log: Log,
@@ -70,7 +72,7 @@ impl Core {
                 .recv()
                 .expect("failed to initialize cursive callback sink");
 
-            self.log.info("Terminal actor spawned");
+            self.log.info(SCOPE, "Terminal actor spawned");
 
             // Message handling loop - this is the actual actor behavior
             while let Some(msg) = rx.recv().await {
