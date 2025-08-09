@@ -130,10 +130,25 @@ impl Core {
         self.state.feed_page = page;
         self.state.feed_selected = 0;
 
-        // Show loading screen before fetching feed data
+        // Show loading screen immediately when transitioning to feed view
         self.terminal
             .show(Screen::Loading(ArcStr::from("Loading feed...")))
             .await?;
+
+        // Validate cache before using it
+        match self.patch_meta_cache.is_cache_valid(list.clone()).await {
+            Ok(false) => {
+                self.log.warn(SCOPE, &format!("Patch metadata cache for '{}' is outdated, invalidating", list));
+                self.patch_meta_cache.invalidate_cache(list.clone()).await;
+            }
+            Err(e) => {
+                self.log.warn(SCOPE, &format!("Failed to validate patch metadata cache for '{}': {}, invalidating", list, e));
+                self.patch_meta_cache.invalidate_cache(list.clone()).await;
+            }
+            Ok(true) => {
+                self.log.info(SCOPE, &format!("Patch metadata cache for '{}' is valid", list));
+            }
+        }
 
         self.render_feed(list).await
     }

@@ -97,12 +97,30 @@ impl Core {
         // Load existing cache data
         if let Err(e) = mailing_list_cache.load_cache().await {
             log.warn(SCOPE, &format!("Failed to load mailing list cache: {}", e));
+        } else {
+            // Validate mailing list cache after loading
+            match mailing_list_cache.is_cache_valid().await {
+                Ok(true) => {
+                    log.info(SCOPE, "Mailing list cache is valid");
+                }
+                Ok(false) => {
+                    log.warn(SCOPE, "Mailing list cache is outdated, invalidating");
+                    mailing_list_cache.invalidate_cache().await;
+                }
+                Err(e) => {
+                    log.warn(SCOPE, &format!("Failed to validate mailing list cache: {}, invalidating", e));
+                    mailing_list_cache.invalidate_cache().await;
+                }
+            }
         }
+
         if let Err(e) = patch_meta_cache.load_cache().await {
             log.warn(
                 SCOPE,
                 &format!("Failed to load patch metadata cache: {}", e),
             );
+        } else {
+            log.info(SCOPE, "Patch metadata cache loaded successfully, validation will be done per mailing list on demand");
         }
 
         log.info(SCOPE, "App actor initialized successfully");
