@@ -6,14 +6,14 @@ use tokio::task::JoinHandle;
 use crate::api::lore::LoreApi;
 use crate::app::cache::{mailing_list::MailingListCache, patch_meta::PatchMetaCache};
 use crate::app::config::{Config, PathOpt, USizeOpt};
-use crate::app::ui::AppUi;
+use crate::app::ui::{NavigationAction, Ui};
 use crate::env::Env;
 use crate::fs::Fs;
 use crate::log::Log;
 use crate::net::Net;
 use crate::render::Render;
 use crate::shell::Shell;
-use crate::terminal::Terminal;
+use crate::terminal::{Terminal, UiEvent};
 use crate::{ArcOsStr, ArcPath, ArcStr};
 
 use super::data::{AppState, Command};
@@ -22,6 +22,7 @@ use super::message::Message;
 const BUFFER_SIZE: usize = 64;
 
 /// Core implementation of the App actor
+#[derive(Debug)]
 pub struct Core {
     /// Application state
     state: AppState,
@@ -118,30 +119,60 @@ impl Core {
         })
     }
 
-    /// Spawn the App actor
-    pub fn spawn(self) -> (super::App, JoinHandle<()>) {
+    /// Spawn the App actor for interactive mode
+    pub fn spawn_interactive(self) -> Result<(super::App, JoinHandle<()>)> {
+        // Create Terminal and UI actors for interactive mode
+        let (ui_tx, ui_rx) = tokio::sync::mpsc::channel(64);
+        let (terminal, ui_exit) = Terminal::spawn(self.log.clone(), ui_tx.clone());
+        let (ui, _ui_handle) = Ui::spawn(
+            self.log.clone(),
+            terminal,
+            self.mailing_list_cache.clone(),
+            self.patch_meta_cache.clone(),
+            self.lore.clone(),
+            self.render.clone(),
+        );
+
         let (tx, mut rx) = mpsc::channel(BUFFER_SIZE);
         let handle = tokio::spawn(async move {
             let mut core = self;
-            while let Some(message) = rx.recv().await {
-                match message {
-                    Message::ExecuteCommand { command, tx } => {
-                        let result = core.handle_execute_command(command).await;
-                        let _ = tx.send(result);
+            let mut ui_event_rx = ui_rx;
+            let mut ui_exit = ui_exit;
+
+            // Start with lists view
+            let _ = ui.show_lists(0).await;
+
+            loop {
+                tokio::select! {
+                    Some(message) = rx.recv() => {
+                        match message {
+                            Message::ExecuteCommand { command, tx } => {
+                                let result = core.handle_execute_command(command).await;
+                                let _ = tx.send(result);
+                            }
+                            Message::KeyEvent { event } => {
+                                core.handle_key_event(&ui, event).await;
+                            }
+                            Message::Shutdown { tx } => {
+                                let result = core.handle_shutdown().await;
+                                let _ = tx.send(result);
+                                break; // Exit the message loop
+                            }
+                        }
                     }
-                    Message::RunTui { tx } => {
-                        let result = core.handle_run_tui().await;
-                        let _ = tx.send(result);
+                    Some(ui_event) = ui_event_rx.recv() => {
+                        // Forward UI events to key event handler
+                        core.handle_key_event(&ui, ui_event).await;
                     }
-                    Message::Shutdown { tx } => {
-                        let result = core.handle_shutdown().await;
-                        let _ = tx.send(result);
-                        break; // Exit the message loop
+                    _ = &mut ui_exit => {
+                        // UI exited, shutdown
+                        let _ = core.handle_shutdown().await;
+                        break;
                     }
                 }
             }
         });
-        (super::App::Actual(tx), handle)
+        Ok((super::App::Actual(tx), handle))
     }
 
     /// Handle command execution
@@ -161,33 +192,45 @@ impl Core {
         }
     }
 
-    /// Handle TUI mode
-    async fn handle_run_tui(&mut self) -> Result<()> {
-        self.log.info("Starting TUI mode");
-
-        let (ui_tx, ui_rx) = tokio::sync::mpsc::channel(64);
-        let (terminal, ui_exit) = Terminal::spawn(self.log.clone(), ui_tx.clone());
-        let (app, _handle) = AppUi::spawn(
-            self.log.clone(),
-            terminal,
-            self.mailing_list_cache.clone(),
-            self.patch_meta_cache.clone(),
-            self.lore.clone(),
-            self.render.clone(),
-            ui_rx,
-        );
-
-        app.run().await?;
-
-        // Block until UI exits (Esc), then continue to persist caches
-        let _ = ui_exit.await;
-
-        self.log.info("TUI mode ended");
-        Ok(())
+    /// Handle key events from the terminal
+    async fn handle_key_event(&self, ui: &Ui, event: UiEvent) {
+        match event {
+            UiEvent::SelectionChange(index) => {
+                ui.update_selection(index).await;
+            }
+            UiEvent::Left => {
+                let _ = ui.previous_page().await;
+            }
+            UiEvent::Right => {
+                let _ = ui.next_page().await;
+            }
+            UiEvent::SelectionSubmit(_) => {
+                if let Ok(Some(action)) = ui.submit_selection().await {
+                    match action {
+                        NavigationAction::OpenFeed { list } => {
+                            let _ = ui.show_feed(list, 0).await;
+                        }
+                        NavigationAction::OpenPatch {
+                            list,
+                            message_id,
+                            title,
+                        } => {
+                            let _ = ui.show_patch(list, message_id, title).await;
+                        }
+                        NavigationAction::Quit => {
+                            // Terminal will handle quit
+                        }
+                    }
+                }
+            }
+            UiEvent::Esc => {
+                let _ = ui.navigate_back().await;
+            }
+        }
     }
 
     /// Handle graceful shutdown
-    async fn handle_shutdown(&mut self) -> Result<()> {
+    pub async fn handle_shutdown(&self) -> Result<()> {
         self.log.info("Shutting down application");
 
         // Persist cache data before exiting
@@ -205,7 +248,7 @@ impl Core {
     }
 
     /// Handle the lists command to display available mailing lists using cache
-    async fn handle_lists_command(&self, page: usize, count: usize) -> Result<()> {
+    pub async fn handle_lists_command(&self, page: usize, count: usize) -> Result<()> {
         println!("Fetching mailing lists (page {}, count {})...", page, count);
 
         let start_index = page * count;
@@ -241,7 +284,7 @@ impl Core {
     }
 
     /// Handle the feed command to display patch feed for a mailing list using cache
-    async fn handle_feed_command(&self, list: ArcStr, page: usize, count: usize) -> Result<()> {
+    pub async fn handle_feed_command(&self, list: ArcStr, page: usize, count: usize) -> Result<()> {
         println!(
             "Fetching patch feed for '{}' (page {}, count {})...",
             list, page, count
@@ -284,7 +327,7 @@ impl Core {
     }
 
     /// Handle the patch command to display patch content
-    async fn handle_patch_command(
+    pub async fn handle_patch_command(
         &self,
         list: ArcStr,
         message_id: ArcStr,

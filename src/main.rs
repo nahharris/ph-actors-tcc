@@ -54,14 +54,14 @@ async fn main() -> anyhow::Result<()> {
 
     let cli = Cli::parse();
 
-    // Initialize the App actor with all dependencies
-    let (app, _handle) = App::build().await?;
+    // Build the App actor with all dependencies
+    let app = App::build().await?;
 
-    // Execute the appropriate command or run TUI
+    // Execute the appropriate command or run interactive mode
     match cli.command {
         Some(Commands::Lists { page, count }) => {
             let command = Command::Lists { page, count };
-            app.execute_command(command).await?;
+            app.resolve(command).await?;
         }
         Some(Commands::Feed { list, page, count }) => {
             let command = Command::Feed {
@@ -69,7 +69,7 @@ async fn main() -> anyhow::Result<()> {
                 page,
                 count,
             };
-            app.execute_command(command).await?;
+            app.resolve(command).await?;
         }
         Some(Commands::Patch {
             list,
@@ -81,16 +81,20 @@ async fn main() -> anyhow::Result<()> {
                 message_id: ArcStr::from(message_id),
                 html,
             };
-            app.execute_command(command).await?;
+            app.resolve(command).await?;
         }
         None => {
-            // TUI mode
-            app.run_tui().await?;
+            // Interactive mode - spawn the app and enter key event loop
+            let (_handle, join_handle) = app.spawn()?;
+
+            // For now, just wait for the UI to exit
+            // In a real implementation, this is where we'd handle key events
+            // from the terminal and send them to handle.send_key_event()
+
+            // Wait for the application to finish
+            let _ = join_handle.await;
         }
     }
-
-    // Graceful shutdown
-    app.shutdown().await?;
 
     Ok(())
 }
