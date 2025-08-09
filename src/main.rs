@@ -131,7 +131,7 @@ async fn main() -> anyhow::Result<()> {
         None => {
             // TUI mode
             let (ui_tx, ui_rx) = tokio::sync::mpsc::channel(64);
-            let (terminal, ui_exit) = Terminal::spawn(log.clone(), ui_tx.clone())?;
+            let (terminal, ui_exit) = Terminal::spawn(log.clone(), ui_tx.clone());
             let (app, _handle) = AppUi::spawn(
                 log.clone(),
                 terminal,
