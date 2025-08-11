@@ -3,6 +3,7 @@ use std::sync::Arc;
 use tokio::sync::Mutex;
 
 mod core;
+mod data;
 pub mod message;
 
 use crate::api::lore::{LoreApi, LoreMailingList};
@@ -11,9 +12,11 @@ use crate::fs::Fs;
 use crate::log::Log;
 use message::Message;
 
-/// The MailingListCache actor provides a demand-driven, cached list of mailing lists.
+/// The Mailing List Actor provides a cached list of mailing lists sorted alphabetically.
 ///
-/// Clients can fetch a single item by index or a slice of consecutive items. If an item is not cached, the actor fetches the next page from the API.
+/// This actor fetches all mailing lists from the API, sorts them alphabetically,
+/// and provides fast access to individual items or ranges. The cache is validated
+/// based on the last updated time of the 0-th item from the API.
 #[derive(Debug, Clone)]
 pub enum MailingListCache {
     Actual(tokio::sync::mpsc::Sender<Message>),
@@ -27,10 +30,10 @@ pub struct MockData {
 
 impl MailingListCache {
     /// Spawns a new MailingListCache actor.
-    pub fn spawn(lore: LoreApi, fs: Fs, config: Config, log: Log) -> Self {
-        let core = core::Core::new(lore, fs, config, log);
+    pub async fn spawn(lore: LoreApi, fs: Fs, config: Config, log: Log) -> anyhow::Result<Self> {
+        let core = core::Core::new(lore, fs, config, log).await?;
         let (state, _handle) = core.spawn();
-        state
+        Ok(state)
     }
 
     /// Creates a new mock MailingListCache actor for testing.
@@ -38,7 +41,7 @@ impl MailingListCache {
         Self::Mock(Arc::new(Mutex::new(data)))
     }
 
-    /// Fetches a single mailing list by index (demand-driven).
+    /// Fetches a single mailing list by index.
     pub async fn get(&self, index: usize) -> anyhow::Result<Option<LoreMailingList>> {
         match self {
             Self::Actual(sender) => {
@@ -59,7 +62,7 @@ impl MailingListCache {
         }
     }
 
-    /// Fetches a slice of mailing lists by range (demand-driven).
+    /// Fetches a slice of mailing lists by range.
     pub async fn get_slice(
         &self,
         range: std::ops::Range<usize>,
@@ -83,30 +86,53 @@ impl MailingListCache {
         }
     }
 
-    /// Invalidates the current cache.
-    pub async fn invalidate_cache(&self) {
+    /// Refreshes the cache by fetching from the API.
+    pub async fn refresh(&self) -> anyhow::Result<()> {
         match self {
             Self::Actual(sender) => {
+                let (tx, rx) = tokio::sync::oneshot::channel();
                 sender
-                    .send(Message::InvalidateCache)
+                    .send(Message::Refresh { tx })
                     .await
                     .context("Sending message to MailingListCache actor")
                     .expect("MailingListCache actor died");
+                rx.await
+                    .context("Awaiting response from MailingListCache actor")
+                    .expect("MailingListCache actor died")
+            }
+            Self::Mock(_) => Ok(()),
+        }
+    }
+
+    /// Invalidates the current cache.
+    pub async fn invalidate(&self) -> anyhow::Result<()> {
+        match self {
+            Self::Actual(sender) => {
+                let (tx, rx) = tokio::sync::oneshot::channel();
+                sender
+                    .send(Message::Invalidate { tx })
+                    .await
+                    .context("Sending message to MailingListCache actor")
+                    .expect("MailingListCache actor died");
+                rx.await
+                    .context("Awaiting response from MailingListCache actor")
+                    .expect("MailingListCache actor died")
             }
             Self::Mock(data) => {
                 let mut data = data.lock().await;
                 data.mailing_lists.clear();
+                Ok(())
             }
         }
     }
 
-    /// Persists the cache to the filesystem.
-    pub async fn persist_cache(&self) -> anyhow::Result<()> {
+    /// Checks if the requested range is available in cache.
+    pub async fn is_available(&self, range: std::ops::Range<usize>) -> bool {
         match self {
             Self::Actual(sender) => {
                 let (tx, rx) = tokio::sync::oneshot::channel();
                 sender
-                    .send(Message::PersistCache { tx })
+                    .send(Message::IsAvailable { range, tx })
                     .await
                     .context("Sending message to MailingListCache actor")
                     .expect("MailingListCache actor died");
@@ -114,25 +140,10 @@ impl MailingListCache {
                     .context("Awaiting response from MailingListCache actor")
                     .expect("MailingListCache actor died")
             }
-            Self::Mock(_) => Ok(()),
-        }
-    }
-
-    /// Loads the cache from the filesystem.
-    pub async fn load_cache(&self) -> anyhow::Result<()> {
-        match self {
-            Self::Actual(sender) => {
-                let (tx, rx) = tokio::sync::oneshot::channel();
-                sender
-                    .send(Message::LoadCache { tx })
-                    .await
-                    .context("Sending message to MailingListCache actor")
-                    .expect("MailingListCache actor died");
-                rx.await
-                    .context("Awaiting response from MailingListCache actor")
-                    .expect("MailingListCache actor died")
+            Self::Mock(data) => {
+                let data = data.lock().await;
+                range.end <= data.mailing_lists.len()
             }
-            Self::Mock(_) => Ok(()),
         }
     }
 
@@ -142,11 +153,13 @@ impl MailingListCache {
             Self::Actual(sender) => {
                 let (tx, rx) = tokio::sync::oneshot::channel();
                 sender
-                    .send(message::Message::Len { tx })
+                    .send(Message::Len { tx })
                     .await
                     .context("Sending message to MailingListCache actor")
                     .expect("MailingListCache actor died");
-                (rx.await).unwrap_or_default()
+                rx.await
+                    .context("Awaiting response from MailingListCache actor")
+                    .expect("MailingListCache actor died")
             }
             Self::Mock(data) => {
                 let data = data.lock().await;
@@ -160,13 +173,13 @@ impl MailingListCache {
         self.len().await == 0
     }
 
-    /// Checks if the cache is still valid by comparing the last_update field of the 0th item.
-    pub async fn is_cache_valid(&self) -> anyhow::Result<bool> {
+    /// Persists the cache to the filesystem.
+    pub async fn persist(&self) -> anyhow::Result<()> {
         match self {
             Self::Actual(sender) => {
                 let (tx, rx) = tokio::sync::oneshot::channel();
                 sender
-                    .send(message::Message::IsCacheValid { tx })
+                    .send(Message::Persist { tx })
                     .await
                     .context("Sending message to MailingListCache actor")
                     .expect("MailingListCache actor died");
@@ -174,21 +187,17 @@ impl MailingListCache {
                     .context("Awaiting response from MailingListCache actor")
                     .expect("MailingListCache actor died")
             }
-            Self::Mock(_) => {
-                // Always true for mock
-                Ok(true)
-            }
+            Self::Mock(_) => Ok(()),
         }
     }
 
-    /// Checks if the cache contains the given range without fetching new data.
-    /// This is a fast operation that doesn't trigger API calls.
-    pub async fn contains_range(&self, range: std::ops::Range<usize>) -> bool {
+    /// Loads the cache from the filesystem.
+    pub async fn load(&self) -> anyhow::Result<()> {
         match self {
             Self::Actual(sender) => {
                 let (tx, rx) = tokio::sync::oneshot::channel();
                 sender
-                    .send(Message::ContainsRange { range, tx })
+                    .send(Message::Load { tx })
                     .await
                     .context("Sending message to MailingListCache actor")
                     .expect("MailingListCache actor died");
@@ -196,10 +205,7 @@ impl MailingListCache {
                     .context("Awaiting response from MailingListCache actor")
                     .expect("MailingListCache actor died")
             }
-            Self::Mock(data) => {
-                let data = data.lock().await;
-                data.mailing_lists.len() >= range.end
-            }
+            Self::Mock(_) => Ok(()),
         }
     }
 }

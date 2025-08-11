@@ -34,7 +34,8 @@ The UI actor depends on and coordinates with the following actors:
 
 ### Cache Actors:
 - **MailingListCache**: Cached mailing list data for Lists view
-- **PatchMetaCache**: Cached patch metadata for Feed view
+- **FeedCache**: Cached patch metadata for Feed view
+- **PatchCache**: Cached individual patch content for Patch view
 
 ## Capabilities
 

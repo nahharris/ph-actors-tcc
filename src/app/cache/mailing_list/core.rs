@@ -1,275 +1,244 @@
+use super::data::MailingListData;
 use super::message::Message;
 use crate::ArcPath;
 use crate::api::lore::{LoreApi, LoreMailingList};
-use crate::{
-    app::config::{Config, PathOpt},
-    fs::Fs,
-    log::Log,
-};
+use crate::app::config::Config;
+use crate::fs::Fs;
+use crate::log::Log;
 use anyhow::Context;
-use serde::{Deserialize, Serialize};
+use std::sync::Arc;
+use tokio::sync::mpsc;
+use tokio::task::JoinHandle;
 
+const BUFFER_SIZE: usize = 100;
 const SCOPE: &str = "app.cache.mailing_list";
 
-#[derive(Debug, Default, Serialize, Deserialize)]
-/// Structure for persisting the mailing list cache to disk.
-pub struct CacheData {
-    /// Cached mailing lists
-    pub mailing_lists: Vec<LoreMailingList>,
-}
-
-/// Core implementation for the MailingListCache actor.
+/// Core implementation for the Mailing List Actor.
 pub struct Core {
     /// Lore API actor for fetching mailing lists
-    pub lore: LoreApi,
+    lore: LoreApi,
     /// Filesystem actor for persistence
-    pub fs: Fs,
-    /// Config actor for config path
-    pub config: Config,
-    /// Log actor for logging operations
-    pub log: Log,
-    /// Cached mailing lists
-    pub mailing_lists: Vec<LoreMailingList>,
+    fs: Fs,
+    /// Config actor for configuration
+    config: Config,
+    /// Log actor for logging
+    log: Log,
+    /// Internal state
+    data: MailingListData,
 }
 
 impl Core {
-    /// Creates a new core instance for MailingListCache.
-    pub fn new(lore: LoreApi, fs: Fs, config: Config, log: Log) -> Self {
-        Self {
+    /// Creates a new Core instance.
+    pub async fn new(lore: LoreApi, fs: Fs, config: Config, log: Log) -> anyhow::Result<Self> {
+        let cache_dir = config.path(crate::app::config::PathOpt::CachePath).await;
+        let cache_path = ArcPath::from(&cache_dir.join("mailing_lists.toml"));
+        let data = MailingListData::new(cache_path);
+
+        Ok(Self {
             lore,
             fs,
             config,
             log,
-            mailing_lists: Vec::new(),
-        }
+            data,
+        })
     }
 
-    /// Spawns the actor and returns the interface and task handle.
-    pub fn spawn(mut self) -> (super::MailingListCache, tokio::task::JoinHandle<()>) {
-        let (tx, mut rx) = tokio::sync::mpsc::channel(32);
+    /// Spawns the actor and returns the public interface and join handle.
+    pub fn spawn(self) -> (super::MailingListCache, JoinHandle<()>) {
+        let (tx, mut rx) = mpsc::channel(BUFFER_SIZE);
         let handle = tokio::spawn(async move {
-            while let Some(msg) = rx.recv().await {
-                match msg {
+            let mut core = self;
+
+            // Load cache on startup
+            if let Err(e) = core.load_cache().await {
+                core.log
+                    .error(SCOPE, &format!("Failed to load cache: {}", e));
+            }
+
+            while let Some(message) = rx.recv().await {
+                match message {
                     Message::Get { index, tx } => {
-                        let res = self.get(index).await;
-                        let _ = tx.send(res);
+                        let result = core.handle_get(index).await;
+                        let _ = tx.send(result);
                     }
                     Message::GetSlice { range, tx } => {
-                        let res = self.get_slice(range).await;
-                        let _ = tx.send(res);
+                        let result = core.handle_get_slice(range).await;
+                        let _ = tx.send(result);
                     }
-                    Message::InvalidateCache => {
-                        self.mailing_lists.clear();
+                    Message::Refresh { tx } => {
+                        let result = core.handle_refresh().await;
+                        let _ = tx.send(result);
                     }
-                    Message::PersistCache { tx } => {
-                        let res = self.persist_cache().await;
-                        let _ = tx.send(res);
+                    Message::Invalidate { tx } => {
+                        let result = core.handle_invalidate().await;
+                        let _ = tx.send(result);
                     }
-                    Message::LoadCache { tx } => {
-                        let res = self.load_cache().await;
-                        let _ = tx.send(res);
+                    Message::IsAvailable { range, tx } => {
+                        let result = core.handle_is_available(range);
+                        let _ = tx.send(result);
                     }
                     Message::Len { tx } => {
-                        let _ = tx.send(self.len());
+                        let result = core.data.lists.len();
+                        let _ = tx.send(result);
                     }
-                    Message::IsCacheValid { tx } => {
-                        let res = self.is_cache_valid().await;
-                        let _ = tx.send(res);
+                    Message::Persist { tx } => {
+                        let result = core.persist_cache().await;
+                        let _ = tx.send(result);
                     }
-                    Message::ContainsRange { range, tx } => {
-                        let contains = self.contains_range(&range);
-                        let _ = tx.send(contains);
+                    Message::Load { tx } => {
+                        let result = core.load_cache().await;
+                        let _ = tx.send(result);
                     }
                 }
             }
         });
+
         (super::MailingListCache::Actual(tx), handle)
     }
 
-    /// Returns the number of cached mailing lists.
-    fn len(&self) -> usize {
-        self.mailing_lists.len()
+    /// Handles getting a single mailing list by index.
+    async fn handle_get(&mut self, index: usize) -> anyhow::Result<Option<LoreMailingList>> {
+        Ok(self.data.lists.get(index).cloned())
     }
 
-    /// Checks if the cache contains the given range without fetching new data.
-    fn contains_range(&self, range: &std::ops::Range<usize>) -> bool {
-        self.mailing_lists.len() >= range.end
-    }
-
-    /// Checks if the cache is still valid by comparing the last_update field of the 0th item.
-    async fn is_cache_valid(&self) -> anyhow::Result<bool> {
-        if let Some(first) = self.mailing_lists.first() {
-            let remote_page = self.lore.get_available_lists_page(0).await?;
-            if let Some(page) = remote_page {
-                if let Some(remote_first) = page.items.first() {
-                    return Ok(remote_first.last_update == first.last_update);
-                }
-            }
-        }
-        Ok(false)
-    }
-
-    /// Fetches a single mailing list by index (demand-driven).
-    async fn get(&mut self, index: usize) -> anyhow::Result<Option<LoreMailingList>> {
-        let initial_count = self.mailing_lists.len();
-
-        while self.mailing_lists.len() <= index {
-            let min_index = self.mailing_lists.len();
-
-            self.log.info(
-                SCOPE,
-                &format!("Cache miss: fetching page starting at index {}", min_index),
-            );
-
-            let page = self.lore.get_available_lists_page(min_index).await?;
-            if let Some(page) = page {
-                if page.items.is_empty() {
-                    self.log
-                        .info(SCOPE, "No more mailing lists available from API");
-                    break;
-                }
-                let new_items = page.items.len();
-                self.mailing_lists.extend(page.items);
-
-                self.log.info(
-                    SCOPE,
-                    &format!(
-                        "Fetched {} new mailing lists from API (total: {})",
-                        new_items,
-                        self.mailing_lists.len()
-                    ),
-                );
-            } else {
-                self.log.info(SCOPE, "API returned no page data");
-                break;
-            }
-        }
-
-        if self.mailing_lists.len() > initial_count {
-            let fetched_count = self.mailing_lists.len() - initial_count;
-            self.log.info(
-                SCOPE,
-                &format!("Cache expanded by {} items to serve request", fetched_count),
-            );
-        }
-
-        Ok(self.mailing_lists.get(index).cloned())
-    }
-
-    /// Fetches a slice of mailing lists by range (demand-driven).
-    async fn get_slice(
+    /// Handles getting a slice of mailing lists by range.
+    async fn handle_get_slice(
         &mut self,
         range: std::ops::Range<usize>,
     ) -> anyhow::Result<Vec<LoreMailingList>> {
-        let end = range.end;
-        while self.mailing_lists.len() < end {
-            let min_index = self.mailing_lists.len();
-            let page = self.lore.get_available_lists_page(min_index).await?;
-            if let Some(page) = page {
-                if page.items.is_empty() {
-                    break;
-                }
-                self.mailing_lists.extend(page.items);
-            } else {
-                break;
-            }
+        if range.start >= self.data.lists.len() {
+            return Ok(Vec::new());
         }
-        Ok(self
-            .mailing_lists
-            .get(range)
-            .map(|s| s.to_vec())
-            .unwrap_or_default())
+
+        let end = range.end.min(self.data.lists.len());
+        Ok(self.data.lists[range.start..end].to_vec())
     }
 
-    /// Persists the cache to the filesystem as TOML.
-    async fn persist_cache(&self) -> anyhow::Result<()> {
-        let cache_count = self.mailing_lists.len();
+    /// Handles refreshing the cache.
+    async fn handle_refresh(&mut self) -> anyhow::Result<()> {
+        self.refresh_cache().await
+    }
+
+    /// Handles invalidating the cache.
+    async fn handle_invalidate(&mut self) -> anyhow::Result<()> {
+        self.data.lists.clear();
+        self.data.last_updated = None;
+        self.persist_cache().await
+    }
+
+    /// Handles checking if a range is available.
+    fn handle_is_available(&self, range: std::ops::Range<usize>) -> bool {
+        range.end <= self.data.lists.len()
+    }
+
+    /// Checks if the cache is still valid.
+    async fn is_cache_valid(&self) -> anyhow::Result<bool> {
+        if self.data.lists.is_empty() {
+            return Ok(false);
+        }
+
+        // Get the first page to check the 0-th item's updated time
+        let first_page = self.lore.get_available_lists_page(0).await?;
+        let api_last_updated =
+            first_page.and_then(|page| page.items.first().map(|item| item.last_update));
+
+        Ok(self.data.is_cache_valid(api_last_updated))
+    }
+
+    /// Refreshes the cache by fetching all mailing lists and sorting them.
+    async fn refresh_cache(&mut self) -> anyhow::Result<()> {
+        self.log.info(SCOPE, "Refreshing mailing list cache");
+
+        let mut all_lists = Vec::new();
+        let mut min_index = 0;
+
+        loop {
+            let page = self.lore.get_available_lists_page(min_index).await?;
+            match page {
+                Some(page) => {
+                    let items_len = page.items.len();
+                    all_lists.extend(page.items);
+                    min_index = page.next_page_index.unwrap_or(min_index + items_len);
+
+                    if page.next_page_index.is_none() {
+                        break;
+                    }
+                }
+                None => break,
+            }
+        }
+
+        // Sort alphabetically
+        all_lists.sort_by(|a, b| a.name.cmp(&b.name));
+
+        // Update internal state
+        self.data.lists = all_lists;
+        self.data.update_last_updated();
+
+        // Persist to disk
+        self.persist_cache().await?;
+
         self.log.info(
             SCOPE,
-            &format!("Persisting mailing list cache with {} items", cache_count),
+            &format!("Cached {} mailing lists", self.data.lists.len()),
         );
+        Ok(())
+    }
 
-        let cache = CacheData {
-            mailing_lists: self.mailing_lists.clone(),
-        };
-        let toml = toml::to_string(&cache)?;
-        let cache_path = self.cache_path().await;
+    /// Persists the cache to the filesystem.
+    async fn persist_cache(&self) -> anyhow::Result<()> {
+        let cache_data = self.data.to_cache_data();
+        let content =
+            toml::to_string_pretty(&cache_data).context("Failed to serialize cache data")?;
 
         // Create parent directory if it doesn't exist
-        if let Some(parent) = cache_path.parent() {
+        if let Some(parent) = self.data.cache_path.parent() {
             self.fs
                 .mkdir(ArcPath::from(parent))
                 .await
-                .context("Creating cache directory")?;
+                .context("Failed to create cache directory")?;
         }
 
+        // Write the file
         let mut file = self
             .fs
-            .write_file(cache_path.clone())
+            .write_file(self.data.cache_path.clone())
             .await
-            .context("Opening cache file for writing")?;
+            .context("Failed to open cache file for writing")?;
+
         use tokio::io::AsyncWriteExt;
-        file.write_all(toml.as_bytes())
+        file.write_all(content.as_bytes())
             .await
-            .context("Writing cache file")?;
+            .context("Failed to write cache file")?;
 
-        self.log.info(
-            SCOPE,
-            &format!(
-                "Successfully persisted mailing list cache to {}",
-                cache_path.display()
-            ),
-        );
         Ok(())
     }
 
-    /// Loads the cache from the filesystem (TOML).
+    /// Loads the cache from the filesystem.
     async fn load_cache(&mut self) -> anyhow::Result<()> {
-        // Ensure the cache file exists before opening it
-        let cache_path = self.cache_path().await;
-        if !cache_path.exists() {
-            self.log.info(
-                SCOPE,
-                &format!("No existing cache file found at {}", cache_path.display()),
-            );
-            return Ok(());
-        }
+        // Check if file exists by trying to read it
+        let file = match self.fs.read_file(self.data.cache_path.clone()).await {
+            Ok(file) => file,
+            Err(_) => return Ok(()), // File doesn't exist, that's ok
+        };
 
-        self.log.info(
-            SCOPE,
-            &format!("Loading mailing list cache from {}", cache_path.display()),
-        );
-
-        let mut file = self
-            .fs
-            .read_file(cache_path)
-            .await
-            .context("Opening cache file for reading")?;
-        let mut contents = String::new();
+        // Read the content
         use tokio::io::AsyncReadExt;
-        file.read_to_string(&mut contents)
+        let mut content = String::new();
+        let mut file = file;
+        file.read_to_string(&mut content)
             .await
-            .context("Reading cache file")?;
-        let cache: CacheData = toml::from_str(&contents).context("Deserializing cache file")?;
-        let loaded_count = cache.mailing_lists.len();
-        self.mailing_lists = cache.mailing_lists;
+            .context("Failed to read cache file content")?;
+
+        let cache_data: super::data::CacheData =
+            toml::from_str(&content).context("Failed to deserialize cache data")?;
+
+        self.data.from_cache_data(cache_data);
 
         self.log.info(
             SCOPE,
-            &format!(
-                "Successfully loaded {} mailing lists from cache",
-                loaded_count
-            ),
+            &format!("Loaded {} mailing lists from cache", self.data.lists.len()),
         );
         Ok(())
-    }
-
-    async fn cache_path(&self) -> ArcPath {
-        self.config
-            .path(PathOpt::CachePath)
-            .await
-            .join("mailing_lists.toml")
-            .as_path()
-            .into()
     }
 }

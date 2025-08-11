@@ -124,7 +124,14 @@ mod tests {
             scope: "test",
             message: "fail".to_string(),
         };
-        assert_eq!(msg.to_string(), "[ERROR] fail");
+        let output = msg.to_string();
+        // Check that the output contains the expected parts
+        assert!(output.contains("[ERROR]"));
+        assert!(output.contains("[test]"));
+        assert!(output.contains("fail"));
+        // Check the format: [timestamp] [level] [scope] message
+        assert!(output.matches('[').count() == 3);
+        assert!(output.matches(']').count() == 3);
     }
 
     #[test]

@@ -4,7 +4,7 @@ use tokio::sync::mpsc;
 use tokio::task::JoinHandle;
 
 use crate::api::lore::LoreApi;
-use crate::app::cache::{mailing_list::MailingListCache, patch_meta::PatchMetaCache};
+use crate::app::cache::{FeedCache, MailingListCache, PatchCache};
 use crate::app::config::{Config, PathOpt, USizeOpt};
 use crate::app::ui::{NavigationAction, Ui};
 use crate::env::Env;
@@ -45,8 +45,10 @@ pub struct Core {
     render: Render,
     /// Mailing list cache actor
     mailing_list_cache: MailingListCache,
-    /// Patch metadata cache actor
-    patch_meta_cache: PatchMetaCache,
+    /// Feed cache actor
+    feed_cache: FeedCache,
+    /// Patch cache actor
+    patch_cache: PatchCache,
 }
 
 impl Core {
@@ -90,38 +92,20 @@ impl Core {
 
         // Initialize cache actors
         let mailing_list_cache =
-            MailingListCache::spawn(lore.clone(), fs.clone(), config.clone(), log.clone());
-        let patch_meta_cache =
-            PatchMetaCache::spawn(lore.clone(), fs.clone(), config.clone(), log.clone());
+            MailingListCache::spawn(lore.clone(), fs.clone(), config.clone(), log.clone()).await?;
+        let feed_cache =
+            FeedCache::spawn(lore.clone(), fs.clone(), config.clone(), log.clone()).await?;
+        let patch_cache =
+            PatchCache::spawn(lore.clone(), fs.clone(), config.clone(), log.clone()).await?;
 
         // Load existing cache data
-        if let Err(e) = mailing_list_cache.load_cache().await {
+        if let Err(e) = mailing_list_cache.load().await {
             log.warn(SCOPE, &format!("Failed to load mailing list cache: {}", e));
         } else {
-            // Validate mailing list cache after loading
-            match mailing_list_cache.is_cache_valid().await {
-                Ok(true) => {
-                    log.info(SCOPE, "Mailing list cache is valid");
-                }
-                Ok(false) => {
-                    log.warn(SCOPE, "Mailing list cache is outdated, invalidating");
-                    mailing_list_cache.invalidate_cache().await;
-                }
-                Err(e) => {
-                    log.warn(SCOPE, &format!("Failed to validate mailing list cache: {}, invalidating", e));
-                    mailing_list_cache.invalidate_cache().await;
-                }
-            }
+            log.info(SCOPE, "Mailing list cache loaded successfully");
         }
 
-        if let Err(e) = patch_meta_cache.load_cache().await {
-            log.warn(
-                SCOPE,
-                &format!("Failed to load patch metadata cache: {}", e),
-            );
-        } else {
-            log.info(SCOPE, "Patch metadata cache loaded successfully, validation will be done per mailing list on demand");
-        }
+        log.info(SCOPE, "Cache actors initialized successfully");
 
         log.info(SCOPE, "App actor initialized successfully");
 
@@ -139,7 +123,8 @@ impl Core {
             shell,
             render,
             mailing_list_cache,
-            patch_meta_cache,
+            feed_cache,
+            patch_cache,
         })
     }
 
@@ -152,8 +137,8 @@ impl Core {
             self.log.clone(),
             terminal,
             self.mailing_list_cache.clone(),
-            self.patch_meta_cache.clone(),
-            self.lore.clone(),
+            self.feed_cache.clone(),
+            self.patch_cache.clone(),
             self.render.clone(),
         );
 
@@ -258,13 +243,13 @@ impl Core {
         self.log.info(SCOPE, "Shutting down application");
 
         // Persist cache data before exiting
-        if let Err(e) = self.mailing_list_cache.persist_cache().await {
+        if let Err(e) = self.mailing_list_cache.persist().await {
             self.log.warn(
                 SCOPE,
                 &format!("Failed to persist mailing list cache: {}", e),
             );
         }
-        if let Err(e) = self.patch_meta_cache.persist_cache().await {
+        if let Err(e) = self.feed_cache.persist(ArcStr::from("")).await {
             self.log.warn(
                 SCOPE,
                 &format!("Failed to persist patch metadata cache: {}", e),
@@ -322,7 +307,7 @@ impl Core {
         let end_index = start_index + count;
         let range = start_index..end_index;
 
-        let patches = self.patch_meta_cache.get_slice(list.clone(), range).await?;
+        let patches = self.feed_cache.get_slice(list.clone(), range).await?;
 
         if patches.is_empty() {
             println!("No patch feed found for '{}' on page {}", list, page);

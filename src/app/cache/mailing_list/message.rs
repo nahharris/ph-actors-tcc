@@ -1,38 +1,40 @@
 use crate::api::lore::LoreMailingList;
 use tokio::sync::oneshot;
 
-/// Messages for the MailingListCache actor.
+/// Messages for the Mailing List Actor.
 #[derive(Debug)]
 pub enum Message {
-    /// Get a single mailing list by index (demand-driven)
+    /// Get a single mailing list by index
     Get {
         index: usize,
         tx: oneshot::Sender<anyhow::Result<Option<LoreMailingList>>>,
     },
-    /// Get a slice of mailing lists by range (demand-driven)
+    /// Get a slice of mailing lists by range
     GetSlice {
         range: std::ops::Range<usize>,
         tx: oneshot::Sender<anyhow::Result<Vec<LoreMailingList>>>,
     },
-    /// Invalidate the current cache
-    InvalidateCache,
-    /// Persist the cache to the filesystem
-    PersistCache {
+    /// Refresh the cache by fetching from API
+    Refresh {
         tx: oneshot::Sender<anyhow::Result<()>>,
     },
-    /// Load the cache from the filesystem
-    LoadCache {
+    /// Invalidate the cache
+    Invalidate {
         tx: oneshot::Sender<anyhow::Result<()>>,
+    },
+    /// Check if the requested range is available in cache
+    IsAvailable {
+        range: std::ops::Range<usize>,
+        tx: oneshot::Sender<bool>,
     },
     /// Get the number of cached mailing lists
     Len { tx: oneshot::Sender<usize> },
-    /// Check if the cache is still valid (by last_update of 0th item)
-    IsCacheValid {
-        tx: oneshot::Sender<anyhow::Result<bool>>,
+    /// Persist the cache to filesystem
+    Persist {
+        tx: oneshot::Sender<anyhow::Result<()>>,
     },
-    /// Check if the cache contains the given range (without fetching)
-    ContainsRange {
-        range: std::ops::Range<usize>,
-        tx: oneshot::Sender<bool>,
+    /// Load the cache from filesystem
+    Load {
+        tx: oneshot::Sender<anyhow::Result<()>>,
     },
 }

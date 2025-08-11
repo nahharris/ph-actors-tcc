@@ -3,8 +3,7 @@ use std::sync::Arc;
 use tokio::sync::{Mutex, mpsc::Sender, oneshot};
 
 use crate::ArcStr;
-use crate::api::lore::LoreApi;
-use crate::app::cache::{mailing_list::MailingListCache, patch_meta::PatchMetaCache};
+use crate::app::cache::{FeedCache, MailingListCache, PatchCache};
 use crate::log::Log;
 use crate::render::Render;
 use crate::terminal::Terminal;
@@ -34,16 +33,16 @@ impl Ui {
         log: Log,
         terminal: Terminal,
         mailing_list_cache: MailingListCache,
-        patch_meta_cache: PatchMetaCache,
-        lore: LoreApi,
+        feed_cache: FeedCache,
+        patch_cache: PatchCache,
         render: Render,
     ) -> (Self, tokio::task::JoinHandle<()>) {
         let core = core::Core::new(
             log,
             terminal,
             mailing_list_cache,
-            patch_meta_cache,
-            lore,
+            feed_cache,
+            patch_cache,
             render,
         );
         core.spawn()
