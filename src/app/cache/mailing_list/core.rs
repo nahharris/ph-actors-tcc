@@ -6,7 +6,6 @@ use crate::app::config::Config;
 use crate::fs::Fs;
 use crate::log::Log;
 use anyhow::Context;
-use std::sync::Arc;
 use tokio::sync::mpsc;
 use tokio::task::JoinHandle;
 

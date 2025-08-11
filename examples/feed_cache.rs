@@ -1,8 +1,7 @@
 use ph::{
-    ArcStr,
-    api::lore::{LoreApi, LorePatchMetadata},
+    api::lore::LoreApi,
     app::{
-        cache::feed::{FeedCache, MockData},
+        cache::feed::FeedCache,
         config::{Config, PathOpt},
     },
     fs::Fs,
@@ -10,7 +9,6 @@ use ph::{
     net::Net,
 };
 
-use std::collections::HashMap;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
