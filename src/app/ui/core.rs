@@ -134,16 +134,21 @@ impl Core {
             .show(Screen::Loading(ArcStr::from("Loading feed...")))
             .await?;
 
-        // Validate cache before using it
-        if !self.feed_cache.is_available(list.clone(), 0..1).await {
-            self.log.warn(
+        // Ensure cache is loaded from disk
+        self.feed_cache.ensure_loaded(list.clone()).await?;
+
+        // Check if cache has data
+        let is_empty = self.feed_cache.is_empty(list.clone()).await;
+        if is_empty {
+            self.log.info(
                 SCOPE,
-                &format!("Feed cache for '{}' is outdated, invalidating", list),
+                &format!("Feed cache for '{}' is empty, will fetch data", list),
             );
-            self.feed_cache.invalidate(list.clone()).await?;
         } else {
-            self.log
-                .info(SCOPE, &format!("Feed cache for '{}' is valid", list));
+            self.log.info(
+                SCOPE,
+                &format!("Feed cache for '{}' has data, using cached version", list),
+            );
         }
 
         // Render the feed - this will handle loading data if needed
@@ -201,18 +206,46 @@ impl Core {
                 }
 
                 if let Some(list) = self.state.feed_list.clone() {
-                    // Check if the previous page would have data
-                    let start = new_page * 20;
-                    let end = start + 20;
-                    let items = self.feed_cache.get_slice(list.clone(), start..end).await?;
-                    if items.is_empty() {
-                        // Previous page is empty, don't navigate
-                        return Ok(());
-                    }
-
+                    // Navigate to the new page immediately
                     self.state.feed_page = new_page;
                     self.state.feed_selected = 0;
-                    self.render_feed(list).await
+
+                    // Check if data is available in cache
+                    let start = new_page * 20;
+                    let end = start + 20;
+                    let is_available = self.feed_cache.is_available(list.clone(), start..end).await;
+
+                    if is_available {
+                        // Data is available, render immediately
+                        self.render_feed(list).await
+                    } else {
+                        // Data not available, show loading screen and fetch
+                        self.log.info(
+                            SCOPE,
+                            &format!(
+                                "Feed: page {} not in cache for '{}', showing loading screen",
+                                new_page, list
+                            ),
+                        );
+
+                        // Show loading screen
+                        self.terminal
+                            .show(Screen::Loading(ArcStr::from("Loading page...")))
+                            .await?;
+
+                        // Fetch the data (this will trigger on-demand fetching)
+                        let items = self.feed_cache.get_slice(list.clone(), start..end).await?;
+
+                        // Show the feed with fetched data
+                        self.terminal
+                            .show(Screen::Feed {
+                                list,
+                                items,
+                                page: self.state.feed_page,
+                                selected: self.state.feed_selected,
+                            })
+                            .await
+                    }
                 } else {
                     Ok(())
                 }
@@ -244,18 +277,46 @@ impl Core {
                 let new_page = self.state.feed_page.saturating_add(1);
 
                 if let Some(list) = self.state.feed_list.clone() {
-                    // Check if the next page would have data
-                    let start = new_page * 20;
-                    let end = start + 20;
-                    let items = self.feed_cache.get_slice(list.clone(), start..end).await?;
-                    if items.is_empty() {
-                        // Next page is empty, don't navigate
-                        return Ok(());
-                    }
-
+                    // Navigate to the new page immediately
                     self.state.feed_page = new_page;
                     self.state.feed_selected = 0;
-                    self.render_feed(list).await
+
+                    // Check if data is available in cache
+                    let start = new_page * 20;
+                    let end = start + 20;
+                    let is_available = self.feed_cache.is_available(list.clone(), start..end).await;
+
+                    if is_available {
+                        // Data is available, render immediately
+                        self.render_feed(list).await
+                    } else {
+                        // Data not available, show loading screen and fetch
+                        self.log.info(
+                            SCOPE,
+                            &format!(
+                                "Feed: page {} not in cache for '{}', showing loading screen",
+                                new_page, list
+                            ),
+                        );
+
+                        // Show loading screen
+                        self.terminal
+                            .show(Screen::Loading(ArcStr::from("Loading page...")))
+                            .await?;
+
+                        // Fetch the data (this will trigger on-demand fetching)
+                        let items = self.feed_cache.get_slice(list.clone(), start..end).await?;
+
+                        // Show the feed with fetched data
+                        self.terminal
+                            .show(Screen::Feed {
+                                list,
+                                items,
+                                page: self.state.feed_page,
+                                selected: self.state.feed_selected,
+                            })
+                            .await
+                    }
                 } else {
                     Ok(())
                 }
@@ -496,6 +557,13 @@ impl Core {
                                     refreshed_items.len()
                                 ),
                             );
+                            // Persist the cache after successful refresh
+                            if let Err(e) = self.feed_cache.persist(list.clone()).await {
+                                self.log.warn(
+                                    SCOPE,
+                                    &format!("Feed: failed to persist cache for '{}': {}", list, e),
+                                );
+                            }
                         }
 
                         self.terminal

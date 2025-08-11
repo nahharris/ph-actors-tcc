@@ -48,4 +48,9 @@ pub enum Message {
         list: ArcStr,
         tx: oneshot::Sender<anyhow::Result<()>>,
     },
+    /// Check if the cache has been loaded from disk for a mailing list
+    IsLoaded {
+        list: ArcStr,
+        tx: oneshot::Sender<bool>,
+    },
 }

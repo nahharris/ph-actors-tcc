@@ -186,6 +186,37 @@ impl FeedCache {
         self.len(list).await == 0
     }
 
+    /// Checks if the cache has been loaded from disk for a given mailing list.
+    /// This is different from is_empty() - a cache can be loaded but empty.
+    pub async fn is_loaded(&self, list: ArcStr) -> bool {
+        match self {
+            Self::Actual(sender) => {
+                let (tx, rx) = tokio::sync::oneshot::channel();
+                sender
+                    .send(Message::IsLoaded { list, tx })
+                    .await
+                    .context("Sending message to FeedCache actor")
+                    .expect("FeedCache actor died");
+                rx.await
+                    .context("Awaiting response from FeedCache actor")
+                    .expect("FeedCache actor died")
+            }
+            Self::Mock(data) => {
+                let data = data.lock().await;
+                data.feeds.contains_key(&list)
+            }
+        }
+    }
+
+    /// Ensures the cache is loaded for a given mailing list.
+    /// This will load from disk if not already loaded.
+    pub async fn ensure_loaded(&self, list: ArcStr) -> anyhow::Result<()> {
+        if !self.is_loaded(list.clone()).await {
+            self.load(list.clone()).await?;
+        }
+        Ok(())
+    }
+
     /// Persists the cache for a specific mailing list to the filesystem.
     pub async fn persist(&self, list: ArcStr) -> anyhow::Result<()> {
         match self {

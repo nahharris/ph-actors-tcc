@@ -84,6 +84,10 @@ impl Core {
                         let result = core.load_cache(&list).await;
                         let _ = tx.send(result);
                     }
+                    Message::IsLoaded { list, tx } => {
+                        let result = core.data.feeds.contains_key(&list.to_string());
+                        let _ = tx.send(result);
+                    }
                 }
             }
         });
