@@ -2,7 +2,7 @@ use anyhow::Context;
 use std::collections::HashMap;
 use tokio::task::JoinHandle;
 
-use super::data::{LoreMailingList, LorePage, LorePatchMetadata};
+use super::data::{LoreFeedItem, LoreMailingList, LorePage};
 use super::parse;
 use crate::ArcSlice;
 use crate::{ArcStr, api::lore::message::LoreApiMessage, net::Net};
@@ -168,7 +168,7 @@ impl Core {
         &self,
         target_list: &str,
         min_index: usize,
-    ) -> anyhow::Result<Option<LorePage<LorePatchMetadata>>> {
+    ) -> anyhow::Result<Option<LorePage<LoreFeedItem>>> {
         let url = format!(
             "{}/{}/?x=A&q=((s:patch+OR+s:rfc)+AND+NOT+s:re:)&o={}",
             self.domain, target_list, min_index

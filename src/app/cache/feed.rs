@@ -7,7 +7,7 @@ mod data;
 pub mod message;
 
 use crate::ArcStr;
-use crate::api::lore::{LoreApi, LorePatchMetadata};
+use crate::api::lore::{LoreApi, LoreFeedItem};
 use crate::app::config::Config;
 use crate::fs::Fs;
 use crate::log::Log;
@@ -26,7 +26,7 @@ pub enum FeedCache {
 
 #[derive(Debug, Default)]
 pub struct MockData {
-    pub feeds: std::collections::HashMap<ArcStr, Vec<LorePatchMetadata>>,
+    pub feeds: std::collections::HashMap<ArcStr, Vec<LoreFeedItem>>,
 }
 
 impl FeedCache {
@@ -43,11 +43,7 @@ impl FeedCache {
     }
 
     /// Fetches a single patch metadata item by index for a given mailing list.
-    pub async fn get(
-        &self,
-        list: ArcStr,
-        index: usize,
-    ) -> anyhow::Result<Option<LorePatchMetadata>> {
+    pub async fn get(&self, list: ArcStr, index: usize) -> anyhow::Result<Option<LoreFeedItem>> {
         match self {
             Self::Actual(sender) => {
                 let (tx, rx) = tokio::sync::oneshot::channel();
@@ -72,7 +68,7 @@ impl FeedCache {
         &self,
         list: ArcStr,
         range: std::ops::Range<usize>,
-    ) -> anyhow::Result<Vec<LorePatchMetadata>> {
+    ) -> anyhow::Result<Vec<LoreFeedItem>> {
         match self {
             Self::Actual(sender) => {
                 let (tx, rx) = tokio::sync::oneshot::channel();

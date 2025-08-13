@@ -34,33 +34,43 @@ async fn main() -> anyhow::Result<()> {
 
     // Test the new cache loading functionality
     println!("\n🧪 Testing cache loading functionality:");
-    
+
     // Create a test feed cache
     let test_feed_cache = FeedCache::mock(Default::default());
-    
+
     // Test is_loaded method
-    let is_loaded = test_feed_cache.is_loaded(ph::ArcStr::from("test-list")).await;
+    let is_loaded = test_feed_cache
+        .is_loaded(ph::ArcStr::from("test-list"))
+        .await;
     println!("📋 Cache is_loaded for 'test-list': {}", is_loaded);
-    
+
     // Test ensure_loaded method
-    let ensure_result = test_feed_cache.ensure_loaded(ph::ArcStr::from("test-list")).await;
+    let ensure_result = test_feed_cache
+        .ensure_loaded(ph::ArcStr::from("test-list"))
+        .await;
     println!("📋 ensure_loaded result: {:?}", ensure_result);
-    
+
     // Test is_empty method
-    let is_empty = test_feed_cache.is_empty(ph::ArcStr::from("test-list")).await;
+    let is_empty = test_feed_cache
+        .is_empty(ph::ArcStr::from("test-list"))
+        .await;
     println!("📋 Cache is_empty for 'test-list': {}", is_empty);
 
     println!("\n✅ All cache loading tests passed!");
 
     // Test pagination behavior
     println!("\n🧪 Testing pagination behavior:");
-    
+
     // Test is_available method
-    let is_available = test_feed_cache.is_available(ph::ArcStr::from("test-list"), 0..20).await;
+    let is_available = test_feed_cache
+        .is_available(ph::ArcStr::from("test-list"), 0..20)
+        .await;
     println!("📋 Cache is_available for range 0..20: {}", is_available);
-    
+
     // Test get_slice method (this would trigger on-demand fetching in real implementation)
-    let slice_result = test_feed_cache.get_slice(ph::ArcStr::from("test-list"), 0..20).await;
+    let slice_result = test_feed_cache
+        .get_slice(ph::ArcStr::from("test-list"), 0..20)
+        .await;
     println!("📋 get_slice result: {:?}", slice_result);
 
     println!("\n✅ All pagination tests passed!");

@@ -2,7 +2,7 @@ use super::data::FeedData;
 use super::message::Message;
 use crate::ArcPath;
 use crate::ArcStr;
-use crate::api::lore::{LoreApi, LorePatchMetadata};
+use crate::api::lore::{LoreApi, LoreFeedItem};
 use crate::app::config::Config;
 use crate::fs::Fs;
 use crate::log::Log;
@@ -100,7 +100,7 @@ impl Core {
         &mut self,
         list: &str,
         index: usize,
-    ) -> anyhow::Result<Option<LorePatchMetadata>> {
+    ) -> anyhow::Result<Option<LoreFeedItem>> {
         // Check if we have the item in cache
         if let Some(item) = self.data.feeds.get(list).and_then(|v| v.get(index)) {
             return Ok(Some(item.clone()));
@@ -123,7 +123,7 @@ impl Core {
         &mut self,
         list: &str,
         range: std::ops::Range<usize>,
-    ) -> anyhow::Result<Vec<LorePatchMetadata>> {
+    ) -> anyhow::Result<Vec<LoreFeedItem>> {
         // Check if we have the entire range in cache
         if self.data.contains_range(list, range.clone()) {
             let feed = self.data.feeds.get(list).unwrap();
@@ -160,12 +160,12 @@ impl Core {
     }
 
     /// Gets the newest cached item for a mailing list.
-    fn get_newest_cached_item(&self, list: &str) -> Option<&LorePatchMetadata> {
+    fn get_newest_cached_item(&self, list: &str) -> Option<&LoreFeedItem> {
         self.data.feeds.get(list)?.first()
     }
 
     /// Checks if an item is already in the cache for a mailing list.
-    fn has_item_in_cache(&self, list: &str, item: &LorePatchMetadata) -> bool {
+    fn has_item_in_cache(&self, list: &str, item: &LoreFeedItem) -> bool {
         self.data
             .feeds
             .get(list)

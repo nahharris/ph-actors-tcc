@@ -7,7 +7,7 @@ mod data;
 pub mod message;
 
 use crate::ArcStr;
-use crate::api::lore::LoreApi;
+use crate::api::lore::{LoreApi, data::LorePatch};
 use crate::app::config::Config;
 use crate::fs::Fs;
 use crate::log::Log;
@@ -26,7 +26,7 @@ pub enum PatchCache {
 
 #[derive(Debug, Default)]
 pub struct MockData {
-    pub patches: std::collections::HashMap<String, String>,
+    pub patches: std::collections::HashMap<String, LorePatch>,
 }
 
 impl PatchCache {
@@ -43,7 +43,7 @@ impl PatchCache {
     }
 
     /// Fetches a patch by mailing list and message ID.
-    pub async fn get(&self, list: ArcStr, message_id: ArcStr) -> anyhow::Result<String> {
+    pub async fn get(&self, list: ArcStr, message_id: ArcStr) -> anyhow::Result<LorePatch> {
         match self {
             Self::Actual(sender) => {
                 let (tx, rx) = tokio::sync::oneshot::channel();

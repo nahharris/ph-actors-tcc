@@ -1,6 +1,7 @@
 use tokio::sync::mpsc::{self, Receiver};
 use tokio::task::JoinHandle;
 
+use crate::api::lore::data::LorePatch;
 use crate::{ArcSlice, ArcStr};
 
 use super::message::Message;
@@ -51,8 +52,8 @@ impl Core {
     async fn run(self, mut rx: Receiver<Message>) -> anyhow::Result<()> {
         while let Some(message) = rx.recv().await {
             match message {
-                Message::Render { tx, content } => {
-                    let result = self.handle_render_request(content).await;
+                Message::Render { tx, patch } => {
+                    let result = self.handle_render_request(patch).await;
                     let _ = tx.send(result);
                 }
             }
@@ -63,20 +64,23 @@ impl Core {
     /// Handles a render request by executing the appropriate external program.
     ///
     /// # Arguments
-    /// * `request` - The render request containing content
+    /// * `patch` - The patch to render
     ///
     /// # Returns
     /// The rendered content or an error
-    async fn handle_render_request(&self, content: ArcStr) -> anyhow::Result<ArcStr> {
+    async fn handle_render_request(&self, patch: LorePatch) -> anyhow::Result<ArcStr> {
         // Get the renderer from config
         let renderer = self
             .config
             .renderer(crate::app::config::RendererOpt::PatchRenderer)
             .await;
 
+        // Convert the patch to a string representation for rendering
+        let content = format!("{}", patch);
+
         if matches!(renderer, crate::app::config::Renderer::None) {
             // No external renderer: return raw content
-            return Ok(content);
+            return Ok(ArcStr::from(content));
         }
 
         // Get the program name and default arguments
@@ -88,7 +92,10 @@ impl Core {
         let args = ArcSlice::from(args);
 
         // Execute the renderer program with the content as stdin
-        let result = self.shell.execute(program, args, Some(content)).await?;
+        let result = self
+            .shell
+            .execute(program, args, Some(ArcStr::from(content)))
+            .await?;
 
         if result.is_success() {
             Ok(result.stdout)

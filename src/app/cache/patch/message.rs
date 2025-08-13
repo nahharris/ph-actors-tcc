@@ -1,4 +1,5 @@
 use crate::ArcStr;
+use crate::api::lore::data::LorePatch;
 use tokio::sync::oneshot;
 
 /// Messages for the Patch Actor.
@@ -8,7 +9,7 @@ pub enum Message {
     Get {
         list: ArcStr,
         message_id: ArcStr,
-        tx: oneshot::Sender<anyhow::Result<String>>,
+        tx: oneshot::Sender<anyhow::Result<LorePatch>>,
     },
     /// Invalidate a specific patch
     Invalidate {

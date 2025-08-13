@@ -1,5 +1,5 @@
 use crate::ArcStr;
-use crate::api::lore::{LoreMailingList, LorePatchMetadata};
+use crate::api::lore::{LoreFeedItem, LoreMailingList};
 
 /// UI key events emitted by the terminal.
 #[derive(Debug, Clone, Copy)]
@@ -23,7 +23,7 @@ pub enum Screen {
     /// Feed screen: shows patches for a mailing list
     Feed {
         list: ArcStr,
-        items: Vec<LorePatchMetadata>,
+        items: Vec<LoreFeedItem>,
         page: usize,
         selected: usize,
     },

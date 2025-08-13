@@ -1,6 +1,6 @@
 use tokio::sync::oneshot::Sender;
 
-use super::data::{LoreMailingList, LorePage, LorePatchMetadata};
+use super::data::{LoreFeedItem, LoreMailingList, LorePage};
 use crate::{ArcSlice, ArcStr};
 
 /// Messages that can be sent to a [`LoreApiCore`] actor.
@@ -16,7 +16,7 @@ pub enum LoreApiMessage {
         /// The offset for pagination (0-based)
         min_index: usize,
         /// Response channel for the operation result
-        tx: Sender<anyhow::Result<Option<LorePage<LorePatchMetadata>>>>,
+        tx: Sender<anyhow::Result<Option<LorePage<LoreFeedItem>>>>,
     },
     GetAvailableLists {
         tx: Sender<anyhow::Result<ArcSlice<LoreMailingList>>>,

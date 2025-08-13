@@ -1,6 +1,7 @@
 use tokio::sync::oneshot::Sender;
 
 use crate::ArcStr;
+use crate::api::lore::data::LorePatch;
 
 /// Messages that can be sent to the render actor.
 ///
@@ -12,7 +13,7 @@ pub enum Message {
     Render {
         /// Response channel for the rendered content
         tx: Sender<anyhow::Result<ArcStr>>,
-        /// The render request containing content and renderer
-        content: ArcStr,
+        /// The patch to render
+        patch: LorePatch,
     },
 }

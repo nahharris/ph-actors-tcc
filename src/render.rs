@@ -10,6 +10,7 @@ use tokio::sync::Mutex;
 use tokio::sync::mpsc::Sender;
 
 use crate::ArcStr;
+use crate::api::lore::data::LorePatch;
 
 /// The render actor that provides a thread-safe interface for rendering patch content.
 ///
@@ -65,16 +66,16 @@ impl Render {
     /// Renders patch content using the configured renderer.
     ///
     /// # Arguments
-    /// * `content` - The raw patch content to render (ArcStr)
+    /// * `patch` - The patch to render
     ///
     /// # Returns
     /// The rendered patch content as a string.
-    pub async fn render_patch(&self, content: ArcStr) -> anyhow::Result<ArcStr> {
+    pub async fn render_patch(&self, patch: LorePatch) -> anyhow::Result<ArcStr> {
         match self {
             Self::Actual(sender) => {
                 let (tx, rx) = tokio::sync::oneshot::channel();
                 sender
-                    .send(message::Message::Render { tx, content })
+                    .send(message::Message::Render { tx, patch })
                     .await
                     .context("Rendering patch with Render actor")
                     .expect("render actor died");
@@ -84,7 +85,8 @@ impl Render {
             }
             Self::Mock(requests) => {
                 let lock = requests.lock().await;
-                lock.get(&content)
+                let content = format!("{}", patch);
+                lock.get(&ArcStr::from(content))
                     .context("No more mocked responses")
                     .cloned()
             }

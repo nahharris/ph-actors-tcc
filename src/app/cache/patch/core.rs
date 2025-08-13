@@ -2,7 +2,7 @@ use super::data::PatchData;
 use super::message::Message;
 use crate::ArcPath;
 use crate::ArcStr;
-use crate::api::lore::LoreApi;
+use crate::api::lore::{LoreApi, data::LorePatch};
 use crate::app::config::Config;
 use crate::fs::Fs;
 use crate::log::Log;
@@ -83,18 +83,18 @@ impl Core {
     }
 
     /// Handles getting a patch by mailing list and message ID.
-    async fn handle_get(&mut self, list: &str, message_id: &str) -> anyhow::Result<String> {
+    async fn handle_get(&mut self, list: &str, message_id: &str) -> anyhow::Result<LorePatch> {
         // First check the buffer
-        if let Some(content) = self.data.get_from_buffer(list, message_id) {
-            return Ok(content);
+        if let Some(patch) = self.data.get_from_buffer(list, message_id) {
+            return Ok(patch);
         }
 
         // Check if the patch exists on disk
         if self.patch_exists_on_disk(list, message_id).await? {
             // Load from disk and add to buffer
-            let content = self.load_patch_from_disk(list, message_id).await?;
-            self.data.add_to_buffer(list, message_id, content.clone());
-            return Ok(content);
+            let patch = self.load_patch_from_disk(list, message_id).await?;
+            self.data.add_to_buffer(list, message_id, patch.clone());
+            return Ok(patch);
         }
 
         // Fetch from API
@@ -103,26 +103,25 @@ impl Core {
             &format!("Fetching patch {} from API for list: {}", message_id, list),
         );
 
-        let content = self
+        let raw_content = self
             .lore
             .get_raw_patch(ArcStr::from(list), ArcStr::from(message_id))
             .await?;
 
+        // Parse the raw content into a LorePatch
+        let patch = crate::api::lore::parse::parse_patch_mbox(&raw_content)
+            .with_context(|| format!("Failed to parse patch {list}/{message_id}"))?;
+
         // Save to disk and add to buffer
-        let content_str = content.to_string();
-        if let Err(e) = self
-            .save_patch_to_disk(list, message_id, &content_str)
-            .await
-        {
+        if let Err(e) = self.save_patch_to_disk(list, message_id, &patch).await {
             self.log.error(
                 SCOPE,
                 &format!("Failed to save patch {list}/{message_id} to disk: {e}"),
             );
         }
-        self.data
-            .add_to_buffer(list, message_id, content_str.clone());
+        self.data.add_to_buffer(list, message_id, patch.clone());
 
-        Ok(content_str)
+        Ok(patch)
     }
 
     /// Handles invalidating a specific patch.
@@ -167,7 +166,11 @@ impl Core {
     }
 
     /// Loads a patch from disk.
-    async fn load_patch_from_disk(&self, list: &str, message_id: &str) -> anyhow::Result<String> {
+    async fn load_patch_from_disk(
+        &self,
+        list: &str,
+        message_id: &str,
+    ) -> anyhow::Result<LorePatch> {
         let cache_path = self.data.get_cache_path(list, message_id);
 
         let file = self
@@ -184,7 +187,11 @@ impl Core {
             .await
             .context("Failed to read patch file content")?;
 
-        Ok(content)
+        // Deserialize from TOML
+        let patch: LorePatch =
+            toml::from_str(&content).context("Failed to deserialize patch from TOML")?;
+
+        Ok(patch)
     }
 
     /// Saves a patch to disk.
@@ -192,7 +199,7 @@ impl Core {
         &self,
         list: &str,
         message_id: &str,
-        content: &str,
+        patch: &LorePatch,
     ) -> anyhow::Result<()> {
         let cache_path = self.data.get_cache_path(list, message_id);
 
@@ -203,6 +210,9 @@ impl Core {
                 .await
                 .context("Failed to create patch cache directory")?;
         }
+
+        // Serialize to TOML
+        let content = toml::to_string_pretty(patch).context("Failed to serialize patch to TOML")?;
 
         // Write the file
         let mut file = self

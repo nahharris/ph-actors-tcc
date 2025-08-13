@@ -9,7 +9,6 @@ use ph::{
     net::Net,
 };
 
-
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     let config = Config::mock(Default::default());

@@ -1,5 +1,5 @@
 use crate::ArcStr;
-use crate::api::lore::LorePatchMetadata;
+use crate::api::lore::LoreFeedItem;
 use tokio::sync::oneshot;
 
 /// Messages for the Feed Actor.
@@ -9,13 +9,13 @@ pub enum Message {
     Get {
         list: ArcStr,
         index: usize,
-        tx: oneshot::Sender<anyhow::Result<Option<LorePatchMetadata>>>,
+        tx: oneshot::Sender<anyhow::Result<Option<LoreFeedItem>>>,
     },
     /// Get a slice of patch metadata items by range for a given mailing list
     GetSlice {
         list: ArcStr,
         range: std::ops::Range<usize>,
-        tx: oneshot::Sender<anyhow::Result<Vec<LorePatchMetadata>>>,
+        tx: oneshot::Sender<anyhow::Result<Vec<LoreFeedItem>>>,
     },
     /// Refresh the cache for a specific mailing list
     Refresh {

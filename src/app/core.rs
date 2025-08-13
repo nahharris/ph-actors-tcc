@@ -351,20 +351,19 @@ impl Core {
             list, message_id
         );
 
-        let content = if html {
-            self.lore.get_patch_html(list, message_id).await?
-        } else {
-            self.lore.get_raw_patch(list, message_id).await?
-        };
-
         if html {
+            // For HTML, we still need to fetch the raw HTML content
+            let content = self.lore.get_patch_html(list, message_id).await?;
             println!("Patch content:");
             println!("{}", "=".repeat(80));
             println!("{}", content);
             println!("{}", "=".repeat(80));
         } else {
-            // Use the render actor to render the raw patch content
-            let rendered_content = self.render.render_patch(content).await?;
+            // Get the parsed patch from cache
+            let patch = self.patch_cache.get(list, message_id).await?;
+
+            // Use the render actor to render the patch
+            let rendered_content = self.render.render_patch(patch).await?;
             println!("{}", rendered_content);
         }
 

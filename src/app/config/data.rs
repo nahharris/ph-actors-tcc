@@ -40,7 +40,7 @@ impl Renderer {
                 "--style=numbers",
                 "--color=always",
             ],
-            Renderer::Delta => vec!["--paging=never", "--side-by-side=false"],
+            Renderer::Delta => vec!["--paging=never"],
         }
     }
 }

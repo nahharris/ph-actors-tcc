@@ -12,7 +12,7 @@ mod message;
 pub mod parse;
 
 // Re-export public types for external use
-pub use data::{LoreMailingList, LorePage, LorePatchMetadata};
+pub use data::{LoreFeedItem, LoreMailingList, LorePage};
 pub use message::LoreApiMessage;
 
 /// The Lore API actor that provides a high-level interface for interacting with the Lore Kernel API.
@@ -103,7 +103,7 @@ impl LoreApi {
         &self,
         target_list: ArcStr,
         min_index: usize,
-    ) -> anyhow::Result<Option<LorePage<LorePatchMetadata>>> {
+    ) -> anyhow::Result<Option<LorePage<LoreFeedItem>>> {
         match self {
             LoreApi::Actual(sender) => {
                 let (tx, rx) = oneshot::channel();
@@ -127,7 +127,7 @@ impl LoreApi {
                     anyhow::anyhow!("Patch feed page not found in mock responses: {}", key)
                 })?;
                 // Parse the XML string into LorePage<LorePatchMetadata>
-                let page: LorePage<LorePatchMetadata> =
+                let page: LorePage<LoreFeedItem> =
                     crate::api::lore::parse::parse_patch_feed_xml(&xml, min_index)?;
                 Ok(Some(page))
             }

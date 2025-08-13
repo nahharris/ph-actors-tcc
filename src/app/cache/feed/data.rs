@@ -1,5 +1,5 @@
 use crate::ArcPath;
-use crate::api::lore::LorePatchMetadata;
+use crate::api::lore::LoreFeedItem;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -8,7 +8,7 @@ use std::collections::HashMap;
 #[derive(Debug, Default, Serialize, Deserialize)]
 pub struct CacheData {
     /// Cached patch metadata per mailing list
-    pub feeds: HashMap<String, Vec<LorePatchMetadata>>,
+    pub feeds: HashMap<String, Vec<LoreFeedItem>>,
     /// Last updated time per mailing list for cache validation
     pub last_updated: HashMap<String, Option<DateTime<Utc>>>,
 }
@@ -16,7 +16,7 @@ pub struct CacheData {
 /// Internal state for the Feed Actor.
 pub struct FeedData {
     /// Cached patch metadata per mailing list
-    pub feeds: HashMap<String, Vec<LorePatchMetadata>>,
+    pub feeds: HashMap<String, Vec<LoreFeedItem>>,
     /// Last updated time per mailing list for cache validation
     pub last_updated: HashMap<String, Option<DateTime<Utc>>>,
     /// Directory for cache files

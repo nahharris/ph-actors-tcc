@@ -632,10 +632,15 @@ impl Core {
             .show(Screen::Loading(ArcStr::from("Loading patch...")))
             .await?;
         match self.patch_cache.get(list.clone(), message_id.clone()).await {
-            Ok(raw) => {
-                self.log
-                    .info(SCOPE, &format!("Patch: raw chars={}", raw.len()));
-                match self.render.render_patch(ArcStr::from(raw)).await {
+            Ok(patch) => {
+                self.log.info(
+                    SCOPE,
+                    &format!(
+                        "Patch: title='{}' version={} sequence={}",
+                        patch.title, patch.version, patch.sequence
+                    ),
+                );
+                match self.render.render_patch(patch).await {
                     Ok(rendered) => {
                         if rendered.is_empty() {
                             self.log.warn(

@@ -1,4 +1,4 @@
-use super::data::{LoreMailingList, LorePage, LorePatchMetadata};
+use super::data::{LoreFeedItem, LoreMailingList, LorePage, LorePatch};
 use crate::{ArcStr, SequenceNumber};
 use chrono::{DateTime, NaiveDateTime, Utc};
 use regex::Regex;
@@ -153,12 +153,12 @@ pub fn parse_available_lists_html(
 ///
 /// # Errors
 /// Returns an error if the title doesn't match any expected pattern.
-pub fn parse_patch_title(title: &str) -> anyhow::Result<(usize, Option<SequenceNumber>)> {
+pub fn parse_patch_title(title: &str) -> anyhow::Result<(usize, Option<SequenceNumber>, ArcStr)> {
     use anyhow::{Context, anyhow};
 
     // Regex to match patch title patterns with named captures
     let patch_regex = Regex::new(
-        r"^\[PATCH\s*(?:v(?P<version>\d+))?\s*(?:(?P<current>\d+)/(?P<total>\d+))?\s*\]",
+        r"^\[PATCH\s*(?:v(?P<version>\d+))?\s*(?:(?P<current>\d+)/(?P<total>\d+))?\s*\](?P<title>.*)$",
     )
     .context("Failed to compile patch title regex")?;
 
@@ -188,7 +188,14 @@ pub fn parse_patch_title(title: &str) -> anyhow::Result<(usize, Option<SequenceN
             None
         };
 
-        Ok((version, sequence))
+        let Some(title) = captures
+            .name("title")
+            .map(|m| ArcStr::from(m.as_str().trim()))
+        else {
+            return Err(anyhow!("Failed to capture title"));
+        };
+
+        Ok((version, sequence, title))
     } else {
         // If the title doesn't match the expected pattern, skip it
         Err(anyhow!(
@@ -212,7 +219,7 @@ pub fn parse_patch_title(title: &str) -> anyhow::Result<(usize, Option<SequenceN
 pub fn parse_patch_feed_xml(
     xml: &str,
     start_index: usize,
-) -> anyhow::Result<LorePage<LorePatchMetadata>> {
+) -> anyhow::Result<LorePage<LoreFeedItem>> {
     #[derive(Debug, Deserialize)]
     struct Feed {
         #[serde(rename = "entry")]
@@ -257,7 +264,7 @@ pub fn parse_patch_feed_xml(
         .into_iter()
         .filter_map(|entry| {
             // Parse patch title to extract version and sequence information
-            let (version, sequence) = parse_patch_title(&entry.title).ok()?;
+            let (version, sequence, title) = parse_patch_title(&entry.title).ok()?;
 
             let datetime = DateTime::parse_from_rfc3339(&entry.updated)
                 .map(|dt| dt.with_timezone(&Utc))
@@ -270,11 +277,11 @@ pub fn parse_patch_feed_xml(
 
             let message_id = captures.get(2)?.as_str();
 
-            Some(LorePatchMetadata {
+            Some(LoreFeedItem {
                 author: ArcStr::from(&entry.author.name),
                 email: ArcStr::from(&entry.author.email),
                 last_update: datetime,
-                title: ArcStr::from(&entry.title),
+                title,
                 version,
                 sequence,
                 link: ArcStr::from(&link),
@@ -290,6 +297,155 @@ pub fn parse_patch_feed_xml(
         total_items: Some(items.len()),
         items,
     })
+}
+
+pub fn parse_patch_mbox(mbox: &str) -> anyhow::Result<LorePatch> {
+    use anyhow::{Context, anyhow};
+
+    let mut lines = mbox.lines().peekable();
+
+    // Parse email headers
+    let mut from = None;
+    let mut to = Vec::new();
+    let mut cc = Vec::new();
+    let mut bcc = Vec::new();
+    let mut subject = None;
+    let mut date = None;
+
+    // Parse headers until we hit an empty line
+    while let Some(line) = lines.next() {
+        if line.trim().is_empty() {
+            break;
+        }
+
+        if line.starts_with("From: ") {
+            from = Some(ArcStr::from(line[6..].trim()));
+        } else if line.starts_with("To: ") {
+            let recipients = &line[4..].trim();
+            to.extend(parse_email_list(recipients));
+            while let Some(line) = lines.peek() {
+                if line.starts_with("\t") || line.starts_with("  ") {
+                    let line = lines.next().expect("Peek should have a line");
+                    let recipients = &line[1..].trim();
+                    to.extend(parse_email_list(recipients));
+                } else {
+                    break;
+                }
+            }
+        } else if line.starts_with("CC: ") {
+            let recipients = &line[4..].trim();
+            cc.extend(parse_email_list(recipients));
+            while let Some(line) = lines.peek() {
+                if line.starts_with("\t") || line.starts_with("  ") {
+                    let line = lines.next().expect("Peek should have a line");
+                    let recipients = &line[1..].trim();
+                    cc.extend(parse_email_list(recipients));
+                } else {
+                    break;
+                }
+            }
+        } else if line.starts_with("BCC: ") {
+            let recipients = &line[5..].trim();
+            bcc.extend(parse_email_list(recipients));
+            while let Some(line) = lines.peek() {
+                if line.starts_with("\t") || line.starts_with("  ") {
+                    let line = lines.next().expect("Peek should have a line");
+                    let recipients = &line[1..].trim();
+                    bcc.extend(parse_email_list(recipients));
+                } else {
+                    break;
+                }
+            }
+        } else if line.starts_with("Subject: ") {
+            subject = Some(ArcStr::from(line[9..].trim()));
+        } else if line.starts_with("Date: ") {
+            let date_str = line[6..].trim();
+            date = Some(
+                parse_email_date(date_str)
+                    .with_context(|| format!("Failed to parse date: '{}'", date_str))?,
+            );
+        }
+    }
+
+    // Validate required fields
+    let from = from.ok_or_else(|| anyhow!("Missing From header"))?;
+    let subject = subject.ok_or_else(|| anyhow!("Missing Subject header"))?;
+    let date = date.ok_or_else(|| anyhow!("Missing Date header"))?;
+
+    // Parse patch title to extract version and sequence
+    let (version, sequence, title) = parse_patch_title(&subject)
+        .with_context(|| format!("Failed to parse patch title: '{}'", subject))?;
+
+    // Default to 1/1 if no sequence is specified (simple patch)
+    let sequence = sequence.unwrap_or_else(|| SequenceNumber::new(1, 1));
+
+    // Collect the message body (everything until the diff starts)
+    let mut message_lines = Vec::new();
+    let mut diff_lines = Vec::new();
+    let mut in_diff = false;
+
+    while let Some(line) = lines.next() {
+        if line.starts_with("---") && !in_diff {
+            in_diff = true;
+            diff_lines.push(line);
+        } else if in_diff {
+            diff_lines.push(line);
+        } else {
+            message_lines.push(line);
+        }
+    }
+
+    let message = ArcStr::from(message_lines.join("\n").replace("\t", "    ").trim());
+    let diff = ArcStr::from(diff_lines.join("\n").replace("\t", "    ").trim());
+
+    Ok(LorePatch {
+        title,
+        version,
+        sequence,
+        from,
+        to,
+        cc,
+        bcc,
+        date,
+        message,
+        diff,
+    })
+}
+
+/// Parses a comma-separated list of email addresses
+fn parse_email_list(email_list: &str) -> Vec<ArcStr> {
+    email_list
+        .split(',')
+        .map(|s| s.trim())
+        .filter(|s| !s.is_empty())
+        .map(ArcStr::from)
+        .collect()
+}
+
+/// Parses an email date string into a DateTime<Utc>
+fn parse_email_date(date_str: &str) -> anyhow::Result<DateTime<Utc>> {
+    use chrono::{NaiveDateTime, TimeZone};
+
+    // Try different date formats commonly used in email headers
+    let formats = [
+        "%a, %d %b %Y %H:%M:%S %z", // RFC 2822 format
+        "%d %b %Y %H:%M:%S %z",     // Without day of week
+        "%a, %d %b %Y %H:%M:%S %Z", // With timezone name
+        "%d %b %Y %H:%M:%S %Z",     // Without day of week, with timezone name
+    ];
+
+    for format in &formats {
+        if let Ok(dt) = chrono::DateTime::parse_from_str(date_str, format) {
+            return Ok(dt.with_timezone(&Utc));
+        }
+    }
+
+    // If none of the standard formats work, try parsing as naive datetime
+    if let Ok(naive_dt) = NaiveDateTime::parse_from_str(date_str, "%a, %d %b %Y %H:%M:%S") {
+        return Ok(Utc.from_utc_datetime(&naive_dt));
+    }
+
+    Err(anyhow::anyhow!("Failed to parse date: '{}'", date_str))
 }
 
 #[cfg(test)]
@@ -370,5 +526,104 @@ mod tests {
         let result = parse_patch_title(title).unwrap();
         assert_eq!(result.0, 2); // version 2
         assert_eq!(result.1, Some(SequenceNumber::new(5, 10))); // sequence 5/10
+    }
+
+    #[test]
+    fn test_parse_patch_mbox() {
+        let mbox_content = r#"From mboxrd@z Thu Jan  1 00:00:00 1970
+Return-Path: <amd-gfx-bounces@lists.freedesktop.org>
+From: Chenglei Xie <Chenglei.Xie@amd.com>
+To: <amd-gfx@lists.freedesktop.org>
+CC: <yunru.pan@amd.com>, 
+    <Shravankumar.Gande@amd.com>, 
+    Chenglei Xie <Chenglei.Xie@amd.com>
+Subject: [PATCH] drm/amdgpu: refactor bad_page_work for corner case handling
+Date: Fri, 8 Aug 2025 10:24:46 -0400
+Message-ID: <20250808142447.2280-1-Chenglei.Xie@amd.com>
+
+When a poison is consumed on the guest before the guest receives the host's poison creation msg, a corner case may occur to have poison_handler complete processing earlier than it should to cause the guest to hang waiting for the req_bad_pages reply during a VF FLR, resulting in the VM becoming inaccessible in stress tests.
+
+To fix this issue, this patch refactored the mailbox sequence by seperating the bad_page_work into two parts req_bad_pages_work and handle_bad_pages_work.
+
+Signed-off-by: Chenglei Xie <Chenglei.Xie@amd.com>
+---
+ drivers/gpu/drm/amd/amdgpu/amdgpu_virt.h |  3 +-
+ drivers/gpu/drm/amd/amdgpu/mxgpu_ai.c    | 32 +++++++++++++++++++---
+ drivers/gpu/drm/amd/amdgpu/mxgpu_nv.c    | 35 +++++++++++++++++++-----
+ drivers/gpu/drm/amd/amdgpu/soc15.c       |  1 -
+ 4 files changed, 58 insertions(+), 13 deletions(-)
+
+diff --git a/drivers/gpu/drm/amd/amdgpu/amdgpu_virt.h b/drivers/gpu/drm/amd/amdgpu/amdgpu_virt.h
+index 3da3ebb1d9a1..58accf2259b3 100644
+--- a/drivers/gpu/drm/amd/amdgpu/amdgpu_virt.h
++++ b/drivers/gpu/drm/amd/amdgpu/amdgpu_virt.h
+@@ -267,7 +267,8 @@ struct amdgpu_virt {
+ 	struct amdgpu_irq_src		rcv_irq;
+ 
+ 	struct work_struct		flr_work;
+-	struct work_struct		bad_pages_work;
++	struct work_struct		req_bad_pages_work;
++	struct work_struct		handle_bad_pages_work;
+ 
+ 	struct amdgpu_mm_table		mm_table
+ 	const struct amdgpu_virt_ops	*ops;
+"#;
+
+        let result = parse_patch_mbox(mbox_content).unwrap();
+
+        assert_eq!(
+            result.from,
+            ArcStr::from("Chenglei Xie <Chenglei.Xie@amd.com>")
+        );
+        assert_eq!(
+            result.title,
+            ArcStr::from("drm/amdgpu: refactor bad_page_work for corner case handling")
+        );
+        assert_eq!(result.version, 1);
+        assert_eq!(result.sequence, SequenceNumber::new(1, 1));
+        assert_eq!(result.to.len(), 1);
+        assert_eq!(
+            result.to[0],
+            ArcStr::from("<amd-gfx@lists.freedesktop.org>")
+        );
+        assert_eq!(result.cc.len(), 3);
+        assert!(result.message.contains("When a poison is consumed"));
+        assert!(result.diff.contains("diff --git"));
+    }
+
+    #[test]
+    fn test_parse_patch_mbox_with_sequence() {
+        let mbox_content = r#"From: Test Author <test@example.com>
+To: <list@example.com>
+Subject: [PATCH 2/5] Add new feature
+Date: Fri, 8 Aug 2025 10:24:46 -0400
+
+This is the second patch in a series of 5.
+
+Signed-off-by: Test Author <test@example.com>
+---
+ file.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/file.c b/file.c
+index 1234567..abcdefg 100644
+--- a/file.c
++++ b/file.c
+@@ -1,3 +1,3 @@
+-old line
++new line
+ other line
+"#;
+
+        let result = parse_patch_mbox(mbox_content).unwrap();
+
+        assert_eq!(result.from, ArcStr::from("Test Author <test@example.com>"));
+        assert_eq!(result.title, ArcStr::from("Add new feature"));
+        assert_eq!(result.version, 1);
+        assert_eq!(result.sequence, SequenceNumber::new(2, 5));
+        assert_eq!(result.to.len(), 1);
+        assert_eq!(result.to[0], ArcStr::from("<list@example.com>"));
+        assert!(result.message.contains("This is the second patch"));
+        assert!(result.diff.contains("diff --git"));
     }
 }

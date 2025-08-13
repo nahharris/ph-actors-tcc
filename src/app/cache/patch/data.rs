@@ -1,5 +1,6 @@
 use crate::ArcPath;
 use crate::ArcStr;
+use crate::api::lore::data::LorePatch;
 use lru::LruCache;
 use std::num::NonZeroUsize;
 
@@ -9,7 +10,7 @@ use std::num::NonZeroUsize;
 /// fetched from the Lore API: raw text for applying patches and displaying content,
 /// and metadata JSON for programmatic access.
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
-pub struct LorePatch {
+pub struct CachedPatch {
     /// The message ID of the patch (used as the cache key)
     pub message_id: ArcStr,
     /// The mailing list this patch belongs to
@@ -20,7 +21,7 @@ pub struct LorePatch {
     pub metadata: Option<ArcStr>,
 }
 
-impl LorePatch {
+impl CachedPatch {
     /// Creates a new empty patch with the given message ID and list.
     pub fn new(message_id: ArcStr, list: ArcStr) -> Self {
         Self {
@@ -62,7 +63,7 @@ impl LorePatch {
 /// Internal state for the Patch Actor.
 pub struct PatchData {
     /// Small in-memory buffer for fast access to recently used patches
-    pub buffer: LruCache<String, String>,
+    pub buffer: LruCache<String, LorePatch>,
     /// Directory for cache files
     pub cache_dir: ArcPath,
 }
@@ -82,7 +83,7 @@ impl PatchData {
             &self
                 .cache_dir
                 .join(list)
-                .join(format!("{}.mbox", message_id)),
+                .join(format!("{}.toml", message_id)),
         )
     }
 
@@ -92,13 +93,13 @@ impl PatchData {
     }
 
     /// Adds a patch to the buffer.
-    pub fn add_to_buffer(&mut self, list: &str, message_id: &str, content: String) {
+    pub fn add_to_buffer(&mut self, list: &str, message_id: &str, patch: LorePatch) {
         let key = self.get_buffer_key(list, message_id);
-        self.buffer.put(key, content);
+        self.buffer.put(key, patch);
     }
 
     /// Gets a patch from the buffer.
-    pub fn get_from_buffer(&mut self, list: &str, message_id: &str) -> Option<String> {
+    pub fn get_from_buffer(&mut self, list: &str, message_id: &str) -> Option<LorePatch> {
         let key = self.get_buffer_key(list, message_id);
         self.buffer.get(&key).cloned()
     }
