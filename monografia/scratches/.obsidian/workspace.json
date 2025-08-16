@@ -13,24 +13,26 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "Patch Hub.md",
+                "file": "foundation/actor-model/Elixir.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "Patch Hub"
+              "title": "Elixir"
             }
           },
           {
-            "id": "390d9df5e7bac4d0",
+            "id": "bd518a664bc50834",
             "type": "leaf",
             "state": {
-              "type": "excalidraw",
+              "type": "markdown",
               "state": {
-                "file": "Excalidraw/Drawing 2025-03-18 15.27.49.excalidraw.md"
+                "file": "foundation/actor-model/rust/Rust.md",
+                "mode": "source",
+                "source": false
               },
-              "icon": "excalidraw-icon",
-              "title": "Drawing 2025-03-18 15.27.49.excalidraw"
+              "icon": "lucide-file",
+              "title": "Rust"
             }
           }
         ],
@@ -175,25 +177,37 @@
       "templates:Insert template": false,
       "command-palette:Open command palette": false,
       "obsidian-excalidraw-plugin:Create new drawing": false,
-      "obsidian-git:Open Git source control": false
+      "obsidian-git:Open Git source control": false,
+      "obsidian-excalidraw-plugin:New drawing": false
     }
   },
-  "active": "390d9df5e7bac4d0",
+  "active": "bd518a664bc50834",
   "lastOpenFiles": [
-    "Patch Hub.md",
+    "foundation/actor-model/rust/Memory Management.md",
+    "foundation/actor-model/rust/Rust.md",
+    "foundation/actor-model/rust/Example.md",
+    "foundation/actor-model/Elixir.md",
+    "foundation/actor-model/rust",
+    "02-Fundamentação-Teórica.md",
+    "foundation/actor-model/Actor.md",
+    "foundation/actor-model/Actor Model.md",
+    "summaries/The Actor Model of Computation.md",
+    "summaries",
+    "foundation/actor-model/Message.md",
+    "foundation/actor-model/Address.md",
+    "implementation",
+    "foundation/architecture/SOLID.md",
+    "foundation/architecture",
+    "Untitled.md",
+    "foundation/actor-model",
+    "foundation",
+    "context/Patch Hub.md",
+    "context",
     "Excalidraw/Drawing 2025-03-18 15.27.49.excalidraw.md",
     "Excalidraw",
     "Functional Programming.md",
     "fosolid/target/debug/incremental/fosolid-1b5q16q4j5vgd/s-h3lyqxb4s3-0ii4lzo-working/work-products.bin",
     "fosolid/target/debug/incremental/fosolid-1b5q16q4j5vgd/s-h3lyqxb4s3-0ii4lzo-working/query-cache.bin",
-    "fosolid/target/debug/incremental/fosolid-1b5q16q4j5vgd/s-h3lyqxb4s3-0ii4lzo-working/dep-graph.part.bin",
-    "fosolid/target/debug/incremental/fosolid-1b5q16q4j5vgd/s-h3lyqxb4s3-0ii4lzo-working/dep-graph.bin",
-    "fosolid/target/debug/incremental/fosolid-1b5q16q4j5vgd/s-h3lyqxb4s3-0ii4lzo-working",
-    "fosolid/target/debug/incremental/fosolid-1yebxxbtum7ca/s-h3lyqxb4s3-06s1y9b-working/work-products.bin",
-    "fosolid/target/debug/incremental/fosolid-1yebxxbtum7ca/s-h3lyqxb4s3-06s1y9b-working/query-cache.bin",
-    "fosolid/target/debug/incremental/fosolid-1yebxxbtum7ca/s-h3lyqxb4s3-06s1y9b-working/dep-graph.part.bin",
-    "fosolid/target/debug/incremental/fosolid-1yebxxbtum7ca/s-h3lyqxb4s3-06s1y9b-working/dep-graph.bin",
-    "SOLID.md",
     "Object-Oriented Programming.md",
     "Outline.md",
     "Welcome.md"
