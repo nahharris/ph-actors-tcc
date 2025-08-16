@@ -13,7 +13,7 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "foundation/actor-model/Elixir.md",
+                "file": "actor-model/Elixir.md",
                 "mode": "source",
                 "source": false
               },
@@ -27,12 +27,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "foundation/actor-model/rust/Rust.md",
+                "file": "Structure.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "Rust"
+              "title": "Structure"
             }
           }
         ],
@@ -183,33 +183,38 @@
   },
   "active": "bd518a664bc50834",
   "lastOpenFiles": [
-    "foundation/actor-model/rust/Memory Management.md",
-    "foundation/actor-model/rust/Rust.md",
-    "foundation/actor-model/rust/Example.md",
-    "foundation/actor-model/Elixir.md",
-    "foundation/actor-model/rust",
+    "study-case/03-Patch-Hub.md",
+    "Structure.md",
+    "future-works",
+    "conclusion",
+    "actor-model/Message.md",
     "02-Fundamentação-Teórica.md",
-    "foundation/actor-model/Actor.md",
-    "foundation/actor-model/Actor Model.md",
+    "actor-model/Elixir.md",
+    "actor-model/Address.md",
+    "actor-model/Actor Model.md",
+    "actor-model/Actor.md",
+    "actor-model/Continuation passing.md",
+    "software-architecture/papers/Architectural Degradation A Comprehensive Summary.md",
+    "software-architecture/papers",
+    "software-architecture/papers/Software Architectural Patterns in Practice An Empirical Study.md",
+    "implementation/04-Proposta.md",
+    "Outline.md",
+    "actor-model/rust/Rust.md",
+    "actor-model/rust/Memory Management.md",
+    "actor-model/rust/Example.md",
+    "actor-model/rust",
     "summaries/The Actor Model of Computation.md",
     "summaries",
-    "foundation/actor-model/Message.md",
-    "foundation/actor-model/Address.md",
     "implementation",
-    "foundation/architecture/SOLID.md",
-    "foundation/architecture",
-    "Untitled.md",
-    "foundation/actor-model",
-    "foundation",
-    "context/Patch Hub.md",
+    "software-architecture/SOLID.md",
+    "software-architecture",
+    "actor-model",
+    "study-case",
+    "study-case/Patch Hub.md",
     "context",
     "Excalidraw/Drawing 2025-03-18 15.27.49.excalidraw.md",
-    "Excalidraw",
     "Functional Programming.md",
-    "fosolid/target/debug/incremental/fosolid-1b5q16q4j5vgd/s-h3lyqxb4s3-0ii4lzo-working/work-products.bin",
-    "fosolid/target/debug/incremental/fosolid-1b5q16q4j5vgd/s-h3lyqxb4s3-0ii4lzo-working/query-cache.bin",
     "Object-Oriented Programming.md",
-    "Outline.md",
     "Welcome.md"
   ]
 }
