@@ -7,7 +7,7 @@ edition = "2024"
 anyhow = "1.0.97"
 chrono = { version = "0.4.40", features = ["serde"] }
 clap = { version = "4.5.32", features = ["derive"] }
-cursive = { version = "0.21.1", default-features = false, features = ["crossterm-backend"] }
+cursive = { version = "0.21.1", default-features = false, features = ["ansi", "crossterm-backend"] }
 lru = "0.16.0"
 regex = "1.11.1"
 reqwest = { version = "0.12.15", features = ["json", "rustls-tls"] }

@@ -1,3 +1,5 @@
+use cursive::theme::Theme;
+use cursive::utils::markup::ansi;
 use cursive::Cursive;
 use cursive::event::{Event, Key};
 use cursive::traits::*;
@@ -46,6 +48,7 @@ impl Core {
             // But the actor itself is still a tokio task
             thread::spawn(move || {
                 let mut siv = cursive::crossterm();
+                siv.set_theme(Theme::terminal_default());
 
                 // Install global key callbacks to forward to app actor
                 let fwd = |ev: UiEvent| {
@@ -165,7 +168,13 @@ impl Core {
             }
             Screen::Patch { title, content } => {
                 s.pop_layer();
-                let text = TextView::new(content.to_string()).scrollable();
+                // TODO: remove this workaround
+                let content = content.replace("\x1b[0K", "");
+                let content = regex::Regex::new(r"\x1b\[(\d+);(\d+);(\d+);(\d+);(\d+);(\d+)m")
+                    .unwrap()
+                    .replace_all(&content, "\x1b[$1;$2;${3}m\x1b[$4;$5;${6}m");
+                let content = ansi::parse(content.to_string());
+                let text = TextView::new(content).scrollable();
                 s.add_layer(Dialog::around(text).title(format!("Patch: {}", title.to_string())));
             }
         }));
