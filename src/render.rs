@@ -85,8 +85,9 @@ impl Render {
             }
             Self::Mock(requests) => {
                 let lock = requests.lock().await;
-                let content = format!("{}", patch);
-                lock.get(&ArcStr::from(content))
+                // Mock now uses diff content as key since render logic only renders diff
+                let diff_content = format!("{}", patch.diff);
+                lock.get(&ArcStr::from(diff_content))
                     .context("No more mocked responses")
                     .cloned()
             }

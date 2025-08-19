@@ -127,7 +127,10 @@ impl Core {
                             Status::Success(0) => {
                                 self.log.info(
                                     SCOPE,
-                                    format!("Command completed successfully: {command_str}"),
+                                    format!(
+                                        "Command completed successfully: {command_str}\n{:#?}",
+                                        result
+                                    ),
                                 );
                             }
                             Status::Success(code) => {

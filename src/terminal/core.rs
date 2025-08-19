@@ -1,8 +1,8 @@
-use cursive::theme::Theme;
-use cursive::utils::markup::ansi;
 use cursive::Cursive;
 use cursive::event::{Event, Key};
+use cursive::theme::Theme;
 use cursive::traits::*;
+use cursive::utils::markup::ansi;
 use cursive::views::{Dialog, SelectView, TextView};
 use std::thread;
 use tokio::sync::mpsc;

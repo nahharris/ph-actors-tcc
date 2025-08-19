@@ -75,13 +75,14 @@ impl Core {
             .renderer(crate::app::config::RendererOpt::PatchRenderer)
             .await;
 
-        // Convert the patch to a string representation for rendering
-        let content = format!("{}", patch);
-
         if matches!(renderer, crate::app::config::Renderer::None) {
-            // No external renderer: return raw content
-            return Ok(ArcStr::from(content));
+            // No external renderer: return just the diff content
+            return Ok(patch.diff);
         }
+
+        // Always use only the diff content for rendering, regardless of renderer
+        // This focuses on the most important part of the patch
+        let content = format!("{}", patch.diff);
 
         // Get the program name and default arguments
         let program = ArcStr::from(renderer.program_name());

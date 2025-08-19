@@ -640,28 +640,45 @@ impl Core {
                         patch.title, patch.version, patch.sequence
                     ),
                 );
-                match self.render.render_patch(patch).await {
-                    Ok(rendered) => {
-                        if rendered.is_empty() {
+                match self.render.render_patch(patch.clone()).await {
+                    Ok(rendered_diff) => {
+                        if rendered_diff.is_empty() {
                             self.log.warn(
                                 SCOPE,
                                 &format!(
-                                    "Patch: rendered empty content title='{}' list={} msg_id={}",
+                                    "Patch: rendered empty diff content title='{}' list={} msg_id={}, using unrendered diff",
                                     title, list, message_id
                                 ),
                             );
-                            // Invalidate cache so next attempt refetches
-                            self.feed_cache.invalidate(list).await?;
+                            // Use unrendered diff as fallback when rendering returns empty
+                            let formatted_metadata = format!("{}", patch);
+                            let complete_content =
+                                format!("{}\n\n{}", formatted_metadata, patch.diff);
+
+                            self.terminal
+                                .show(Screen::Patch {
+                                    title,
+                                    content: ArcStr::from(complete_content),
+                                })
+                                .await
                         } else {
-                            self.log
-                                .info(SCOPE, &format!("Patch: rendered chars={}", rendered.len()));
+                            self.log.info(
+                                SCOPE,
+                                &format!("Patch: rendered diff chars={}", rendered_diff.len()),
+                            );
+
+                            // Combine formatted patch metadata with rendered diff
+                            let formatted_metadata = format!("{}", patch);
+                            let complete_content =
+                                format!("{}\n\n{}", formatted_metadata, rendered_diff);
+
+                            self.terminal
+                                .show(Screen::Patch {
+                                    title,
+                                    content: ArcStr::from(complete_content),
+                                })
+                                .await
                         }
-                        self.terminal
-                            .show(Screen::Patch {
-                                title,
-                                content: rendered,
-                            })
-                            .await
                     }
                     Err(e) => {
                         self.log
@@ -674,8 +691,13 @@ impl Core {
                 }
             }
             Err(e) => {
-                self.log.error(SCOPE, &format!("Patch: fetch error: {}", e));
-                self.feed_cache.invalidate(list).await?;
+                self.log.error(
+                    SCOPE,
+                    &format!(
+                        "Patch: failed to get patch {} from cache: {}",
+                        message_id, e
+                    ),
+                );
                 self.terminal
                     .show(Screen::Error(ArcStr::from("Failed to load patch")))
                     .await

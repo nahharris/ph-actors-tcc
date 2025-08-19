@@ -117,8 +117,6 @@ impl std::fmt::Display for LorePatch {
         writeln!(f, "Date: {}", self.date.format("%Y-%m-%d %H:%M:%S"))?;
         writeln!(f)?;
         write!(f, "{}", self.message)?;
-        writeln!(f, "\n\n\n")?;
-        write!(f, "{}", self.diff)?;
         Ok(())
     }
 }

@@ -362,9 +362,19 @@ impl Core {
             // Get the parsed patch from cache
             let patch = self.patch_cache.get(list, message_id).await?;
 
-            // Use the render actor to render the patch
-            let rendered_content = self.render.render_patch(patch).await?;
-            println!("{}", rendered_content);
+            // Use the render actor to render the diff portion
+            let rendered_diff = self.render.render_patch(patch.clone()).await?;
+
+            // Combine formatted patch metadata with rendered diff
+            let formatted_metadata = format!("{}", patch);
+            let complete_content = if rendered_diff.is_empty() {
+                // Use unrendered diff as fallback when rendering returns empty
+                format!("{}\n\n{}", formatted_metadata, patch.diff)
+            } else {
+                format!("{}\n\n{}", formatted_metadata, rendered_diff)
+            };
+
+            println!("{}", complete_content);
         }
 
         Ok(())
