@@ -41,12 +41,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "study-case/Patch-Hub Current Status.md",
+                "file": "actor-model/Rust Centralized Approach.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "Patch-Hub Current Status"
+              "title": "Rust Centralized Approach"
             }
           }
         ],
@@ -197,12 +197,15 @@
   },
   "active": "69baf19213a42c03",
   "lastOpenFiles": [
+    "Index.md",
+    "actor-model/Rust Centralized Approach.md",
     "study-case/Patch-Hub Modeled With Actors.md",
+    "study-case/Patch-Hub Current Status.md",
+    "software-architecture/SOLID.md",
     "study-case/Patch Hub.md",
     "study-case/03-Patch-Hub.md",
     "software-architecture/papers/Software Architectural Patterns in Practice An Empirical Study.md",
     "software-architecture/papers/Architectural Degradation A Comprehensive Summary.md",
-    "software-architecture/SOLID.md",
     "software-architecture/papers",
     "software-architecture",
     "implementation/04-Proposta.md",
@@ -217,7 +220,6 @@
     "actor-model/Address.md",
     "actor-model/Actor.md",
     "actor-model/Actor Model.md",
-    "Structure.md",
     "summaries/The Actor Model of Computation.md",
     "summaries",
     "foundation/actor-model/rust/Rust.md",
@@ -227,8 +229,6 @@
     "foundation/actor-model/Actor.md",
     "foundation/actor-model/rust",
     "foundation/actor-model/Message.md",
-    "foundation/actor-model/Elixir.md",
-    "foundation/actor-model/Address.md",
     "foundation/architecture",
     "foundation/actor-model",
     "foundation",

@@ -1,0 +1,17 @@
+- Software Architecture
+	- [ ] What are patterns and why they matter
+	- [ ] How to evaluate the fitting
+- Actor Model
+	- [ ] Distributed systems
+	- [ ] Actor model theory
+	- [ ] Known implementations
+	- [ ] [[Proposal]]
+- Study Case
+	- [x] [[Patch-Hub Current Status]]
+	- [x] [[Patch-Hub Modeled With Actors]]
+	- [ ] Metrics (feature completeness, performance, test coverage)
+- Conclusion
+	- [ ] Strengths
+	- [ ] Weaknesses
+	- [ ] Is it worth?
+- Future works
