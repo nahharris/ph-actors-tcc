@@ -21,7 +21,7 @@ b += 1; // alright
 // since the code ends here, a and b are freed from memory
 ```
 
-A memory space can be borrowed with the usage of references, but the compiler will make sure that references to a value are not being used after the owner is destroyed. There might be infinite references (read-only `&`) to a value or one single mutable reference (writable `&mut`), but you can't have both.
+A memory space can be borrowed with the usage of references, but the compiler will make sure that references to a value are not being used after the owner is destroyed. There might be infinite references (read-only `&`) to a value or one single mutable reference (writable `&mut`), but one can't have both.
 
 ```rust
 let numbers = vec![1, 2, 3, 4];
@@ -70,7 +70,7 @@ let mut p = Point { timestamp: 20, value: 2.14 };
 p.add(1.0);
 ```
 
-There is also a construct called tuple-struct which is a struct but the fields are named after their indexes, like a tuple
+There is also a construct called tuple-struct which is a struct but the fields are named after their indexes, like a tuple. It also supports methods.
 ```rust
 struct Coordinate(i32, i32);
 
@@ -83,7 +83,10 @@ Unlike most languages, enums in Rust might have payloads since each variant can 
 
 ```rust
 enum Coordinate {
-	Polar { theta: f32, radius: f32 },
+	Polar { 
+		theta: f32, 
+		radius: f32
+	},
 	Cartesian(f32, f32),
 	Origin,
 }
@@ -95,7 +98,7 @@ let p2: Coordinate = Coordinate::Polar { theta: 45.0, radius: 2 };
 
 #### `trait`
 
-Traits is the Rust equivalent of an interface, it defines methods that must be implemented by a type so it has a given trait. They are useful when bounding generic types or to overload operators
+Traits is the Rust equivalent of a Java interface, it defines methods that must be implemented by a type so it has a given trait. They are useful when bounding generic types or to overload operators
 
 ```rust
 // Display is a trait that is used for string formatting with `{}`
@@ -167,7 +170,7 @@ Now it's time to define what an actor will look like in terms of Rust code. Firs
 
 In this work, the standard for modules will be having a file and a folder with the same name (except by the `.rs` extension). For instance, for an actor called App, there must be a `app.rs` and a `app/` in the same directory.
 
-So far, there were presented 3 main parts of an actor:
+So far, 3 main parts of an actor were presented:
 
 - The address that enable the communication between actors
 - The messages that will be sent to the actor
@@ -186,6 +189,10 @@ For the example App actor there's gonna be:
 - A struct `Core` at `app/core.rs` that holds the actor logic
 
 Notice that the convention is the struct that serves as the public interface for the actor will be named after the actor for improved readability. This so called public interface must provide methods that abstract away the message building and the channel utilization logic.
+
+### Public Interface
+
+The public interface for an actor is an abstraction of the address, and it's the object that will be shared between dependants of that actor. The main purpose of it is to abstract away all the comunication details (building the message, preparing oneshot response channels, sending and waiting for response, etc) by providing methods (ideally, one per message kind).
 
 Suppose that the App actor has a message called GetTime that returns the total execution time of the application. This means that:
 
@@ -223,3 +230,12 @@ async fn do_task(&self, app: App) { // Inject the dependency
 	...
 }
 ```
+### Message
+
+Since the public interface is there to abstract away the communication details, the message enum is something internal to the module. It's actually supposed to be really simple and straight forward. Below are some coventions that will be adopted:
+1. They will all be called just `Message` since they are private to the module
+2. The variants should be named like verb + noun phrase, unless either of them is clear by the context
+3. In a getter-setter pair of messages, the getter might ommit the `Get` verb (general Rust convention)
+4. A variant should contain a `tx` field if the message needs a response
+### Core
+The core is the abstraction over the behaviour of the actor. It's responsible for dependency injection, dealing with low-level details of Tokio for spawning new tasks, instantiating the public interface, and having the methods to handle each message that arrives in a loop. 
