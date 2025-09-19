@@ -246,6 +246,13 @@ async fn do_task(&self, app: App) { // Inject the dependency
 ```
 
 #### Mocks
+
+Mocking is a common technique for software testing. It consists of creating fake implementations of parts of the system that are simple and controlable enough so they cannot be a source of bugs, at the same time, other parts of the system never know if they are interacting with the actual implementation or with a mock. This way, testing an isolated specific portion of the code becomes a simple task.
+
+In a actor modeled system, isolation is native since actors, by design, touch very specific domains. The dependencies on other actors are injected on specific points by using public interfaces. So simply by providing mock implementations of actors' public interfaces, testing isolation is easy. 
+
+Often, programming languages create mocks by inheritance. Since Rust doesn't support that, the public interface will be an enum with 2 variants: `Actual` and `Mock`. The former will wrap the address to an instance of an actor and actually process the message. The latter will wrap a struct that will contain mocked logic that will be used when unit testing a dependant actor.
+
 ### Message
 
 Since the public interface is there to abstract away the communication details, the message enum is something internal to the module. It's actually supposed to be really simple and straight forward. Below are some coventions that will be adopted:
@@ -257,7 +264,33 @@ Since the public interface is there to abstract away the communication details, 
 The core is the abstraction over the behaviour of the actor. It's responsible for dependency injection, dealing with low-level details of Tokio for spawning new tasks, instantiating the public interface, and having the methods to handle each message that arrives in a loop. 
 
 #### `Core::new` or `Core::build`
-In some scenarios, creating the actor core is as simple as receiving a couple parameters and putting them into a struct. On the other hand, so cases might require more operations that are fallible. For the former, the constructor will be called `new` and return `Self`. For the latter, it will be called `build` and return a `Result` where the `Ok` variant holds `Self`.
+In some scenarios, creating the actor core is as simple as receiving a couple parameters and putting them into a struct. On the other hand, some cases might require more operations that are fallible. For the former, the constructor will be called `new` and return `Self`. For the latter, it will be called `build` and return a `Result` where the `Ok` variant holds `Self`.
 
 #### `Core::spawn`
-Once the core is built, the next step is to spawn the actor. The `spawn` method will consume the actor struct, prepare the `mspc` channel for it, and spawn a Tokio task that will contain the logic to route the messages that arrive in a loop. After that, the method will return the public interface (by wrapping the channel sender) and a join handle. The join handle is an object that permits to await until the task it's associated to ends.
+Once the core is built, the next step is to spawn the actor. The `spawn` method will consume the actor struct, prepare the `mspc` channel for it, and spawn a Tokio task that will contain the logic to route the messages that arrive in the channel until it's closed. After that, the method will return the public interface (by wrapping the channel sender) and a join handle. The join handle is an object that permits to await until the task it's associated to ends.
+
+```rust
+ pub fn spawn(mut self) -> (PublicInterface, tokio::task::JoinHandle<()>) {
+        let (tx, mut rx) = mpsc::channel(BUFFER_SIZE);
+
+		// Spawns a new separate task to handle the logic
+        let handle = tokio::spawn(async move {
+	        // This task will process all messages that arrive until the channel is closed
+            while let Some(msg) = rx.recv().await {
+                match msg {
+	                // Describes the behaviour for each kind of message
+                    Message::DoAction { tx, arg } => {
+	                    // Invokes the corresponding method to handle the request
+	                    let response = self.do_action(arg).await;
+	                    // Send the response back
+	                    let _ = tx.send(response);
+	                }
+	                // ... more branches
+                }
+            }
+        });
+
+		// Return a tuple with the public interface instance and the join handle
+        (PublicInterface::Actual(tx), handle)
+    }
+```
