@@ -5,7 +5,7 @@
 	- [ ] Distributed systems
 	- [ ] Actor model theory
 	- [ ] Known implementations
-	- [ ] [[Proposal]]
+	- [x] [[Proposal]]
 - Study Case
 	- [x] [[Patch-Hub Current Status]]
 	- [x] [[Patch-Hub Modeled With Actors]]
