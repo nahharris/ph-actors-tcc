@@ -61,6 +61,7 @@ struct Point {
 }
 
 impl Point {
+	// This is a method that will be able to mutate the value of self
 	fn add(&mut self, value: f32) {
 		self.value += value;
 	}
@@ -77,6 +78,19 @@ struct Coordinate(i32, i32);
 let o = Coordinate(0, 0);
 ```
 
+Notice that there is no "constructor" in a struct, in the sense that Rust doesn't have constructors similar to what Java, Python or C++ provide. But often, developers provide static methods named `new` that serve as constructors, but `new` itself has no special meaning.
+
+```rust
+impl Point {
+	fn new(timestamp: i32, value: f32) -> Self {
+		Self { timestamp, value } // Short-hand syntax 
+	}
+}
+
+let p = Point::new(10, 5.5);
+```
+
+Notice that a method is static if it take no `self`, `&self`, or `&mut self` as the first argument and the operator `::` is used instead of `.` when accessing static attributes. Also there's the `Self` type, that is an alias for the type being implemented.
 #### `enum`
 
 Unlike most languages, enums in Rust might have payloads since each variant can be treated as a struct
@@ -230,6 +244,8 @@ async fn do_task(&self, app: App) { // Inject the dependency
 	...
 }
 ```
+
+#### Mocks
 ### Message
 
 Since the public interface is there to abstract away the communication details, the message enum is something internal to the module. It's actually supposed to be really simple and straight forward. Below are some coventions that will be adopted:
@@ -239,3 +255,9 @@ Since the public interface is there to abstract away the communication details, 
 4. A variant should contain a `tx` field if the message needs a response
 ### Core
 The core is the abstraction over the behaviour of the actor. It's responsible for dependency injection, dealing with low-level details of Tokio for spawning new tasks, instantiating the public interface, and having the methods to handle each message that arrives in a loop. 
+
+#### `Core::new` or `Core::build`
+In some scenarios, creating the actor core is as simple as receiving a couple parameters and putting them into a struct. On the other hand, so cases might require more operations that are fallible. For the former, the constructor will be called `new` and return `Self`. For the latter, it will be called `build` and return a `Result` where the `Ok` variant holds `Self`.
+
+#### `Core::spawn`
+Once the core is built, the next step is to spawn the actor. The `spawn` method will consume the actor struct, prepare the `mspc` channel for it, and spawn a Tokio task that will contain the logic to route the messages that arrive in a loop. After that, the method will return the public interface (by wrapping the channel sender) and a join handle. The join handle is an object that permits to await until the task it's associated to ends.

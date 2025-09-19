@@ -27,12 +27,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "actor-model/Proposal.md",
+                "file": "study-case/Patch-Hub Modeled With Actors.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "Proposal"
+              "title": "Patch-Hub Modeled With Actors"
             }
           }
         ],
@@ -183,12 +183,15 @@
   },
   "active": "69baf19213a42c03",
   "lastOpenFiles": [
+    "study-case/Patch-Hub Current Status.md",
+    "actor-model/Actor Model.md",
+    "actor-model/Address.md",
     "Index.md",
+    "actor-model/Continuation passing.md",
     "actor-model/Proposal.md",
     "actor-model/Rust Centralized Approach.md",
     "Structure.md",
     "study-case/Patch-Hub Modeled With Actors.md",
-    "study-case/Patch-Hub Current Status.md",
     "software-architecture/SOLID.md",
     "study-case/Patch Hub.md",
     "study-case/03-Patch-Hub.md",
@@ -204,10 +207,7 @@
     "actor-model/rust",
     "actor-model/Message.md",
     "actor-model/Elixir.md",
-    "actor-model/Continuation passing.md",
-    "actor-model/Address.md",
     "actor-model/Actor.md",
-    "actor-model/Actor Model.md",
     "summaries/The Actor Model of Computation.md",
     "summaries",
     "foundation/actor-model/rust/Rust.md",
