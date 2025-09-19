@@ -1,9 +1,8 @@
 use anyhow::Context;
-use std::sync::Arc;
-use tokio::sync::Mutex;
 
 mod core;
 mod data;
+mod mock;
 pub mod message;
 
 use crate::api::lore::{LoreApi, LoreMailingList};
@@ -20,10 +19,10 @@ use message::Message;
 #[derive(Debug, Clone)]
 pub enum MailingListCache {
     Actual(tokio::sync::mpsc::Sender<Message>),
-    Mock(Arc<Mutex<MockData>>),
+    Mock(mock::Mock),
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Clone, Default)]
 pub struct MockData {
     pub mailing_lists: Vec<LoreMailingList>,
 }
@@ -38,7 +37,7 @@ impl MailingListCache {
 
     /// Creates a new mock MailingListCache actor for testing.
     pub fn mock(data: MockData) -> Self {
-        Self::Mock(Arc::new(Mutex::new(data)))
+        Self::Mock(mock::Mock::new(data))
     }
 
     /// Fetches a single mailing list by index.
@@ -55,9 +54,8 @@ impl MailingListCache {
                     .context("Awaiting response from MailingListCache actor")
                     .expect("MailingListCache actor died")
             }
-            Self::Mock(data) => {
-                let data = data.lock().await;
-                Ok(data.mailing_lists.get(index).cloned())
+            Self::Mock(mock) => {
+                mock.get(index).await
             }
         }
     }
@@ -79,9 +77,8 @@ impl MailingListCache {
                     .context("Awaiting response from MailingListCache actor")
                     .expect("MailingListCache actor died")
             }
-            Self::Mock(data) => {
-                let data = data.lock().await;
-                Ok(data.mailing_lists[range].to_vec())
+            Self::Mock(mock) => {
+                mock.get_slice(range).await
             }
         }
     }
@@ -100,7 +97,9 @@ impl MailingListCache {
                     .context("Awaiting response from MailingListCache actor")
                     .expect("MailingListCache actor died")
             }
-            Self::Mock(_) => Ok(()),
+            Self::Mock(mock) => {
+                mock.refresh().await
+            }
         }
     }
 
@@ -118,10 +117,8 @@ impl MailingListCache {
                     .context("Awaiting response from MailingListCache actor")
                     .expect("MailingListCache actor died")
             }
-            Self::Mock(data) => {
-                let mut data = data.lock().await;
-                data.mailing_lists.clear();
-                Ok(())
+            Self::Mock(mock) => {
+                mock.invalidate().await
             }
         }
     }
@@ -140,9 +137,8 @@ impl MailingListCache {
                     .context("Awaiting response from MailingListCache actor")
                     .expect("MailingListCache actor died")
             }
-            Self::Mock(data) => {
-                let data = data.lock().await;
-                range.end <= data.mailing_lists.len()
+            Self::Mock(mock) => {
+                mock.is_available(range).await
             }
         }
     }
@@ -161,9 +157,8 @@ impl MailingListCache {
                     .context("Awaiting response from MailingListCache actor")
                     .expect("MailingListCache actor died")
             }
-            Self::Mock(data) => {
-                let data = data.lock().await;
-                data.mailing_lists.len()
+            Self::Mock(mock) => {
+                mock.len().await
             }
         }
     }
@@ -187,7 +182,9 @@ impl MailingListCache {
                     .context("Awaiting response from MailingListCache actor")
                     .expect("MailingListCache actor died")
             }
-            Self::Mock(_) => Ok(()),
+            Self::Mock(mock) => {
+                mock.persist().await
+            }
         }
     }
 
@@ -205,7 +202,9 @@ impl MailingListCache {
                     .context("Awaiting response from MailingListCache actor")
                     .expect("MailingListCache actor died")
             }
-            Self::Mock(_) => Ok(()),
+            Self::Mock(mock) => {
+                mock.load().await
+            }
         }
     }
 }

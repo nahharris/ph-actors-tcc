@@ -1,9 +1,8 @@
 use anyhow::Context;
-use std::sync::Arc;
-use tokio::sync::Mutex;
 
 mod core;
 mod data;
+mod mock;
 pub mod message;
 
 use crate::ArcStr;
@@ -21,10 +20,10 @@ use message::Message;
 #[derive(Debug, Clone)]
 pub enum PatchCache {
     Actual(tokio::sync::mpsc::Sender<Message>),
-    Mock(Arc<Mutex<MockData>>),
+    Mock(mock::Mock),
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Clone, Default)]
 pub struct MockData {
     pub patches: std::collections::HashMap<String, String>,
 }
@@ -39,7 +38,7 @@ impl PatchCache {
 
     /// Creates a new mock PatchCache actor for testing.
     pub fn mock(data: MockData) -> Self {
-        Self::Mock(Arc::new(Mutex::new(data)))
+        Self::Mock(mock::Mock::new(data))
     }
 
     /// Fetches a patch by mailing list and message ID.
@@ -60,13 +59,8 @@ impl PatchCache {
                     .context("Awaiting response from PatchCache actor")
                     .expect("PatchCache actor died")
             }
-            Self::Mock(data) => {
-                let data = data.lock().await;
-                let key = format!("{}:{}", list, message_id);
-                data.patches
-                    .get(&key)
-                    .cloned()
-                    .ok_or_else(|| anyhow::anyhow!("Patch not found in mock data"))
+            Self::Mock(mock) => {
+                mock.get(list, message_id).await
             }
         }
     }
@@ -89,11 +83,8 @@ impl PatchCache {
                     .context("Awaiting response from PatchCache actor")
                     .expect("PatchCache actor died")
             }
-            Self::Mock(data) => {
-                let mut data = data.lock().await;
-                let key = format!("{}:{}", list, message_id);
-                data.patches.remove(&key);
-                Ok(())
+            Self::Mock(mock) => {
+                mock.invalidate(list, message_id).await
             }
         }
     }
@@ -116,10 +107,8 @@ impl PatchCache {
                     .context("Awaiting response from PatchCache actor")
                     .expect("PatchCache actor died")
             }
-            Self::Mock(data) => {
-                let data = data.lock().await;
-                let key = format!("{}:{}", list, message_id);
-                data.patches.contains_key(&key)
+            Self::Mock(mock) => {
+                mock.is_available(list, message_id).await
             }
         }
     }

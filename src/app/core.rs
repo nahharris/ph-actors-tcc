@@ -1,4 +1,5 @@
 use anyhow::Result;
+use std::env::VarError;
 use std::path::Path;
 use tokio::sync::mpsc;
 use tokio::task::JoinHandle;
@@ -59,12 +60,29 @@ impl Core {
         let fs = Fs::spawn();
 
         // Set up configuration
-        let config_path = env.env(ArcOsStr::from("HOME")).await?;
-        let config_path = Path::new(&config_path)
+        let home = env.env(ArcOsStr::from("HOME")).await;
+        let config_base = match home {
+            Ok(path) => path,
+            Err(VarError::NotPresent) => {
+                // Try USERPROFILE if HOME is not set
+                env.env(ArcOsStr::from("USERPROFILE")).await?
+            },
+            Err(e) => return Err(e.into()),
+        };
+        let config_dir = Path::new(&config_base)
             .join(".config")
-            .join("patch-hub")
-            .join("config.toml");
-        let config_path = ArcPath::from(&config_path);
+            .join("patch-hub");
+        let config_file_path = config_dir.join("config.toml");
+        let config_path = ArcPath::from(&config_file_path);
+
+        // Ensure the config directory exists
+        let config_dir_path = ArcPath::from(&config_dir);
+        if let Err(e) = fs.mkdir(config_dir_path).await {
+            // If mkdir fails, it might be because the directory already exists
+            // or there's a permission issue. We'll try to continue and let the
+            // config save operation handle any remaining issues.
+            eprintln!("Warning: Failed to create config directory: {}", e);
+        }
 
         let config = Config::spawn(env.clone(), fs.clone(), config_path);
         let res = config.load().await;

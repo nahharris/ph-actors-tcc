@@ -1,5 +1,6 @@
 mod core;
 mod data;
+mod mock;
 mod message;
 #[cfg(test)]
 mod tests;
@@ -8,10 +9,7 @@ pub use core::LogCore;
 pub use data::LogLevel;
 use data::LogMessage;
 
-use std::collections::VecDeque;
 use std::fmt::Display;
-use std::sync::Arc;
-use tokio::sync::Mutex;
 use tokio::sync::mpsc::Sender;
 use tokio::task::JoinHandle;
 
@@ -35,7 +33,7 @@ pub enum Log {
     /// A real logging actor that writes to files and stderr
     Actual(Sender<message::Message>),
     /// A mock implementation for testing that stores messages in memory
-    Mock(Arc<Mutex<VecDeque<LogMessage>>>),
+    Mock(mock::Mock),
 }
 
 impl Log {
@@ -64,7 +62,7 @@ impl Log {
     /// # Returns
     /// A new mock logging instance that stores messages in memory.
     pub fn mock() -> Self {
-        Self::Mock(Arc::new(Mutex::new(VecDeque::new())))
+        Self::Mock(mock::Mock::new())
     }
 
     fn log(&self, scope: &'static str, message: String, level: LogLevel) {
@@ -82,16 +80,8 @@ impl Log {
                         .expect("Attempt to use logger after a flush");
                 });
             }
-            Log::Mock(messages) => {
-                let messages = messages.clone();
-                tokio::spawn(async move {
-                    let mut lock = messages.lock().await;
-                    lock.push_back(LogMessage {
-                        level,
-                        scope,
-                        message: message.to_string(),
-                    });
-                });
+            Log::Mock(mock) => {
+                mock.log(scope, message, level);
             }
         }
     }
@@ -172,12 +162,7 @@ impl Log {
                     .await
                     .expect("Flushing a logger twice");
             }),
-            Self::Mock(messages) => tokio::spawn(async move {
-                let lock = messages.lock().await;
-                for message in lock.iter() {
-                    eprintln!("{message}");
-                }
-            }),
+            Self::Mock(mock) => mock.flush(),
         }
     }
 
@@ -189,8 +174,8 @@ impl Log {
                 .send(message::Message::CollectGarbage)
                 .await
                 .expect("Attempt to use logger after a flush"),
-            Self::Mock(_) => {
-                // Mock implementation does nothing for garbage collection
+            Self::Mock(mock) => {
+                mock.collect_garbage().await;
             }
         }
     }
@@ -202,9 +187,8 @@ impl Log {
     /// A vector of all logged messages, or None if this is not a mock instance.
     pub async fn get_messages(&self) -> Option<Vec<LogMessage>> {
         match self {
-            Self::Mock(messages) => {
-                let lock = messages.lock().await;
-                Some(lock.iter().cloned().collect())
+            Self::Mock(mock) => {
+                Some(mock.get_messages().await)
             }
             Self::Actual(_) => None,
         }

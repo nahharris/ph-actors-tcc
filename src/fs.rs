@@ -1,13 +1,12 @@
-use std::{collections::LinkedList, io, sync::Arc};
+use std::{collections::LinkedList, io};
 
 use anyhow::Context;
 use tokio::sync::mpsc::Sender;
 
 use crate::ArcPath;
-use std::path::PathBuf;
-use tempfile::TempDir;
 
 mod core;
+mod mock;
 mod message;
 #[cfg(test)]
 mod tests;
@@ -33,7 +32,7 @@ pub enum Fs {
     /// A real filesystem actor that interacts with the system
     Actual(Sender<message::Message>),
     /// A mock implementation for testing (uses a temp dir)
-    Mock(Arc<tokio::sync::Mutex<TempDir>>),
+    Mock(mock::Mock),
 }
 
 impl Fs {
@@ -49,21 +48,11 @@ impl Fs {
     /// Creates a new mock filesystem instance for testing.
     ///
     /// # Returns
-    /// A new mock filesystem instance that returns errors for all operations.
+    /// A new mock filesystem instance that uses a temporary directory for operations.
     pub fn mock() -> Self {
-        let temp_dir = tempfile::TempDir::new().expect("Failed to create temp dir for Fs mock");
-        Self::Mock(Arc::new(tokio::sync::Mutex::new(temp_dir)))
+        Self::Mock(mock::Mock::new())
     }
 
-    async fn mock_path(&self, path: &ArcPath) -> PathBuf {
-        match self {
-            Fs::Mock(temp_dir) => {
-                let temp_dir = temp_dir.lock().await;
-                temp_dir.path().join(path.as_ref() as &std::path::Path)
-            }
-            _ => unreachable!(),
-        }
-    }
 
     /// Opens a file for reading only (does not create if it doesn't exist).
     pub async fn read_file(&self, path: ArcPath) -> Result<tokio::fs::File, io::Error> {
@@ -79,12 +68,8 @@ impl Fs {
                     .context("Awaiting response for file read with Fs")
                     .expect("fs actor died")
             }
-            Self::Mock(_) => {
-                let real_path = self.mock_path(&path).await;
-                tokio::fs::OpenOptions::new()
-                    .read(true)
-                    .open(real_path)
-                    .await
+            Self::Mock(mock) => {
+                mock.read_file(path).await
             }
         }
     }
@@ -103,14 +88,8 @@ impl Fs {
                     .context("Awaiting response for file write with Fs")
                     .expect("fs actor died")
             }
-            Self::Mock(_) => {
-                let real_path = self.mock_path(&path).await;
-                tokio::fs::OpenOptions::new()
-                    .write(true)
-                    .create(true)
-                    .truncate(true)
-                    .open(real_path)
-                    .await
+            Self::Mock(mock) => {
+                mock.write_file(path).await
             }
         }
     }
@@ -129,14 +108,8 @@ impl Fs {
                     .context("Awaiting response for file append with Fs")
                     .expect("fs actor died")
             }
-            Self::Mock(_) => {
-                let real_path = self.mock_path(&path).await;
-                tokio::fs::OpenOptions::new()
-                    .write(true)
-                    .create(true)
-                    .append(true)
-                    .open(real_path)
-                    .await
+            Self::Mock(mock) => {
+                mock.append_file(path).await
             }
         }
     }
@@ -155,9 +128,8 @@ impl Fs {
                     .context("Awaiting response for file removal with Fs")
                     .expect("fs actor died")
             }
-            Self::Mock(_) => {
-                let real_path = self.mock_path(&path).await;
-                tokio::fs::remove_file(real_path).await
+            Self::Mock(mock) => {
+                mock.remove_file(path).await
             }
         }
     }
@@ -176,15 +148,8 @@ impl Fs {
                     .context("Awaiting response for directory read with Fs")
                     .expect("fs actor died")
             }
-            Self::Mock(_) => {
-                let real_path = self.mock_path(&path).await;
-                let mut entries = LinkedList::new();
-                let mut rd = tokio::fs::read_dir(real_path).await?;
-                while let Some(entry) = rd.next_entry().await? {
-                    let path = entry.path();
-                    entries.push_back(ArcPath::from(&path));
-                }
-                Ok(entries)
+            Self::Mock(mock) => {
+                mock.read_dir(path).await
             }
         }
     }
@@ -203,9 +168,8 @@ impl Fs {
                     .context("Awaiting response for directory creation with Fs")
                     .expect("fs actor died")
             }
-            Self::Mock(_) => {
-                let real_path = self.mock_path(&path).await;
-                tokio::fs::create_dir_all(real_path).await
+            Self::Mock(mock) => {
+                mock.mkdir(path).await
             }
         }
     }
@@ -224,9 +188,8 @@ impl Fs {
                     .context("Awaiting response for directory removal with Fs")
                     .expect("fs actor died")
             }
-            Self::Mock(_) => {
-                let real_path = self.mock_path(&path).await;
-                tokio::fs::remove_dir_all(real_path).await
+            Self::Mock(mock) => {
+                mock.rmdir(path).await
             }
         }
     }

@@ -1,9 +1,8 @@
 use anyhow::Context;
-use std::sync::Arc;
-use tokio::sync::Mutex;
 
 mod core;
 mod data;
+mod mock;
 pub mod message;
 
 use crate::ArcStr;
@@ -21,10 +20,10 @@ use message::Message;
 #[derive(Debug, Clone)]
 pub enum FeedCache {
     Actual(tokio::sync::mpsc::Sender<Message>),
-    Mock(Arc<Mutex<MockData>>),
+    Mock(mock::Mock),
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Clone, Default)]
 pub struct MockData {
     pub feeds: std::collections::HashMap<ArcStr, Vec<LorePatchMetadata>>,
 }
@@ -39,7 +38,7 @@ impl FeedCache {
 
     /// Creates a new mock FeedCache actor for testing.
     pub fn mock(data: MockData) -> Self {
-        Self::Mock(Arc::new(Mutex::new(data)))
+        Self::Mock(mock::Mock::new(data))
     }
 
     /// Fetches a single patch metadata item by index for a given mailing list.
@@ -60,9 +59,8 @@ impl FeedCache {
                     .context("Awaiting response from FeedCache actor")
                     .expect("FeedCache actor died")
             }
-            Self::Mock(data) => {
-                let data = data.lock().await;
-                Ok(data.feeds.get(&list).and_then(|v| v.get(index)).cloned())
+            Self::Mock(mock) => {
+                mock.get(list, index).await
             }
         }
     }
@@ -85,13 +83,8 @@ impl FeedCache {
                     .context("Awaiting response from FeedCache actor")
                     .expect("FeedCache actor died")
             }
-            Self::Mock(data) => {
-                let data = data.lock().await;
-                Ok(data
-                    .feeds
-                    .get(&list)
-                    .map(|v| v[range].to_vec())
-                    .unwrap_or_default())
+            Self::Mock(mock) => {
+                mock.get_slice(list, range).await
             }
         }
     }
@@ -110,7 +103,9 @@ impl FeedCache {
                     .context("Awaiting response from FeedCache actor")
                     .expect("FeedCache actor died")
             }
-            Self::Mock(_) => Ok(()),
+            Self::Mock(mock) => {
+                mock.refresh(list).await
+            }
         }
     }
 
@@ -128,10 +123,8 @@ impl FeedCache {
                     .context("Awaiting response from FeedCache actor")
                     .expect("FeedCache actor died")
             }
-            Self::Mock(data) => {
-                let mut data = data.lock().await;
-                data.feeds.remove(&list);
-                Ok(())
+            Self::Mock(mock) => {
+                mock.invalidate(list).await
             }
         }
     }
@@ -150,12 +143,8 @@ impl FeedCache {
                     .context("Awaiting response from FeedCache actor")
                     .expect("FeedCache actor died")
             }
-            Self::Mock(data) => {
-                let data = data.lock().await;
-                data.feeds
-                    .get(&list)
-                    .map(|v| v.len() >= range.end)
-                    .unwrap_or(false)
+            Self::Mock(mock) => {
+                mock.is_available(list, range).await
             }
         }
     }
@@ -174,9 +163,8 @@ impl FeedCache {
                     .context("Awaiting response from FeedCache actor")
                     .expect("FeedCache actor died")
             }
-            Self::Mock(data) => {
-                let data = data.lock().await;
-                data.feeds.get(&list).map(|v| v.len()).unwrap_or(0)
+            Self::Mock(mock) => {
+                mock.len(list).await
             }
         }
     }
@@ -201,9 +189,8 @@ impl FeedCache {
                     .context("Awaiting response from FeedCache actor")
                     .expect("FeedCache actor died")
             }
-            Self::Mock(data) => {
-                let data = data.lock().await;
-                data.feeds.contains_key(&list)
+            Self::Mock(mock) => {
+                mock.is_loaded(list).await
             }
         }
     }
@@ -211,10 +198,17 @@ impl FeedCache {
     /// Ensures the cache is loaded for a given mailing list.
     /// This will load from disk if not already loaded.
     pub async fn ensure_loaded(&self, list: ArcStr) -> anyhow::Result<()> {
-        if !self.is_loaded(list.clone()).await {
-            self.load(list.clone()).await?;
+        match self {
+            Self::Actual(_) => {
+                if !self.is_loaded(list.clone()).await {
+                    self.load(list.clone()).await?;
+                }
+                Ok(())
+            }
+            Self::Mock(mock) => {
+                mock.ensure_loaded(list).await
+            }
         }
-        Ok(())
     }
 
     /// Persists the cache for a specific mailing list to the filesystem.
@@ -231,7 +225,9 @@ impl FeedCache {
                     .context("Awaiting response from FeedCache actor")
                     .expect("FeedCache actor died")
             }
-            Self::Mock(_) => Ok(()),
+            Self::Mock(mock) => {
+                mock.persist(list).await
+            }
         }
     }
 
@@ -249,7 +245,9 @@ impl FeedCache {
                     .context("Awaiting response from FeedCache actor")
                     .expect("FeedCache actor died")
             }
-            Self::Mock(_) => Ok(()),
+            Self::Mock(mock) => {
+                mock.load(list).await
+            }
         }
     }
 }

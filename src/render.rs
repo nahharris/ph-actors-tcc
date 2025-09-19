@@ -1,12 +1,11 @@
 mod core;
+mod mock;
 mod message;
 #[cfg(test)]
 mod tests;
 
 use anyhow::Context;
 use std::collections::HashMap;
-use std::sync::Arc;
-use tokio::sync::Mutex;
 use tokio::sync::mpsc::Sender;
 
 use crate::ArcStr;
@@ -31,7 +30,7 @@ pub enum Render {
     /// A real render actor that uses external programs
     Actual(Sender<message::Message>),
     /// A mock implementation for testing that returns predefined content
-    Mock(Arc<Mutex<HashMap<ArcStr, ArcStr>>>),
+    Mock(mock::Mock),
 }
 
 /// Re-export the renderer type from config for convenience
@@ -56,10 +55,13 @@ impl Render {
 
     /// Creates a new mock render instance for testing.
     ///
+    /// # Arguments
+    /// * `content` - Initial response cache mapping patch content to rendered output
+    ///
     /// # Returns
     /// A new mock render instance that stores requests in memory.
     pub fn mock(content: HashMap<ArcStr, ArcStr>) -> Self {
-        Self::Mock(Arc::new(Mutex::new(content)))
+        Self::Mock(mock::Mock::new(content))
     }
 
     /// Renders patch content using the configured renderer.
@@ -82,11 +84,8 @@ impl Render {
                     .context("Awaiting response for patch rendering with Render actor")
                     .expect("render actor died")
             }
-            Self::Mock(requests) => {
-                let lock = requests.lock().await;
-                lock.get(&content)
-                    .context("No more mocked responses")
-                    .cloned()
+            Self::Mock(mock) => {
+                mock.render_patch(content).await
             }
         }
     }

@@ -1,6 +1,5 @@
 use anyhow::{Context, Result};
-use std::sync::Arc;
-use tokio::sync::{Mutex, mpsc::Sender, oneshot};
+use tokio::sync::{mpsc::Sender, oneshot};
 
 use crate::ArcStr;
 use crate::app::cache::{FeedCache, MailingListCache, PatchCache};
@@ -10,6 +9,7 @@ use crate::terminal::Terminal;
 
 mod core;
 mod data;
+mod mock;
 mod message;
 
 pub use data::{MockData, UiState, ViewKind};
@@ -24,7 +24,7 @@ pub enum Ui {
     /// Real implementation using message passing
     Actual(Sender<Message>),
     /// Mock implementation for testing
-    Mock(Arc<Mutex<MockData>>),
+    Mock(mock::Mock),
 }
 
 impl Ui {
@@ -50,7 +50,7 @@ impl Ui {
 
     /// Create a mock UI actor for testing
     pub fn mock(data: MockData) -> Self {
-        Self::Mock(Arc::new(Mutex::new(data)))
+        Self::Mock(mock::Mock::new(data))
     }
 
     /// Show the mailing lists view
@@ -67,15 +67,8 @@ impl Ui {
                     .context("Awaiting response for show lists from UI actor")
                     .expect("UI actor died")
             }
-            Self::Mock(data) => {
-                let mut mock_data = data.lock().await;
-                mock_data.state.view = ViewKind::Lists;
-                mock_data.state.list_page = page;
-                mock_data.state.list_selected = 0;
-                mock_data
-                    .rendered_screens
-                    .push(format!("Lists(page={})", page));
-                Ok(())
+            Self::Mock(mock) => {
+                mock.show_lists(page).await
             }
         }
     }
@@ -94,16 +87,8 @@ impl Ui {
                     .context("Awaiting response for show feed from UI actor")
                     .expect("UI actor died")
             }
-            Self::Mock(data) => {
-                let mut mock_data = data.lock().await;
-                mock_data.state.view = ViewKind::Feed;
-                mock_data.state.feed_list = Some(list.clone());
-                mock_data.state.feed_page = page;
-                mock_data.state.feed_selected = 0;
-                mock_data
-                    .rendered_screens
-                    .push(format!("Feed(list={}, page={})", list, page));
-                Ok(())
+            Self::Mock(mock) => {
+                mock.show_feed(list, page).await
             }
         }
     }
@@ -127,14 +112,8 @@ impl Ui {
                     .context("Awaiting response for show patch from UI actor")
                     .expect("UI actor died")
             }
-            Self::Mock(data) => {
-                let mut mock_data = data.lock().await;
-                mock_data.state.view = ViewKind::Patch;
-                mock_data.rendered_screens.push(format!(
-                    "Patch(list={}, msg_id={}, title={})",
-                    list, message_id, title
-                ));
-                Ok(())
+            Self::Mock(mock) => {
+                mock.show_patch(list, message_id, title).await
             }
         }
     }
@@ -145,13 +124,8 @@ impl Ui {
             Self::Actual(sender) => {
                 let _ = sender.send(Message::UpdateSelection { index }).await;
             }
-            Self::Mock(data) => {
-                let mut mock_data = data.lock().await;
-                match mock_data.state.view {
-                    ViewKind::Lists => mock_data.state.list_selected = index,
-                    ViewKind::Feed => mock_data.state.feed_selected = index,
-                    ViewKind::Patch => {} // No selection in patch view
-                }
+            Self::Mock(mock) => {
+                mock.update_selection(index).await
             }
         }
     }
@@ -170,23 +144,8 @@ impl Ui {
                     .context("Awaiting response for previous page from UI actor")
                     .expect("UI actor died")
             }
-            Self::Mock(data) => {
-                let mut mock_data = data.lock().await;
-                mock_data
-                    .navigation_actions
-                    .push("PreviousPage".to_string());
-                match mock_data.state.view {
-                    ViewKind::Lists => {
-                        mock_data.state.list_page = mock_data.state.list_page.saturating_sub(1);
-                        mock_data.state.list_selected = 0;
-                    }
-                    ViewKind::Feed => {
-                        mock_data.state.feed_page = mock_data.state.feed_page.saturating_sub(1);
-                        mock_data.state.feed_selected = 0;
-                    }
-                    ViewKind::Patch => {} // No pagination in patch view
-                }
-                Ok(())
+            Self::Mock(mock) => {
+                mock.previous_page().await
             }
         }
     }
@@ -205,21 +164,8 @@ impl Ui {
                     .context("Awaiting response for next page from UI actor")
                     .expect("UI actor died")
             }
-            Self::Mock(data) => {
-                let mut mock_data = data.lock().await;
-                mock_data.navigation_actions.push("NextPage".to_string());
-                match mock_data.state.view {
-                    ViewKind::Lists => {
-                        mock_data.state.list_page = mock_data.state.list_page.saturating_add(1);
-                        mock_data.state.list_selected = 0;
-                    }
-                    ViewKind::Feed => {
-                        mock_data.state.feed_page = mock_data.state.feed_page.saturating_add(1);
-                        mock_data.state.feed_selected = 0;
-                    }
-                    ViewKind::Patch => {} // No pagination in patch view
-                }
-                Ok(())
+            Self::Mock(mock) => {
+                mock.next_page().await
             }
         }
     }
@@ -238,17 +184,8 @@ impl Ui {
                     .context("Awaiting response for navigate back from UI actor")
                     .expect("UI actor died")
             }
-            Self::Mock(data) => {
-                let mut mock_data = data.lock().await;
-                mock_data
-                    .navigation_actions
-                    .push("NavigateBack".to_string());
-                match mock_data.state.view {
-                    ViewKind::Lists => {} // From lists, we quit (handled elsewhere)
-                    ViewKind::Feed => mock_data.state.view = ViewKind::Lists,
-                    ViewKind::Patch => mock_data.state.view = ViewKind::Feed,
-                }
-                Ok(())
+            Self::Mock(mock) => {
+                mock.navigate_back().await
             }
         }
     }
@@ -267,19 +204,8 @@ impl Ui {
                     .context("Awaiting response for submit selection from UI actor")
                     .expect("UI actor died")
             }
-            Self::Mock(data) => {
-                let mock_data = data.lock().await;
-                match mock_data.state.view {
-                    ViewKind::Lists => Ok(Some(NavigationAction::OpenFeed {
-                        list: ArcStr::from("test-list"),
-                    })),
-                    ViewKind::Feed => Ok(Some(NavigationAction::OpenPatch {
-                        list: ArcStr::from("test-list"),
-                        message_id: ArcStr::from("test-msg-id"),
-                        title: ArcStr::from("test-title"),
-                    })),
-                    ViewKind::Patch => Ok(None),
-                }
+            Self::Mock(mock) => {
+                mock.submit_selection().await
             }
         }
     }
@@ -292,9 +218,8 @@ impl Ui {
                 let _ = sender.send(Message::GetState { tx }).await;
                 rx.await.unwrap_or_default()
             }
-            Self::Mock(data) => {
-                let mock_data = data.lock().await;
-                mock_data.state.clone()
+            Self::Mock(mock) => {
+                mock.get_state().await
             }
         }
     }

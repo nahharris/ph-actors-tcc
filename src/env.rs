@@ -1,4 +1,4 @@
-use std::{collections::HashMap, env::VarError, ffi::OsString, fmt::Display, sync::Arc};
+use std::{env::VarError, fmt::Display};
 
 use anyhow::Context;
 use tokio::sync::mpsc::Sender;
@@ -6,6 +6,7 @@ use tokio::sync::mpsc::Sender;
 use crate::{ArcOsStr, ArcStr};
 
 mod core;
+mod mock;
 mod message;
 #[cfg(test)]
 mod tests;
@@ -31,7 +32,7 @@ pub enum Env {
     /// A real environment variable actor that interacts with the system
     Actual(Sender<message::Message>),
     /// A mock implementation for testing
-    Mock(Arc<tokio::sync::Mutex<HashMap<ArcOsStr, OsString>>>),
+    Mock(mock::Mock),
 }
 
 impl Env {
@@ -49,7 +50,7 @@ impl Env {
     /// # Returns
     /// A new mock environment instance that stores variables in memory.
     pub fn mock() -> Self {
-        Self::Mock(Arc::new(tokio::sync::Mutex::new(HashMap::new())))
+        Self::Mock(mock::Mock::new())
     }
 
     /// Sets an environment variable
@@ -57,17 +58,17 @@ impl Env {
     where
         V: Display,
     {
-        let value = format!("{value}").into();
         match self {
-            Self::Actual(sender) => sender
-                .send(message::Message::Set { key, value })
-                .await
-                .context("Setting environment variable with Env")
-                .expect("env actor died"),
-
-            Self::Mock(lock) => {
-                let mut lock = lock.lock().await;
-                lock.insert(key, value);
+            Self::Actual(sender) => {
+                let value = format!("{value}").into();
+                sender
+                    .send(message::Message::Set { key, value })
+                    .await
+                    .context("Setting environment variable with Env")
+                    .expect("env actor died")
+            }
+            Self::Mock(mock) => {
+                mock.set_env(key, value).await;
             }
         }
     }
@@ -80,9 +81,8 @@ impl Env {
                 .await
                 .context("Unsetting environment variable with Env")
                 .expect("env actor died"),
-            Self::Mock(lock) => {
-                let mut lock = lock.lock().await;
-                lock.remove(&key);
+            Self::Mock(mock) => {
+                mock.unset_env(key).await;
             }
         }
     }
@@ -101,11 +101,8 @@ impl Env {
                     .context("Awaiting response for environment variable get with Env")
                     .expect("env actor died")
             }
-            Self::Mock(lock) => {
-                let lock = lock.lock().await;
-                lock.get(&key)
-                    .map(|s| ArcStr::from(&s.to_string_lossy()))
-                    .ok_or(VarError::NotPresent)
+            Self::Mock(mock) => {
+                mock.env(key).await
             }
         }
     }

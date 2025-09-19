@@ -1,12 +1,12 @@
 use anyhow::Context;
-use std::sync::Arc;
-use tokio::sync::{Mutex, mpsc};
+use tokio::sync::mpsc;
 use tokio::task::JoinHandle;
 
 use crate::log::Log;
 
 mod core;
 mod data;
+mod mock;
 mod message;
 
 use data::MockData;
@@ -17,7 +17,7 @@ use message::Message;
 #[derive(Debug, Clone)]
 pub enum Terminal {
     Actual(mpsc::Sender<Message>),
-    Mock(Arc<Mutex<MockData>>),
+    Mock(mock::Mock),
 }
 
 impl Terminal {
@@ -32,7 +32,7 @@ impl Terminal {
 
     /// Creates a mock terminal for testing.
     pub fn mock(data: MockData) -> Self {
-        Self::Mock(Arc::new(Mutex::new(data)))
+        Self::Mock(mock::Mock::new(data))
     }
 
     /// Requests the terminal to show a specific screen.
@@ -45,10 +45,8 @@ impl Terminal {
                     .expect("Terminal actor died");
                 Ok(())
             }
-            Terminal::Mock(data) => {
-                let mut mock_data = data.lock().await;
-                mock_data.last_screen = Some(screen);
-                Ok(())
+            Terminal::Mock(mock) => {
+                mock.show(screen).await
             }
         }
     }
@@ -63,10 +61,8 @@ impl Terminal {
                     .expect("Terminal actor died");
                 Ok(())
             }
-            Terminal::Mock(data) => {
-                let mut mock_data = data.lock().await;
-                mock_data.quit_called = true;
-                Ok(())
+            Terminal::Mock(mock) => {
+                mock.quit().await
             }
         }
     }

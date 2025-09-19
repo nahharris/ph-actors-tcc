@@ -1,7 +1,5 @@
 use anyhow::Context;
 use std::collections::HashMap;
-use std::sync::Arc;
-use tokio::sync::Mutex;
 use tokio::sync::mpsc::Sender;
 
 use crate::{
@@ -9,11 +7,12 @@ use crate::{
     app::config::Config,
     net::{
         core::Core,
-        message::{Message, MockRequestKey},
+        message::Message,
     },
 };
 
 mod core;
+mod mock;
 pub mod message;
 
 /// The networking actor that provides a thread-safe interface for network operations.
@@ -36,7 +35,7 @@ pub enum Net {
     /// A real networking actor that performs HTTP requests
     Actual(Sender<Message>),
     /// A mock implementation for testing
-    Mock(Arc<Mutex<HashMap<MockRequestKey, ArcStr>>>),
+    Mock(mock::Mock),
 }
 
 impl Net {
@@ -60,8 +59,8 @@ impl Net {
     ///
     /// # Returns
     /// A new mock networking instance that returns predefined responses.
-    pub fn mock(responses: HashMap<MockRequestKey, ArcStr>) -> Self {
-        Self::Mock(Arc::new(Mutex::new(responses)))
+    pub fn mock(responses: HashMap<crate::net::message::MockRequestKey, ArcStr>) -> Self {
+        Self::Mock(mock::Mock::new(responses))
     }
 
     /// Creates a new empty mock networking instance for testing.
@@ -69,7 +68,7 @@ impl Net {
     /// # Returns
     /// A new mock networking instance with an empty response cache.
     pub fn mock_empty() -> Self {
-        Self::Mock(Arc::new(Mutex::new(HashMap::new())))
+        Self::Mock(mock::Mock::empty())
     }
 
     /// Performs an HTTP GET request to the specified URL.
@@ -97,12 +96,8 @@ impl Net {
                     .context("Awaiting response from Net actor")
                     .expect("Net actor died")
             }
-            Net::Mock(responses) => {
-                let responses = responses.lock().await;
-                let key = MockRequestKey::get(url);
-                responses.get(&key).cloned().ok_or_else(|| {
-                    anyhow::anyhow!("GET request not found in mock responses: {}", key.url)
-                })
+            Net::Mock(mock) => {
+                mock.get(url, headers).await
             }
         }
     }
@@ -136,12 +131,8 @@ impl Net {
                     .context("Sending message to Net actor")?;
                 rx.await.context("Receiving response from Net actor")?
             }
-            Net::Mock(responses) => {
-                let responses = responses.lock().await;
-                let key = MockRequestKey::post(url);
-                responses.get(&key).cloned().ok_or_else(|| {
-                    anyhow::anyhow!("POST request not found in mock responses: {}", key.url)
-                })
+            Net::Mock(mock) => {
+                mock.post(url, headers, body).await
             }
         }
     }
@@ -175,12 +166,8 @@ impl Net {
                     .context("Sending message to Net actor")?;
                 rx.await.context("Receiving response from Net actor")?
             }
-            Net::Mock(responses) => {
-                let responses = responses.lock().await;
-                let key = MockRequestKey::put(url);
-                responses.get(&key).cloned().ok_or_else(|| {
-                    anyhow::anyhow!("PUT request not found in mock responses: {}", key.url)
-                })
+            Net::Mock(mock) => {
+                mock.put(url, headers, body).await
             }
         }
     }
@@ -207,12 +194,8 @@ impl Net {
                     .context("Sending message to Net actor")?;
                 rx.await.context("Receiving response from Net actor")?
             }
-            Net::Mock(responses) => {
-                let responses = responses.lock().await;
-                let key = MockRequestKey::delete(url);
-                responses.get(&key).cloned().ok_or_else(|| {
-                    anyhow::anyhow!("DELETE request not found in mock responses: {}", key.url)
-                })
+            Net::Mock(mock) => {
+                mock.delete(url, headers).await
             }
         }
     }
@@ -246,12 +229,8 @@ impl Net {
                     .context("Sending message to Net actor")?;
                 rx.await.context("Receiving response from Net actor")?
             }
-            Net::Mock(responses) => {
-                let responses = responses.lock().await;
-                let key = MockRequestKey::patch(url);
-                responses.get(&key).cloned().ok_or_else(|| {
-                    anyhow::anyhow!("PATCH request not found in mock responses: {}", key.url)
-                })
+            Net::Mock(mock) => {
+                mock.patch(url, headers, body).await
             }
         }
     }

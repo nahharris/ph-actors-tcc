@@ -1,15 +1,13 @@
-use std::sync::Arc;
-
 use data::Data;
 pub use data::{PathOpt, Renderer, RendererOpt, USizeOpt};
 use message::Message;
-use tokio::sync::Mutex;
 
 use crate::{ArcPath, env::Env, fs::Fs, log::LogLevel};
 use anyhow::Context;
 
 mod core;
 mod data;
+mod mock;
 mod message;
 #[cfg(test)]
 mod tests;
@@ -34,8 +32,8 @@ mod tests;
 pub enum Config {
     /// A real configuration actor that reads from and writes to a file
     Actual(tokio::sync::mpsc::Sender<Message>),
-    /// A mock implementation for testing that does nothing
-    Mock(Arc<Mutex<Data>>),
+    /// A mock implementation for testing that stores data in memory
+    Mock(mock::Mock),
 }
 
 impl Config {
@@ -61,7 +59,7 @@ impl Config {
     /// # Returns
     /// A new mock configuration instance that stores data in memory.
     pub fn mock(data: Data) -> Self {
-        Self::Mock(Arc::new(Mutex::new(data)))
+        Self::Mock(mock::Mock::new(data))
     }
 
     /// Loads the configuration from the file.
@@ -83,7 +81,9 @@ impl Config {
                     .context("Awaiting response for config load with Config actor")
                     .expect("Config actor is dead")
             }
-            Self::Mock(_) => Ok(()),
+            Self::Mock(mock) => {
+                mock.load().await
+            }
         }
     }
 
@@ -106,7 +106,9 @@ impl Config {
                     .context("Awaiting response for config save with Config actor")
                     .expect("Config actor is dead")
             }
-            Self::Mock(_) => Ok(()),
+            Self::Mock(mock) => {
+                mock.save().await
+            }
         }
     }
 
@@ -130,9 +132,8 @@ impl Config {
                     .context("Awaiting response for path with Config actor")
                     .expect("Config actor is dead")
             }
-            Self::Mock(data) => {
-                let data = data.lock().await;
-                data.path(opt)
+            Self::Mock(mock) => {
+                mock.path(opt).await
             }
         }
     }
@@ -151,9 +152,8 @@ impl Config {
                     .context("Setting path with Config actor")
                     .expect("Config actor is dead");
             }
-            Self::Mock(data) => {
-                let mut data = data.lock().await;
-                data.set_path(opt, path);
+            Self::Mock(mock) => {
+                mock.set_path(opt, path).await
             }
         }
     }
@@ -175,9 +175,8 @@ impl Config {
                     .context("Awaiting response for log level with Config actor")
                     .expect("Config actor died")
             }
-            Self::Mock(data) => {
-                let data = data.lock().await;
-                data.log_level()
+            Self::Mock(mock) => {
+                mock.log_level().await
             }
         }
     }
@@ -191,9 +190,8 @@ impl Config {
             Self::Actual(sender) => {
                 let _ = sender.send(Message::SetLogLevel { level }).await;
             }
-            Self::Mock(data) => {
-                let mut data = data.lock().await;
-                data.set_log_level(level);
+            Self::Mock(mock) => {
+                mock.set_log_level(level).await
             }
         }
     }
@@ -218,9 +216,8 @@ impl Config {
                     .context("Awaiting response for numeric value with Config actor")
                     .expect("Config actor died")
             }
-            Self::Mock(data) => {
-                let data = data.lock().await;
-                data.usize(opt)
+            Self::Mock(mock) => {
+                mock.usize(opt).await
             }
         }
     }
@@ -235,9 +232,8 @@ impl Config {
             Self::Actual(sender) => {
                 let _ = sender.send(Message::SetUSize { opt, size: value }).await;
             }
-            Self::Mock(data) => {
-                let mut data = data.lock().await;
-                data.set_usize(opt, value);
+            Self::Mock(mock) => {
+                mock.set_usize(opt, value).await
             }
         }
     }
@@ -262,9 +258,8 @@ impl Config {
                     .context("Awaiting response for renderer value with Config actor")
                     .expect("Config actor died")
             }
-            Self::Mock(data) => {
-                let data = data.lock().await;
-                data.renderer(opt)
+            Self::Mock(mock) => {
+                mock.renderer(opt).await
             }
         }
     }
@@ -279,9 +274,8 @@ impl Config {
             Self::Actual(sender) => {
                 let _ = sender.send(Message::SetRenderer { opt, renderer }).await;
             }
-            Self::Mock(data) => {
-                let mut data = data.lock().await;
-                data.set_renderer(opt, renderer);
+            Self::Mock(mock) => {
+                mock.set_renderer(opt, renderer).await
             }
         }
     }

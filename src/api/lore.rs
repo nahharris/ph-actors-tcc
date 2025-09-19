@@ -1,7 +1,6 @@
 use anyhow::Context;
 use std::collections::HashMap;
-use std::sync::Arc;
-use tokio::sync::{Mutex, mpsc::Sender, oneshot};
+use tokio::sync::{mpsc::Sender, oneshot};
 
 use crate::utils::ArcSlice;
 use crate::{ArcStr, net::Net};
@@ -9,6 +8,7 @@ use crate::{ArcStr, net::Net};
 mod core;
 pub mod data;
 mod message;
+mod mock;
 pub mod parse;
 
 // Re-export public types for external use
@@ -35,7 +35,7 @@ pub enum LoreApi {
     /// A real Lore API actor that performs HTTP requests through the networking actor
     Actual(Sender<LoreApiMessage>),
     /// A mock implementation for testing
-    Mock(Arc<Mutex<HashMap<String, ArcStr>>>),
+    Mock(mock::Mock),
 }
 
 impl LoreApi {
@@ -72,7 +72,7 @@ impl LoreApi {
     /// # Returns
     /// A new mock Lore API instance that returns predefined responses.
     pub fn mock(responses: HashMap<String, ArcStr>) -> Self {
-        Self::Mock(Arc::new(Mutex::new(responses)))
+        Self::Mock(mock::Mock::new(responses))
     }
 
     /// Creates a new empty mock Lore API instance for testing.
@@ -80,7 +80,7 @@ impl LoreApi {
     /// # Returns
     /// A new mock Lore API instance with an empty response cache.
     pub fn mock_empty() -> Self {
-        Self::Mock(Arc::new(Mutex::new(HashMap::new())))
+        Self::Mock(mock::Mock::empty())
     }
 
     /// Fetches a patch feed from a specific mailing list with pagination.
@@ -120,16 +120,8 @@ impl LoreApi {
                     .context("Awaiting response from LoreApi actor")
                     .expect("LoreApi actor died")
             }
-            LoreApi::Mock(responses) => {
-                let responses = responses.lock().await;
-                let key = format!("patch_feed_page_{target_list}_{min_index}");
-                let xml = responses.get(&key).cloned().ok_or_else(|| {
-                    anyhow::anyhow!("Patch feed page not found in mock responses: {}", key)
-                })?;
-                // Parse the XML string into LorePage<LorePatchMetadata>
-                let page: LorePage<LorePatchMetadata> =
-                    crate::api::lore::parse::parse_patch_feed_xml(&xml, min_index)?;
-                Ok(Some(page))
+            LoreApi::Mock(mock) => {
+                mock.get_patch_feed_page(target_list, min_index).await
             }
         }
     }
@@ -160,21 +152,8 @@ impl LoreApi {
                     .context("Awaiting response from LoreApi actor")
                     .expect("LoreApi actor died")
             }
-            LoreApi::Mock(responses) => {
-                let responses = responses.lock().await;
-                let key = format!("available_lists_page_{min_index}");
-                let html = responses.get(&key).cloned().ok_or_else(|| {
-                    anyhow::anyhow!("Available lists page not found in mock responses: {}", key)
-                })?;
-                let page: LorePage<LoreMailingList> =
-                    crate::api::lore::parse::parse_available_lists_html(&html, min_index)?
-                        .ok_or_else(|| {
-                            anyhow::anyhow!(
-                                "No available lists page found in mock responses: {}",
-                                key
-                            )
-                        })?;
-                Ok(Some(page))
+            LoreApi::Mock(mock) => {
+                mock.get_available_lists_page(min_index).await
             }
         }
     }
@@ -199,32 +178,8 @@ impl LoreApi {
                     .context("Awaiting response from LoreApi actor")
                     .expect("LoreApi actor died")
             }
-            LoreApi::Mock(responses) => {
-                // Aggregate all available lists from the mock responses
-                let responses = responses.lock().await;
-                let mut all_lists = Vec::new();
-                let mut min_index = 0;
-                loop {
-                    let key = format!("available_lists_page_{min_index}");
-                    if let Some(html) = responses.get(&key) {
-                        let page: LorePage<LoreMailingList> =
-                            crate::api::lore::parse::parse_available_lists_html(html, min_index)?
-                                .ok_or_else(|| {
-                                anyhow::anyhow!(
-                                    "No available lists page found in mock responses: {}",
-                                    key
-                                )
-                            })?;
-                        all_lists.extend(page.items.iter().cloned());
-                        if page.next_page_index.is_none() {
-                            break;
-                        }
-                        min_index = page.next_page_index.unwrap();
-                    } else {
-                        break;
-                    }
-                }
-                Ok(ArcSlice::from(all_lists))
+            LoreApi::Mock(mock) => {
+                mock.get_available_lists().await
             }
         }
     }
@@ -266,12 +221,8 @@ impl LoreApi {
                     .context("Awaiting response from LoreApi actor")
                     .expect("LoreApi actor died")
             }
-            LoreApi::Mock(responses) => {
-                let responses = responses.lock().await;
-                let key = format!("patch_html_{target_list}_{message_id}");
-                responses.get(&key).cloned().ok_or_else(|| {
-                    anyhow::anyhow!("Patch HTML not found in mock responses: {}", key)
-                })
+            LoreApi::Mock(mock) => {
+                mock.get_patch_html(target_list, message_id).await
             }
         }
     }
@@ -313,12 +264,8 @@ impl LoreApi {
                     .context("Awaiting response from LoreApi actor")
                     .expect("LoreApi actor died")
             }
-            LoreApi::Mock(responses) => {
-                let responses = responses.lock().await;
-                let key = format!("raw_patch_{target_list}_{message_id}");
-                responses.get(&key).cloned().ok_or_else(|| {
-                    anyhow::anyhow!("Raw patch not found in mock responses: {}", key)
-                })
+            LoreApi::Mock(mock) => {
+                mock.get_raw_patch(target_list, message_id).await
             }
         }
     }
@@ -360,12 +307,8 @@ impl LoreApi {
                     .context("Awaiting response from LoreApi actor")
                     .expect("LoreApi actor died")
             }
-            LoreApi::Mock(responses) => {
-                let responses = responses.lock().await;
-                let key = format!("patch_metadata_{target_list}_{message_id}");
-                responses.get(&key).cloned().ok_or_else(|| {
-                    anyhow::anyhow!("Patch metadata not found in mock responses: {}", key)
-                })
+            LoreApi::Mock(mock) => {
+                mock.get_patch_metadata(target_list, message_id).await
             }
         }
     }

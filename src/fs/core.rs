@@ -51,6 +51,11 @@ impl Core {
         tx: tokio::sync::oneshot::Sender<Result<tokio::fs::File, tokio::io::Error>>,
         path: ArcPath,
     ) {
+        // Ensure parent directories exist before creating the file
+        if let Some(parent) = path.parent() {
+            let _ = tokio::fs::create_dir_all(parent).await;
+        }
+        
         let res = OpenOptions::new()
             .write(true)
             .create(true)
@@ -65,6 +70,11 @@ impl Core {
         tx: tokio::sync::oneshot::Sender<Result<tokio::fs::File, tokio::io::Error>>,
         path: ArcPath,
     ) {
+        // Ensure parent directories exist before creating the file
+        if let Some(parent) = path.parent() {
+            let _ = tokio::fs::create_dir_all(parent).await;
+        }
+        
         let res = OpenOptions::new()
             .write(true)
             .create(true)

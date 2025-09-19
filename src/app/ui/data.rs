@@ -42,7 +42,7 @@ impl Default for UiState {
 }
 
 /// Mock data for testing the UI actor
-#[derive(Debug, Default)]
+#[derive(Debug, Clone, Default)]
 pub struct MockData {
     /// Current UI state
     pub state: UiState,
