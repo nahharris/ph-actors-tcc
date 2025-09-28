@@ -1,18 +1,22 @@
-Lots of prior art was done regarding implementation of the Actor Model for creation of distributed systems. There are really big libraries and frameworks such as Akka (Java) and Orleans (C#) that bring support to many languages. But the most famous implementation is the Elixir programming language.
+Substantial prior work exists regarding implementations of the Actor Model for creating distributed systems. Major libraries and frameworks such as Akka (Java) and Orleans (C#) provide Actor Model support across multiple languages. However, the most prominent and successful implementation is the Elixir programming language.
 
-In the 80s, the Swedish company Ericsson was experimenting with functional programming languages to develop solutions for telecommunication when they came up with Erlang. The focus of Erlang was concurrency, distribution and fault tolerance by leveraging the Actor Model at language level. BEAM, the abstract machine (by the time the term "virtual machine" was not applied to that domain) that was the runtime for Erlang programs was the biggest acomplishment of the Ericsson. On the otherhand, Erlang's syntax was considered complicated which became a barrier to enable larger adoption of the language.
+In the 1980s, Swedish telecommunications company Ericsson experimented with functional programming languages to address telecommunications challenges, ultimately developing Erlang. Erlang focused on concurrency, distribution, and fault tolerance by implementing the Actor Model at the language level. BEAM, the abstract machine that served as the runtime for Erlang programs, represented Ericsson's greatest achievement in this domain. (At the time, the term "virtual machine" was not yet applied to such systems.) However, Erlang's syntax was considered complex, creating a barrier to broader adoption.
 
-In the early 2010s, José Valim was working on creating solutions for distributed systems. The exact same problems Ericsson solved 30 years ago. Once he found out about the work done with Erlang and BEAM noticed good solutions, but that wera just too hard to use. The Elixir programming language was then born, combining the power and flexibility of BEAM and the Actor Model with a much more simple and approachable Ruby-like syntax.
+In the early 2010s, José Valim was developing solutions for distributed systems, the same challenges Ericsson had addressed three decades earlier. Upon discovering Erlang and BEAM, he recognized their effectiveness but found them difficult to use. This led to the creation of Elixir, which combined BEAM's power and the Actor Model's flexibility with a more accessible syntax inspired by Ruby.
 
-Unlike library implementations that bring support to the Actor Model, Elixir has the Actor Model as the default approach for developing software. It does that by providing native support to features such as green-threads, fault tolerance and remote inter-process communication. These were the differentials that made Elixir the main platform for the Actor Model. 
+Unlike library-based implementations that add Actor Model support to existing languages, Elixir makes the Actor Model the default development paradigm. It achieves this through native support for green threads, fault tolerance, and remote inter-process communication—differentiators that established Elixir as the leading Actor Model platform.
 
-This young dynamic language is gaining more attention year over year, and it is already considered the second most admired and loved programming language in the world for the past 3 years according to Stack Overflow Developer Survey. Because of that, Elixir will be used in this work as the reference implementation and state of art for the Actor Model.
+This dynamic language continues gaining recognition, ranking as the second most admired programming language for three consecutive years in Stack Overflow's Developer Survey. Therefore, this work will use Elixir as the reference implementation and state-of-the-art example of the Actor Model.
 
 ## The Elixir Programming Language
 
-The Elixir programming language depends heavily on Erlang libraries and BEAM. That why those two will be mentioned a lot when elaborating on Elixir features.
+Elixir's design philosophy fundamentally differs from object-oriented languages. Instead of classes instantiated into objects, Elixir uses modules that are spawned as actors by design. This approach makes the Actor Model not just a pattern but the core paradigm of the language.
 
-The actors are represented by Erlang processes (from now on, referred to only as processes) that are created through the `spawn` function. This function receives as parameters: a module, the name of a function from that module, and the list of arguments to be passed to the function. The `spawn` function will invoke the indicated function in a new process and return the PID of that process that can be used as it's address. The functions `send` and `receive` will permit message exchange between different actors.
+The actors in Elixir are represented by Erlang processes (hereafter referred to simply as processes). These lightweight processes are created using the `spawn` function, which takes three parameters: a module, a function name from that module, and a list of arguments. When called, spawn executes the specified function in a new process and returns a Process Identifier (PID) that serves as the actor's address.
+
+Communication between actors happens through message passing using two primary functions: send for dispatching messages to a process via its PID, and receive for handling incoming messages within a process. This message-passing mechanism forms the foundation of Elixir's concurrent and distributed capabilities.
+
+Since Elixir builds extensively on Erlang's ecosystem and runs on the BEAM virtual machine, references to both Erlang and BEAM will appear frequently throughout this discussion of Elixir's features and capabilities.
 
 ### Elixir Basics
 
@@ -20,7 +24,7 @@ Elixir is a dynamically typed programming language, it means that types are chec
 
 There are many different native data types in Elixir:
 
-```
+```rb
 i = 123 
 f = 3.14 
 s = "héllo" # UTF-8 
@@ -31,7 +35,7 @@ a = :atom
 
 The special syntax `:somename` is used to declare atoms, an Erlang concept. They are constants named by themselves and used in many scenarios. They are used to represent status codes, function names, tags or even represent primitive data values:
 
-```
+```rb
 true == :true
 false == :false
 nil == :nil
@@ -39,7 +43,7 @@ nil == :nil
 
 When it comes to compound data, elixir has 2 main types: tuples and lists. The former are fixed size and quickly indexable. The later are single linked lists with dynamic length. Tuples are heavly used as simple structured data objects. Data as a whole in Elixir is immutable, it means that you cannot change data, but only used it to produce new data.
 
-```
+```rb
 response = {:ok, "Some message"}
 status = elem(response, 0) # :ok
 response = put_elem(response, 1, "Another message") # {:ok, "Another message"}
@@ -51,7 +55,7 @@ data = data ++ [5] # ["0", 1, 2, 3, 4, 5]
 
 The `=` is called the bind operator, because it does not simply do attribution, but can be used for pattern matching.
 
-```
+```rb
 x = 1
 1 = x # That succeeds
 2 = x # That will crash
@@ -64,7 +68,7 @@ IO.puts "It's a #{status}. Because #{message}"
 
 More broadly, pattern matching can be done with the `->` syntax:
 
-```
+```rb
 response = {:ok, "Content"}
 
 case response do
@@ -75,7 +79,7 @@ end
 
 In Elixir, there are some different forms of declaring functions, and they can be namespaced with the usage of modules:
 
-```
+```rb
 defmodule Math do
   # Public function
   def add(a, b) do
@@ -97,11 +101,18 @@ IO.puts(Math.add(2, 3))   # 5
 IO.puts(Math.mul(4, 5))   # 20
 ```
 
+### The Actor Model in Elixir
+
+There's no need to a lot of effort to use the actor model in elixir
+Messages are represented by any data
+Addresses are PIDs
+The handling logic takes place by a `receive` call in a dedicated process
+
 ### Example
 
-Now that you are introduced to some elixir syntax
+Now that you are introduced to some elixir syntax, look at a simple example of how to implement a system using actors in Elixir:
 
-```elixir
+```rb
 defmodule Echo do
     def init do
         # Waits for a message
@@ -133,21 +144,13 @@ defmodule Example do
 end
 ```
 
-> `:ok` and `:init` are atoms. A special type of literal value in Erlang. An atom is only equal to atoms with the same name. They are faster to compare than strings.
-
-> In Elixir there are no loops, so recursion with tail call optimization is used
-
-In the example above, it's defined a simple echo actor. It receives a message that must contain the address of the sender and some message. It then sends back to the sender a message with content `:ok` and the received message prefixed with `Echoing: `. Finally, there's a recursive call to `init` so the actor can handle more messages.
+In the example above, it's defined a simple echo actor. It receives a message that must contain the address of the sender and some message. It then sends back to the sender a message with content `:ok` and the received message prefixed with `Echoing: `. Finally, there's a recursive call to `init` so the actor can handle more messages since Elixir has no loops.
 
 In the `Example` module, the call to `spawn` will start the actor through the `init` function of the `Echo` module without any parameters. This function will return the PID of the created process that serves as the actor's address. The `send` function sends to the newly created actor a tuple where the first element is the PID of the current process and the second is the string `"Hello world"`.
 
 At this moment, the call to `receive` in the `init` function comes into action. It will receive the message and return to the sender a new tuple where the first element is `:ok` and the second is the string `"Echoing: Hello world"`. Because of the recursive call this actor is ready to receive more messages.
 
 The call to `receive` in the `main` function will now handle the actor's response. It patiently waited for a response and can now verify that the response indeed contains an `:ok` and display the string `Echoing: Hello world` in the terminal.
-## References
-
-- Programming Elixir
-
 
 ## References
 - https://erlang.org/course/history.html

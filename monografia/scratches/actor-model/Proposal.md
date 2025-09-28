@@ -1,7 +1,7 @@
 One of the core results of this work is proposal of a framework for centralized applications written in Rust using the Actor Model. Once the theory about the Actor Model and the known implementations have been discussed, it's time to adapt its abstractions to the specific needs and traits of centralized Rust applications.
 ## Why Rust?
 
-The Actor Model is widely known for its dynamicity and flexibility, with most of its famous implementations being in flexible runtimes like BEAM or JVM. Rust is quite the opposite of that, a modern language with a strong type system and a compiler powerful enough to validate almost everything at compile time.
+The Actor Model is widely known for its dynamicity and flexibility, with most of its famous implementations being in flexible runtimes like BEAM or JVM. Rust is quite the opposite of that, a modern language with a strong type system and a compiler powerful enough to validate almost everything at compile time. Moreover, the same surveys that put Elixir as the second most loved programming language chose Rust as the most loved programming language since 2016 (it's worth mentioning that Rust 1.0 was released in May, 2015, and the surveys happen in January).
 
 Might sound contradictory to use a rigid language with a flexible pattern, but it's exactly the purpose of this work: experiment with the Actor Model outside of its comfort zone. This will enable the experimentation of the limits of both the Actor Model and the Rust programming language.
 ## Quick Introduction To Rust
