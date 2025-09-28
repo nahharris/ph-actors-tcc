@@ -1,10 +1,10 @@
-- Software Architecture
+- [[Software Architecture]]
 	- [ ] What are patterns and why they matter
-	- [ ] How to evaluate the fitting
+	- [ ] [[How to evaluate the fitting]]
 - Actor Model
 	- [ ] Distributed systems
 	- [ ] Actor model theory
-	- [ ] Known implementations
+	- [ ] [[Known implementations]]
 	- [x] [[Proposal]]
 - Study Case
 	- [x] [[Patch-Hub Current Status]]
