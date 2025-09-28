@@ -124,3 +124,120 @@ This comprehensive review reveals that **architectural degradation has evolved f
 The study's unified definition and debt categorization framework provide a foundation for more holistic approaches. However, the critical need is to **bridge the gap between detection and action**, moving beyond symptom identification toward integrated strategies that address the interconnected nature of architectural, code, and process debt.
 
 The research emphasizes that sustainable architectural health requires not just better tools, but **fundamental changes in how we approach software development as a socio-technical practice**, embedding architectural considerations deeply into organizational processes and team practices.
+After carefully reviewing this comprehensive paper on architectural degradation, I need to point out that **the paper does not explicitly define what software architecture itself is**. This is actually a notable omission for a paper focused entirely on architectural degradation.
+
+## What the Paper DOESN'T Define
+
+The paper does not provide definitions for:
+- **Software architecture** (the foundational concept)
+- **Architectural patterns** 
+- **Design patterns**
+- **Architectural styles**
+- **Architectural components or modules**
+
+## What the Paper DOES Define (Architecture-Related Concepts)
+
+### 1. Architectural Properties
+The paper identifies key architectural properties that are lost during degradation:
+- **Modularity**
+- **Cohesion** 
+- **Separation of concerns**
+- **Structural consistency**
+- **Structural integrity**
+
+### 2. Architectural Elements Referenced
+Through the degradation context, the paper implicitly references:
+
+**Architectural Decisions**: Rules and principles that guide system design
+- "Repeated violations of architectural decisions, rules, and principles"
+- Architectural decision violations are a major cause of degradation
+
+**Architectural Views**: Different perspectives of the system
+- "Missing or unclear architectural views" (identified as a degradation cause)
+
+**Architectural Documentation**: Records of design decisions and rationale
+- "Lack of architectural documentation" is a key degradation factor
+
+**Architectural Smells**: Problematic patterns in architecture
+- Most frequently measured degradation indicator (8.3% of metrics)
+- Detected by tools like Arcan
+
+### 3. Architecture-Related Metrics
+The paper identifies architectural health indicators:
+- **Coupling**: Interactions and dependencies among modules
+- **Cohesion**: Internal consistency of components  
+- **Dependency cycles**
+- **Structural modularity**
+- **Component clustering**
+
+### 4. Architectural Concepts Through Degradation Lens
+
+**Prescriptive vs. Descriptive Architecture**:
+- **Prescriptive**: Planned/intended architecture
+- **Descriptive**: Actual/implemented architecture
+- Degradation occurs when these diverge
+
+**Architectural Consistency**: 
+- Alignment between intended and actual architecture
+- Maintained through conformance checking
+
+**Architectural Evolution**:
+- Natural consequence of system changes
+- Can lead to gradual quality decline if unmanaged
+
+## Key Architectural Relationships
+
+### 1. Architecture-Code Relationship
+The paper shows architecture exists at a **higher abstraction level** than code:
+- Code changes can cause architectural drift
+- "Code-level changes that undermine structural consistency"
+- Code complexity directly impacts architectural health
+
+### 2. Architecture-Process Relationship  
+Architecture is influenced by **organizational and development processes**:
+- Time pressure leads to architectural shortcuts
+- Knowledge gaps affect architectural decisions
+- Team fragmentation impacts architectural consistency
+
+## Implicit Architectural Framework
+
+While not explicitly stated, the paper operates under these assumptions:
+
+### Architecture as Design Intent
+- Architecture represents planned structure and behavior
+- Violations occur when implementation deviates from intent
+- Architectural decisions should be traceable and documented
+
+### Architecture as Structural Organization
+- Systems have modular structure with defined relationships
+- Components should have clear responsibilities (cohesion)
+- Interactions should be controlled (coupling)
+- Dependencies should follow planned patterns
+
+### Architecture as Quality Attribute
+- Architecture directly impacts maintainability and adaptability
+- Architectural quality can be measured and monitored
+- Degradation threatens long-term system sustainability
+
+## Notable Gap
+
+The paper's **lack of explicit architectural definitions** is significant because:
+
+1. **Ambiguity**: Readers may have different mental models of what constitutes "architecture"
+
+2. **Scope Uncertainty**: Without clear boundaries, it's unclear what architectural degradation includes/excludes
+
+3. **Measurement Challenges**: How can you measure degradation of something not clearly defined?
+
+4. **Tool Evaluation**: Difficult to assess whether tools address the "right" architectural aspects
+
+## Conclusion
+
+This paper treats software architecture as an **assumed concept** that readers already understand, focusing instead on its degradation. The architecture emerges implicitly through discussions of:
+
+- **Structural properties** (modularity, coupling, cohesion)
+- **Design artifacts** (decisions, documentation, views) 
+- **Quality attributes** (maintainability, adaptability)
+- **Abstraction levels** (above code, below business requirements)
+
+The paper would have benefited from explicit architectural definitions to provide clearer scope and context for understanding degradation phenomena. This omission reflects a broader challenge in the field where "architecture" remains a somewhat fluid concept interpreted differently across contexts.
