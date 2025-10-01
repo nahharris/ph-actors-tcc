@@ -13,30 +13,35 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "software-architecture/papers/Software Architecture in Practice Challenges and Opportunities.md",
+                "file": "actor-model/papers/Actor Model of Computation.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "Software Architecture in Practice Challenges and Opportunities"
+              "title": "Actor Model of Computation"
             }
-          },
+          }
+        ]
+      },
+      {
+        "id": "701ce289faf150e3",
+        "type": "tabs",
+        "children": [
           {
             "id": "628d546f150455c4",
             "type": "leaf",
             "state": {
               "type": "markdown",
               "state": {
-                "file": "actor-model/Known implementations.md",
+                "file": "actor-model/Actor Model.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "Known implementations"
+              "title": "Actor Model"
             }
           }
-        ],
-        "currentTab": 1
+        ]
       }
     ],
     "direction": "vertical"
@@ -93,7 +98,8 @@
       }
     ],
     "direction": "horizontal",
-    "width": 300
+    "width": 300,
+    "collapsed": true
   },
   "right": {
     "id": "ab4c45d2d84d9a3f",
@@ -192,16 +198,21 @@
       "obsidian-git:Open Git source control": false
     }
   },
-  "active": "628d546f150455c4",
+  "active": "bd518a664bc50834",
   "lastOpenFiles": [
+    "actor-model/Actor Model.md",
+    "actor-model/papers/Actor Model of Computation.md",
+    "software-architecture/papers/Software Architecture in Practice Challenges and Opportunities.md",
+    "Untitled.md",
+    "actor-model/papers/The Actor Model of Computation.md",
+    "actor-model/papers/Towards a Theory of Actor Computation - Comprehensive Summary.md",
     "Index.md",
+    "actor-model/papers/A Foundation for Actor Computation.md",
+    "actor-model/Known implementations.md",
     "software-architecture/Software Architecture.md",
     "software-architecture/How to evaluate the fitting.md",
-    "software-architecture/papers/Software Architecture in Practice Challenges and Opportunities.md",
     "software-architecture/papers/Software Architectural Patterns in Practice An Empirical Study.md",
-    "actor-model/Known implementations.md",
     "actor-model/Proposal.md",
-    "actor-model/Actor Model.md",
     "Software Architectural Patterns in Practice.md",
     "ToDo.md",
     "Software.md",
@@ -219,13 +230,8 @@
     "study-case/03-Patch-Hub.md",
     "software-architecture/papers",
     "software-architecture",
-    "implementation/04-Proposta.md",
     "implementation",
-    "actor-model/rust/Rust.md",
-    "actor-model/rust/Memory Management.md",
-    "actor-model/rust/Example.md",
     "actor-model/rust",
-    "actor-model/Message.md",
     "summaries",
     "foundation/actor-model/rust",
     "foundation/architecture",

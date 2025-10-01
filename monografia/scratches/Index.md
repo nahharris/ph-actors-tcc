@@ -4,7 +4,7 @@
 - [ ] Actor Model
 	- [ ] Distributed systems
 	- [ ] Actor model theory
-	- [ ] [[Known implementations]]
+	- [x] [[Known implementations]]
 	- [x] [[Proposal]]
 - [ ] Study Case
 	- [x] [[Patch-Hub Current Status]]
