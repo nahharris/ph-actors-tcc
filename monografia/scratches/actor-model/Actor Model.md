@@ -1,29 +1,10 @@
-The actor model is a model for concurrent computation where a program is though
-in terms of **actors** that work independently of each other and communicate via
-messages.
+The Actor Model of computation was stablished by Carl Hewitt in 1973 grounded on previous work done by Peter Bishop and Richard Steiger. His objetives were to address the new challenges imposed by the massive concurrent and parallel systems that emerged with cloud computing and many-core architectures.
 
-There are 3 main parts of a system that uses the Actor Model:
-
-- **Actor**: a computation unit
-- **Message**: data send to an actor
-- **Address**: identifies an actor, used to identify the receiver of a message
-
-When an actor receives a message, it can do a lot of things, like:
-
-- Define the behaviour of next messages
-- Create new actors
-- Send messages to other actors
-
-It's also important to put emphasys in the fact that the message ordering is not guaranteed
-
-The actor model can be think of as distributed OOP. Where the actors act like objects but they may execute code concurrently or in parallel (in different threads or even in different machines).
-
----
-
-The Actor Model of computation was stablished by Carl Hewitt in 1973 grounded on previous work done by Peter Bishop and Richard Steiger. His objetives were to address the new challenges imposed by the massive concurrent and parallel systems that emerged with cloud computing and many-core architectures, but founded on physical laws, unlike most other previous work based purely on algebra. The most important hypotesis defended by Hewitt's work is:
+His objectives were achieved creating a computational model that is inherently concurrent. A big shift from previous models is that it's based on physical laws, instead of pure algebra. The most important hypotesis defended by Hewitt's work is:
 
 > All physically possible computation can be directly implemented with Actors
 
+The Actor Model represents a complete rethinking of concurrent computation, moving from global state machines to distributed, asynchronous message-passing systems that better reflect the physical reality of modern computing systems.
 ## What is an Actor?
 
 Hewitt proposes this primitive called Actor that is identified by an address. Actors are entities that will communicate with each other through messages. Once a message is received, an Actor can:
@@ -38,6 +19,14 @@ Messages are the unit of communication and passed asynchronously between actors.
 - Part of the message received
 - Created during the current processing
 
-The arrival order of messages is not guaranteed, which leads to the principle of indeterminacy. Since messages might change the actor behaviour, same initial conditions might end in different results since the message arrival order might differ across different executions of the same program.
+## Indeterminacy
+
+Here comes one the main principles in the Actor Model and what sets it apart of other patterns. The arrival order of messages is not guaranteed and the Actor Model won't try to address this, but rather deal with it as a natural property of the domain. The Actor Model is designed for distributed systems, which means that two actors can be communication over long physical distances. 
+
+This means that messages sent can that unbounded time to arrive, and even if they arrive at the exact same time, the hardware arbiters that will order them won't guarantee any sort of ordering. Considering the physical factors is what differentiates the Actor Model from purely algebraic concurrent system patterns.
+
+The indeterminated message ordering, summed with the fact that messages might change the behaviour of an Actor leads to the fact that the same initial conditions might result in different results. Moreover, the system itself is said to have no global defined state. Since the communication is asynchronous, at any moment is possible to have messages traveling or Actors in transient state.
+
+This is what ensures fairness
 ## References
 - Actor Model of Computation: Scalable Robust Information Systems

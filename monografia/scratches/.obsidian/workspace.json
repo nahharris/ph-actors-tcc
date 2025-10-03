@@ -198,10 +198,10 @@
       "obsidian-git:Open Git source control": false
     }
   },
-  "active": "bd518a664bc50834",
+  "active": "628d546f150455c4",
   "lastOpenFiles": [
-    "actor-model/Actor Model.md",
     "actor-model/papers/Actor Model of Computation.md",
+    "actor-model/Actor Model.md",
     "software-architecture/papers/Software Architecture in Practice Challenges and Opportunities.md",
     "Untitled.md",
     "actor-model/papers/The Actor Model of Computation.md",
