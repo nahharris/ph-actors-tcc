@@ -33,12 +33,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "actor-model/Actor Model.md",
+                "file": "Index.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "Actor Model"
+              "title": "Index"
             }
           }
         ]
@@ -98,8 +98,7 @@
       }
     ],
     "direction": "horizontal",
-    "width": 300,
-    "collapsed": true
+    "width": 300
   },
   "right": {
     "id": "ab4c45d2d84d9a3f",
@@ -200,8 +199,8 @@
   },
   "active": "628d546f150455c4",
   "lastOpenFiles": [
-    "actor-model/papers/Actor Model of Computation.md",
     "actor-model/Actor Model.md",
+    "actor-model/papers/Actor Model of Computation.md",
     "software-architecture/papers/Software Architecture in Practice Challenges and Opportunities.md",
     "Untitled.md",
     "actor-model/papers/The Actor Model of Computation.md",

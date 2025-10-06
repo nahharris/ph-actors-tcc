@@ -1,7 +1,7 @@
 - [x] [[Software Architecture]]
 	- [ ] What are patterns and why they matter
 	- [ ] [[How to evaluate the fitting]]
-- [ ] Actor Model
+- [x] [[Actor Model]]
 	- [ ] Distributed systems
 	- [ ] Actor model theory
 	- [x] [[Known implementations]]
