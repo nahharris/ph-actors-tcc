@@ -61,9 +61,9 @@ endif
 
 define COMPILE
 	@echo
-	@echo "      " Executando latexmk $(OPTS) $*...
+	@echo "      " Executando pdflatex $*...
 	@echo
-	@latexmk $(OPTS) $*; \
+	@"C:\Users\jorge\AppData\Local\Programs\MiKTeX\miktex\bin\x64\pdflatex.exe" $*; \
 	result=$$?; \
 	if [ $$result -eq 0 ]; then \
 		$(SHOW_SUCCESS_MSG); \

@@ -1,0 +1,74 @@
+\chapter{Introdução}
+
+Todo sistema é desenvolvido com um propósito. A forma de saber se o sistema está atendendo ao seu propósito é estabelecendo requisitos que impõem restrições e direcionam o processo de desenvolvimento para a direção correta. Os requisitos em si são uma grande área de pesquisa, mas podem ser principalmente divididos em 2 grupos: funcionais e não funcionais.
+
+Requisitos funcionais são restrições que especificam o que o sistema deve ser capaz de fazer. Um requisito funcional para uma rede social pode ser a capacidade de postar fotos. Por outro lado, requisitos não funcionais são restrições que definem como algo deve ser feito. Um requisito não funcional para a rede social mencionada pode ser o armazenamento seguro das fotos dos usuários, impedindo acesso não autorizado a elas. Em resumo, requisitos funcionais definem funcionalidades, enquanto os não funcionais estabelecem expectativas de qualidade.
+
+A arquitetura de software é definida como uma coleção de decisões de design que afetam a estrutura, comportamento e qualidade geral de um sistema de software, servindo como base para decisões subsequentes. É o campo de pesquisa que lança luz sobre requisitos não funcionais. Ao longo dos anos, muitas dessas decisões de design de qualidade foram agrupadas no que são chamados de padrões arquiteturais ou simplesmente padrões.
+
+Assim, padrões podem ser definidos como conceitos reutilizáveis que podem ser aplicados para resolver questões similares em sistemas em contextos similares, considerando necessidades não funcionais. Isso significa que um padrão pode ser aplicado a qualquer sistema, independentemente de suas funcionalidades, desde que tenham requisitos de qualidade similares.
+
+Se funcionalidades fossem a única parte importante, não haveria necessidade de ter arquitetura de software. Mas ao mesmo tempo, isso não é o que acontece na realidade. Requisitos de qualidade acabam não sendo tão relevantes quanto deveriam ao escolher padrões arquiteturais para um sistema na indústria, e isso traz consequências de longo prazo para confiabilidade, manutenibilidade, testabilidade, entre outras complicações.
+
+O propósito deste trabalho é experimentar com um padrão arquitetural específico chamado Modelo de Atores. A ideia é usar este padrão em um projeto que está bem distante dos requisitos de qualidade que ele atende e entender quais são as consequências.
+
+\section{Problema}
+
+O Modelo de Atores é uma teoria matemática estabelecida por Carl Hewitt em 1973, baseada em trabalhos anteriores de Peter Bishop e Richard Steiger. Seus objetivos eram abordar os novos desafios impostos pelos sistemas massivamente concorrentes e paralelos que emergiram com a computação em nuvem e arquiteturas many-core.
+
+Sua principal hipótese é que toda computação fisicamente possível pode ser diretamente implementada com Atores. O Modelo de Atores representa uma reformulação completa da computação concorrente, passando de máquinas de estado globais para sistemas distribuídos, assíncronos e baseados em passagem de mensagens que melhor refletem a realidade física dos sistemas de computação modernos.
+
+Tradicionalmente, o Modelo de Atores tem sido amplamente usado na arquitetura de sistemas distribuídos, com implementações bem-sucedidas como Akka (Java), Orleans (C\#) e, mais notavelmente, Elixir/Erlang. No entanto, sua aplicação em aplicações centralizadas (não distribuídas) permanece relativamente inexplorada.
+
+\section{Objetivos}
+
+Este trabalho tem como objetivo principal explorar a aplicação do Modelo de Atores no desenvolvimento de aplicações centralizadas, especificamente:
+
+\begin{itemize}
+    \item Propor uma arquitetura baseada no Modelo de Atores para aplicações centralizadas
+    \item Implementar uma aplicação usando a arquitetura proposta
+    \item Realizar uma análise qualitativa da aplicação produzida
+\end{itemize}
+
+\section{Justificativa}
+
+A escolha de aplicar o Modelo de Atores fora de seu domínio tradicional de sistemas distribuídos é motivada por várias razões:
+
+\begin{enumerate}
+    \item \textbf{Exploração de Limites}: Experimentar com o Modelo de Atores fora de sua zona de conforto permitirá compreender melhor tanto os limites do Modelo de Atores quanto da linguagem de programação Rust.
+    
+    \item \textbf{Qualidade Arquitetural}: Investigar se o Modelo de Atores pode elevar a qualidade em outros tipos de domínios, especialmente em aplicações centralizadas que enfrentam desafios de concorrência e acoplamento.
+    
+    \item \textbf{Inovação}: Contribuir para o conhecimento sobre padrões arquiteturais aplicando conceitos estabelecidos em contextos não convencionais.
+\end{enumerate}
+
+\section{Metodologia}
+
+Para alcançar os objetivos propostos, este trabalho seguirá a seguinte metodologia:
+
+\begin{enumerate}
+    \item \textbf{Revisão Bibliográfica}: Estudo aprofundado do Modelo de Atores, suas implementações existentes e princípios arquiteturais relacionados.
+    
+    \item \textbf{Proposta Arquitetural}: Desenvolvimento de uma proposta de arquitetura baseada no Modelo de Atores para aplicações centralizadas em Rust.
+    
+    \item \textbf{Implementação}: Desenvolvimento de uma aplicação real (Patch-Hub) utilizando a arquitetura proposta.
+    
+    \item \textbf{Avaliação}: Análise qualitativa da aplicação produzida do ponto de vista de testabilidade, performance, manutenibilidade e extensibilidade.
+\end{enumerate}
+
+\section{Estrutura do Trabalho}
+
+Este trabalho está organizado da seguinte forma:
+
+\begin{itemize}
+    \item \textbf{Capítulo 2}: Apresenta conceitos fundamentais de arquitetura de software e padrões arquiteturais, estabelecendo o contexto teórico necessário.
+    
+    \item \textbf{Capítulo 3}: Explora o Modelo de Atores em profundidade, incluindo sua teoria, implementações conhecidas e princípios fundamentais.
+    
+    \item \textbf{Capítulo 4}: Propõe uma arquitetura baseada no Modelo de Atores para aplicações centralizadas em Rust, detalhando os aspectos técnicos da implementação.
+    
+    \item \textbf{Capítulo 5}: Apresenta um estudo de caso da aplicação Patch-Hub, demonstrando a aplicação prática da arquitetura proposta.
+    
+    \item \textbf{Capítulo 6}: Conclusões e trabalhos futuros, resumindo os resultados obtidos e propondo direções para pesquisa adicional.
+\end{itemize}
+

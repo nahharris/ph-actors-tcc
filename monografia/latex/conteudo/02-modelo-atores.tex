@@ -1,0 +1,213 @@
+\chapter{Modelo de Atores}
+
+\section{Introdução}
+
+O Modelo de Atores de computação foi estabelecido por Carl Hewitt em 1973, baseado em trabalhos anteriores de Peter Bishop e Richard Steiger. Seus objetivos eram abordar os novos desafios impostos pelos sistemas massivamente concorrentes e paralelos que emergiram com a computação em nuvem e arquiteturas many-core.
+
+Seus objetivos foram alcançados criando um modelo computacional que é inerentemente concorrente. Uma grande mudança dos modelos anteriores é que ele é baseado em leis físicas, ao invés de álgebra pura. A hipótese mais importante defendida pelo trabalho de Hewitt é:
+
+\begin{quote}
+Toda computação fisicamente possível pode ser diretamente implementada com Atores
+\end{quote}
+
+O Modelo de Atores representa uma reformulação completa da computação concorrente, passando de máquinas de estado globais para sistemas distribuídos, assíncronos e baseados em passagem de mensagens que melhor refletem a realidade física dos sistemas de computação modernos.
+
+\section{O que é um Ator?}
+
+Hewitt propõe este primitivo chamado Ator que é identificado por um endereço. Atores são entidades que se comunicarão entre si através de mensagens. Uma vez que uma mensagem é recebida, um Ator pode:
+
+\begin{itemize}
+    \item Enviar mensagens para Atores cujos endereços conhece
+    \item Criar novos Atores
+    \item Modificar seu próprio comportamento para lidar com mensagens futuras recebidas
+\end{itemize}
+
+Mensagens são a unidade de comunicação e são passadas de forma assíncrona entre atores. De acordo com o princípio de segurança e localidade, ao processar uma mensagem recebida, um Ator pode apenas enviar mensagens para Atores cujos endereços foram:
+
+\begin{itemize}
+    \item Conhecidos anteriormente
+    \item Parte da mensagem recebida
+    \item Criados durante o processamento atual
+\end{itemize}
+
+\section{Indeterminação}
+
+Aqui vem um dos princípios fundamentais do Modelo de Atores e o que o diferencia de outros padrões. A ordem de chegada das mensagens não é garantida e o Modelo de Atores não tentará resolver isso, mas sim tratar isso como uma propriedade natural do domínio. O Modelo de Atores é projetado para sistemas distribuídos, o que significa que dois atores podem estar se comunicando através de longas distâncias físicas.
+
+Isso significa que as mensagens enviadas podem levar tempo ilimitado para chegar na máquina destino, e mesmo que cheguem exatamente ao mesmo tempo, os árbitros de hardware que as ordenarão não garantirão nenhum tipo de ordenação. Considerar os fatores físicos é o que diferencia o Modelo de Atores de padrões de sistemas concorrentes puramente algébricos.
+
+A ordenação indeterminada de mensagens, somada ao fato de que as mensagens podem alterar o comportamento de um Ator, tem por consequência que as mesmas condições iniciais podem resultar em resultados diferentes. Além disso, o próprio sistema é dito não ter um estado global definido. Como a comunicação é assíncrona, a qualquer momento é possível ter mensagens transito ou Atores em estado transitório não sendo possível garantir que em algum momento todos os atores estarão em estados bem definidos.
+
+Isso é o que garante a justiça (fairness).
+
+\section{Sistemas Distribuídos}
+
+% PLACEHOLDER: This section is marked as incomplete in Index.md
+% TODO: Add content about distributed systems and their relationship with the Actor Model
+% This section should cover:
+% - Definition and characteristics of distributed systems
+% - Challenges in distributed systems
+% - How the Actor Model addresses these challenges
+% - Why the Actor Model is particularly suited for distributed environments
+
+\subsection{Características dos Sistemas Distribuídos}
+
+% PLACEHOLDER: Content to be developed
+
+\subsection{Desafios em Sistemas Distribuídos}
+
+% PLACEHOLDER: Content to be developed
+
+\subsection{Como o Modelo de Atores Aborda Estes Desafios}
+
+% PLACEHOLDER: Content to be developed
+
+\section{Teoria do Modelo de Atores}
+
+% PLACEHOLDER: This section is marked as incomplete in Index.md
+% TODO: Add more detailed theoretical content about the Actor Model
+% This section should cover:
+% - Mathematical foundations
+% - Formal definitions
+% - Theoretical properties
+% - Relationship with other computational models
+
+\subsection{Princípios Fundamentais}
+
+O Modelo de Atores define computação como entidades distribuídas (Atores) que se comunicam através de passagem assíncrona de mensagens. Quando um Ator recebe uma mensagem, ele pode concorrentemente:
+
+\begin{enumerate}
+    \item Enviar mensagens para endereços de outros Atores que conhece
+    \item Criar novos Atores
+    \item Designar como lidar com a próxima mensagem que receber
+\end{enumerate}
+
+\subsection{Características-Chave}
+
+\begin{itemize}
+    \item \textbf{Localidade e Segurança}: Um Ator pode apenas se comunicar com Atores cujos endereços possui, e pode apenas obter endereços através de criação, recepção de mensagem, ou criando novos Atores
+    \item \textbf{Comunicação Assíncrona}: Mensagens são enviadas sem aguardar uma resposta, e não há garantia de tempo de entrega
+    \item \textbf{Indeterminação}: A ordem de recepção das mensagens não é predeterminada, permitindo modelar concorrência do mundo real
+    \item \textbf{Não-determinismo Ilimitado}: Ao contrário de máquinas de Turing, sistemas de Atores podem exibir não-determinismo ilimitado, que melhor representa sistemas distribuídos reais
+\end{itemize}
+
+\subsection{Princípios de Sistemas de Informação}
+
+O Modelo de Atores suporta integração robusta de informações através de:
+
+\begin{itemize}
+    \item \textbf{Persistência}: Informações são coletadas e indexadas
+    \item \textbf{Concorrência}: Trabalho prossegue interativamente e em paralelo
+    \item \textbf{Quasi-comutatividade}: Operações podem ser realizadas em ordens diferentes quando a ordem não importa
+    \item \textbf{Pluralismo}: Sistemas podem lidar com informações heterogêneas, sobrepostas e inconsistentes
+    \item \textbf{Proveniência}: A origem da informação é rastreada e registrada
+\end{itemize}
+
+\section{Implementações Conhecidas}
+
+Trabalho substancial anterior existe sobre implementações do Modelo de Atores para criar sistemas distribuídos. Bibliotecas e frameworks principais como Akka (Java) e Orleans (C\#) fornecem suporte ao Modelo de Atores através de múltiplas linguagens. No entanto, a implementação mais proeminente e bem-sucedida é a linguagem de programação Elixir.
+
+\subsection{Elixir e Erlang}
+
+Na década de 1980, a empresa de telecomunicações sueca Ericsson experimentou com linguagens de programação funcional para abordar desafios de telecomunicações, desenvolvendo eventualmente Erlang. Erlang focou em concorrência, distribuição e tolerância a falhas implementando o Modelo de Atores no nível da linguagem. BEAM, a máquina abstrata que serviu como runtime para programas Erlang, representou a maior conquista da Ericsson neste domínio.
+
+No início dos anos 2010, José Valim estava desenvolvendo soluções para sistemas distribuídos, os mesmos desafios que a Ericsson havia abordado três décadas antes. Ao descobrir Erlang e BEAM, ele reconheceu sua eficácia, mas os achou difíceis de usar. Isso levou à criação de Elixir, que combinou o poder do BEAM e a flexibilidade do Modelo de Atores com uma sintaxe mais acessível inspirada em Ruby.
+
+\subsection{Exemplo em Elixir}
+
+Aqui está um exemplo simples de como implementar um sistema usando atores em Elixir:
+
+\begin{lstlisting}[language=ruby, caption=Exemplo de Ator Echo em Elixir]
+defmodule Echo do
+    def init do
+        # Aguarda por uma mensagem
+        receive do
+            # Obtém o remetente e conteúdo da mensagem
+            {sender, msg} -> 
+                # Ecoa a resposta com sucesso (`:ok`)
+                send(sender, {:ok, "Echoing: #{msg}"})
+                # Loop
+                init()
+        end
+    end
+end
+
+defmodule Example do
+    def main do
+        # Inicia o ator
+        addr = spawn(Echo, :init, []) 
+        # Envia uma mensagem
+        send(addr, {self(), "Hello world"}) 
+        
+        # Aguarda a resposta
+        receive do 
+            {:ok, response} -> 
+                # Exibe a resposta
+                IO.puts(response) 
+        end
+    end
+end
+\end{lstlisting}
+
+\section{Proposta para Rust}
+
+Uma das principais contribuições deste trabalho é a proposta de um framework para aplicações centralizadas escritas em Rust usando o Modelo de Atores. Uma vez que a teoria sobre o Modelo de Atores e as implementações conhecidas foram discutidas, é hora de adaptar suas abstrações para as necessidades e características específicas de aplicações centralizadas em Rust.
+
+\subsection{Por que Rust?}
+
+O Modelo de Atores é amplamente conhecido por sua dinamicidade e flexibilidade, com a maioria de suas implementações famosas sendo em runtimes flexíveis como BEAM ou JVM. Rust é bem o oposto disso, uma linguagem moderna com um sistema de tipos forte e um compilador poderoso o suficiente para validar quase tudo em tempo de compilação.
+
+Pode soar contraditório usar uma linguagem rígida com um padrão flexível, mas é exatamente o propósito deste trabalho: experimentar com o Modelo de Atores fora de sua zona de conforto. Isso permitirá a experimentação dos limites tanto do Modelo de Atores quanto da linguagem de programação Rust.
+
+\subsection{Introdução Rápida ao Rust}
+
+Rust é conhecido por seus mecanismos de segurança que forçam verificação em tempo de compilação de muitas coisas e tornam estados inválidos impossíveis de serem escritos em certos casos.
+
+Os conceitos mais importantes aqui são:
+
+\subsubsection{Segurança de Memória}
+
+Um espaço de memória tem um, e apenas um, proprietário (uma variável), este proprietário determina o ciclo de vida do espaço de memória. Uma vez que o proprietário é destruído, o espaço de memória é liberado. O proprietário também determina se a região é mutável ou não.
+
+\subsubsection{Sistema de Tipos}
+
+O sistema de tipos forte e poderoso é uma característica-chave do Rust. Ele não tem herança, mas compensa isso com tuplas, structs, enums e traits.
+
+\subsection{Concorrência e Paralelismo}
+
+Esta proposta engloba o uso de green-threads que não têm suporte nativo em Rust. Isso é porque Rust, ao contrário de Elixir, Golang, ou Java, tem um runtime muito mínimo, similar ao runtime do C. O suporte para green-threads é fornecido pela biblioteca Tokio e eles são chamados de \emph{tasks}.
+
+\subsection{Compartilhamento de Memória}
+
+O isolamento de memória é desejável e uma característica nativa do Modelo de Atores, já que atores são projetados para executar em ambientes isolados. Isso aumenta a segurança, mas degrada a performance, já que dados entre atores são compartilhados por cópia, não por referência.
+
+Mas esse não é o caso para esta proposta, já que a aplicação não é distribuída. Além disso, os problemas com compartilhamento de memória em sistemas concorrentes estão relacionados a condições de corrida e mutabilidade indesejada. Rust fornece mecanismos nativos eficientes para compartilhar espaços de memória com segurança.
+
+\subsection{Passagem de Mensagens e Endereços}
+
+Tanto Rust quanto Tokio têm uma abstração nativa de passagem de mensagens chamada \emph{channel}. Ao contrário do método \emph{send} do Elixir, channels são fortemente tipados e com ciclos de vida definidos.
+
+\subsection{Mensagens Tipadas}
+
+Assim como tudo mais em Rust, as mensagens enviadas através de channels devem ser tipadas. Como um ator pode aceitar diferentes tipos de mensagens, um \emph{enum} será usado.
+
+\subsection{Representação do Ator}
+
+Agora é hora de definir como um ator será em termos de código Rust. Primeiro, haverá um módulo para cada ator, e se um ator é subordinado à existência de outro ator pela lógica de negócio, ele pode ser criado como um submódulo.
+
+Três partes principais de um ator foram apresentadas:
+
+\begin{itemize}
+    \item O endereço que permite a comunicação entre atores
+    \item As mensagens que serão enviadas ao ator
+    \item O manipulador que lida com as mensagens recebidas
+\end{itemize}
+
+Essas três partes serão traduzidas para partes separadas do código Rust como:
+
+\begin{itemize}
+    \item Uma struct pública para envolver o channel \emph{mpsc} que serve como o endereço com métodos de envio
+    \item Um enum privado para definir os tipos das mensagens
+    \item Uma struct privada para gerenciar o estado do ator e definir como lidar com cada mensagem
+\end{itemize}
+

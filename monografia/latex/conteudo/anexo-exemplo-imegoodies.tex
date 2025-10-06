@@ -2,93 +2,93 @@
 %("dica" para o editor de texto: este arquivo é parte de um documento maior)
 % para saber mais: https://tex.stackexchange.com/q/78101
 
-\chapter{As packages \pkg{imegoodies} e \pkg{imelooks}}
+\chapter{As packages \texttt{imegoodies} e \texttt{imelooks}}
 \label{ann:imegoodlooks}
 
-Este modelo inclui as \textit{packages} \pkg{imegoodies} e \pkg{imelooks},
+Este modelo inclui as \textit{packages} \texttt{imegoodies} e \texttt{imelooks},
 que você pode querer usar em outros documentos \LaTeX.
 
-\pkg{imegoodies} inclui um grande número de \textit{packages} que são
+\texttt{imegoodies} inclui um grande número de \textit{packages} que são
 comumente usadas e bastante úteis. Em geral, você pode incluí-la em seus
 documentos sem que isso cause problemas de compatibilidade. Se, no
 entanto, algo não funcionar, você pode editar o arquivo para eliminar
 a \textit{package} responsável pelo problema se ela não for necessária.
-\pkg{imegoodies} ainda inclui vários comentários explicativos sobre as
+\texttt{imegoodies} ainda inclui vários comentários explicativos sobre as
 \textit{packages} carregadas.
 
-\pkg{imelooks} também inclui um grande número de \textit{packages}, mas
+\texttt{imelooks} também inclui um grande número de \textit{packages}, mas
 estas são relacionadas mais explicitamente à aparência do documento
 (fontes, cores, margens etc.). Você também pode utilizá-la em outros
-documentos se quiser se aproximar da aparência deste modelo. \pkg{imelooks}
+documentos se quiser se aproximar da aparência deste modelo. \texttt{imelooks}
 reconhece diversos parâmetros que ativam/desativam aspectos específicos:
 
 \begin{itemize}
-  \item \cmd{fonts} carrega as fontes deste modelo (libertinus e
+  \item \texttt{fonts} carrega as fontes deste modelo (libertinus e
         sourcecodepro), além de outros pequenos ajustes relacionados.
         Esta opção é sempre ativada por padrão; para desativá-la, use
-        \cmd{nofonts}
+        \texttt{nofonts}
 
-  \item \cmd{spacing} utiliza os espaçamentos definidos neste modelo (margens,
+  \item \texttt{spacing} utiliza os espaçamentos definidos neste modelo (margens,
         espaço entre parágrafos, indentação da primeira linha do parágrafo
         etc.). Esta opção é sempre ativada por padrão; para desativá-la, use
-        \cmd{nospacing}
+        \texttt{nospacing}
 
-  \item \cmd{captions} e \cmd{footnotes} fazem respectivamente as legendas
+  \item \texttt{captions} e \texttt{footnotes} fazem respectivamente as legendas
         (das figuras e tabelas) e as notas de rodapé de acordo com este modelo.
         Estas opções são sempre ativadas por padrão; para desativá-las, use
-        \cmd{nocaptions} e \cmd{nofootnotes}
+        \texttt{nocaptions} e \texttt{nofootnotes}
 
-  \item \cmd{autohttp} acrescenta o prefixo \cmd{http://} a URLs criadas
+  \item \texttt{autohttp} acrescenta o prefixo \texttt{http://} a URLs criadas
         com \ltxcmd{url} que não incluam o \textit{schema}. Esta opção é
-        sempre ativada por padrão; para desativá-la, use \cmd{noautohttp}
+        sempre ativada por padrão; para desativá-la, use \texttt{noautohttp}
 
-  \item \cmd{hidelinks}, \cmd{borderlinks} e \cmd{colorlinks} definem a
-        aparência dos hiperlinks. \cmd{hidelinks} faz os hiperlinks sem
-        nenhuma formatação especial; \cmd{borderlinks} faz os hiperlinks
+  \item \texttt{hidelinks}, \texttt{borderlinks} e \texttt{colorlinks} definem a
+        aparência dos hiperlinks. \texttt{hidelinks} faz os hiperlinks sem
+        nenhuma formatação especial; \texttt{borderlinks} faz os hiperlinks
         serem envidos por um quadrado colorido (apenas na tela; o quadrado
-        não é impresso); \cmd{colorlinks} faz o texto dos hiperlinks ser
-        colorido. A opção \cmd{colorlinks} é sempre ativada por padrão
+        não é impresso); \texttt{colorlinks} faz o texto dos hiperlinks ser
+        colorido. A opção \texttt{colorlinks} é sempre ativada por padrão
 
-  \item \cmd{biblatex} carrega a \textit{package} \cmd{biblatex} e os
+  \item \texttt{biblatex} carrega a \textit{package} \texttt{biblatex} e os
         estilos bibliográficos deste modelo. Esta opção é sempre ativada
-        por padrão; para desativá-la, use \cmd{nobiblatex}
-  \item \cmd{raggedbib} faz a bibliografia (com \cmd{biblatex}) ser
+        por padrão; para desativá-la, use \texttt{nobiblatex}
+  \item \texttt{raggedbib} faz a bibliografia (com \texttt{biblatex}) ser
         formatada com alinhamento à esquerda ao invés de justificado.
         Esta opção é sempre ativada por padrão, exceto quando o estilo
-        bibliográfico é \cmd{plainnat-ime} (usado nas teses); para
-        desativá-la, use \cmd{noraggedbib}; para ativá-la incondicionalmente,
-        use \cmd{raggedbib}
-  \item \cmd{bibstyle=?} selectiona um estilo bibliográfico específico.
-        O estilo padrão é \cmd{numeric}, exceto em pôsteres e apresentações
-        (\cmd{beamer-ime}) e \textit{reports} (\cmd{plainnat-ime})
+        bibliográfico é \texttt{plainnat-ime} (usado nas teses); para
+        desativá-la, use \texttt{noraggedbib}; para ativá-la incondicionalmente,
+        use \texttt{raggedbib}
+  \item \texttt{bibstyle=?} selectiona um estilo bibliográfico específico.
+        O estilo padrão é \texttt{numeric}, exceto em pôsteres e apresentações
+        (\texttt{beamer-ime}) e \textit{reports} (\texttt{plainnat-ime})
 
-  \item \cmd{listings} carrega a \textit{package} \cmd{listings} e diversas
+  \item \texttt{listings} carrega a \textit{package} \texttt{listings} e diversas
         configurações relacionadas usadas neste modelo. Esta opção é
-        sempre ativada por padrão; para desativá-la, use \cmd{nolistings}
+        sempre ativada por padrão; para desativá-la, use \texttt{nolistings}
 
-  \item \cmd{greeny}, \cmd{bluey}, \cmd{sandy} ativam esquemas de cores
-        diferentes para pôsteres e apresentações (o padrão é \cmd{bluey})
+  \item \texttt{greeny}, \texttt{bluey}, \texttt{sandy} ativam esquemas de cores
+        diferentes para pôsteres e apresentações (o padrão é \texttt{bluey})
 
-  \item \cmd{beamer} \textbf{des}ativa algumas \textit{packages} que
-        são incompatíveis com a classe \cmd{beamer} (note que as opções
-        \cmd{slides} e \cmd{presentation}, discutidas abaixo, já fazem isso)
+  \item \texttt{beamer} \textbf{des}ativa algumas \textit{packages} que
+        são incompatíveis com a classe \texttt{beamer} (note que as opções
+        \texttt{slides} e \texttt{presentation}, discutidas abaixo, já fazem isso)
 
-  \item \cmd{presentation} (ou \cmd{slides}) e \cmd{poster} ativam as
+  \item \texttt{presentation} (ou \texttt{slides}) e \texttt{poster} ativam as
         opções relevantes para, respectivamente, apresentações com
-        \cmd{beamer} ou pôsteres com \cmd{tcolorbox}
+        \texttt{beamer} ou pôsteres com \texttt{tcolorbox}
 
-  \item \cmd{report} ativa as opções relevantes para documentos com
+  \item \texttt{report} ativa as opções relevantes para documentos com
         capítulos (cabeçalhos das páginas, características do sumário etc.)
 
-  \item \cmd{thesis} ativa a opção \cmd{report} e também define o que é
+  \item \texttt{thesis} ativa a opção \texttt{report} e também define o que é
         necessário para a geração da capa das teses de acordo com este modelo
 
-  \item \cmd{resumoabstract} define os comandos \cmd{resumo} e \cmd{abstract}
+  \item \texttt{resumoabstract} define os comandos \texttt{resumo} e \texttt{abstract}
         de acordo com este modelo. Esta opção é ativada por padrão com
-        \cmd{report}; para desativá-la, use \cmd{noresumoabstract}
+        \texttt{report}; para desativá-la, use \texttt{noresumoabstract}
 
-  \item \cmd{brazilian} verifica se a língua portuguesa está ativa no
+  \item \texttt{brazilian} verifica se a língua portuguesa está ativa no
         documento e, em caso negativo, gera um erro. Esta opção é
-        ativada por padrão com a opção \cmd{thesis}; para desativá-la,
-        use \cmd{nobrazilian}
+        ativada por padrão com a opção \texttt{thesis}; para desativá-la,
+        use \texttt{nobrazilian}
 \end{itemize}
