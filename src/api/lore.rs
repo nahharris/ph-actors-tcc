@@ -120,9 +120,7 @@ impl LoreApi {
                     .context("Awaiting response from LoreApi actor")
                     .expect("LoreApi actor died")
             }
-            LoreApi::Mock(mock) => {
-                mock.get_patch_feed_page(target_list, min_index).await
-            }
+            LoreApi::Mock(mock) => mock.get_patch_feed_page(target_list, min_index).await,
         }
     }
 
@@ -152,9 +150,7 @@ impl LoreApi {
                     .context("Awaiting response from LoreApi actor")
                     .expect("LoreApi actor died")
             }
-            LoreApi::Mock(mock) => {
-                mock.get_available_lists_page(min_index).await
-            }
+            LoreApi::Mock(mock) => mock.get_available_lists_page(min_index).await,
         }
     }
 
@@ -178,9 +174,7 @@ impl LoreApi {
                     .context("Awaiting response from LoreApi actor")
                     .expect("LoreApi actor died")
             }
-            LoreApi::Mock(mock) => {
-                mock.get_available_lists().await
-            }
+            LoreApi::Mock(mock) => mock.get_available_lists().await,
         }
     }
 
@@ -221,9 +215,7 @@ impl LoreApi {
                     .context("Awaiting response from LoreApi actor")
                     .expect("LoreApi actor died")
             }
-            LoreApi::Mock(mock) => {
-                mock.get_patch_html(target_list, message_id).await
-            }
+            LoreApi::Mock(mock) => mock.get_patch_html(target_list, message_id).await,
         }
     }
 
@@ -264,9 +256,7 @@ impl LoreApi {
                     .context("Awaiting response from LoreApi actor")
                     .expect("LoreApi actor died")
             }
-            LoreApi::Mock(mock) => {
-                mock.get_raw_patch(target_list, message_id).await
-            }
+            LoreApi::Mock(mock) => mock.get_raw_patch(target_list, message_id).await,
         }
     }
 
@@ -307,9 +297,7 @@ impl LoreApi {
                     .context("Awaiting response from LoreApi actor")
                     .expect("LoreApi actor died")
             }
-            LoreApi::Mock(mock) => {
-                mock.get_patch_metadata(target_list, message_id).await
-            }
+            LoreApi::Mock(mock) => mock.get_patch_metadata(target_list, message_id).await,
         }
     }
 }

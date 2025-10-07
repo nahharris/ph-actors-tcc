@@ -2,8 +2,8 @@ use anyhow::Context;
 
 mod core;
 mod data;
-mod mock;
 pub mod message;
+mod mock;
 
 use crate::api::lore::{LoreApi, LoreMailingList};
 use crate::app::config::Config;
@@ -54,9 +54,7 @@ impl MailingListCache {
                     .context("Awaiting response from MailingListCache actor")
                     .expect("MailingListCache actor died")
             }
-            Self::Mock(mock) => {
-                mock.get(index).await
-            }
+            Self::Mock(mock) => mock.get(index).await,
         }
     }
 
@@ -77,9 +75,7 @@ impl MailingListCache {
                     .context("Awaiting response from MailingListCache actor")
                     .expect("MailingListCache actor died")
             }
-            Self::Mock(mock) => {
-                mock.get_slice(range).await
-            }
+            Self::Mock(mock) => mock.get_slice(range).await,
         }
     }
 
@@ -97,9 +93,7 @@ impl MailingListCache {
                     .context("Awaiting response from MailingListCache actor")
                     .expect("MailingListCache actor died")
             }
-            Self::Mock(mock) => {
-                mock.refresh().await
-            }
+            Self::Mock(mock) => mock.refresh().await,
         }
     }
 
@@ -117,9 +111,7 @@ impl MailingListCache {
                     .context("Awaiting response from MailingListCache actor")
                     .expect("MailingListCache actor died")
             }
-            Self::Mock(mock) => {
-                mock.invalidate().await
-            }
+            Self::Mock(mock) => mock.invalidate().await,
         }
     }
 
@@ -137,9 +129,7 @@ impl MailingListCache {
                     .context("Awaiting response from MailingListCache actor")
                     .expect("MailingListCache actor died")
             }
-            Self::Mock(mock) => {
-                mock.is_available(range).await
-            }
+            Self::Mock(mock) => mock.is_available(range).await,
         }
     }
 
@@ -157,9 +147,7 @@ impl MailingListCache {
                     .context("Awaiting response from MailingListCache actor")
                     .expect("MailingListCache actor died")
             }
-            Self::Mock(mock) => {
-                mock.len().await
-            }
+            Self::Mock(mock) => mock.len().await,
         }
     }
 
@@ -182,9 +170,7 @@ impl MailingListCache {
                     .context("Awaiting response from MailingListCache actor")
                     .expect("MailingListCache actor died")
             }
-            Self::Mock(mock) => {
-                mock.persist().await
-            }
+            Self::Mock(mock) => mock.persist().await,
         }
     }
 
@@ -202,9 +188,7 @@ impl MailingListCache {
                     .context("Awaiting response from MailingListCache actor")
                     .expect("MailingListCache actor died")
             }
-            Self::Mock(mock) => {
-                mock.load().await
-            }
+            Self::Mock(mock) => mock.load().await,
         }
     }
 }

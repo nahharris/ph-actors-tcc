@@ -1,8 +1,8 @@
 use std::sync::Arc;
 use tokio::sync::Mutex;
 
-use crate::{ArcSlice, ArcStr};
 use crate::shell::data::{Command, Result, Status};
+use crate::{ArcSlice, ArcStr};
 
 /// Mock implementation of the Shell actor for testing purposes.
 ///

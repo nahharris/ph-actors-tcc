@@ -5,15 +5,12 @@ use tokio::sync::mpsc::Sender;
 use crate::{
     ArcStr,
     app::config::Config,
-    net::{
-        core::Core,
-        message::Message,
-    },
+    net::{core::Core, message::Message},
 };
 
 mod core;
-mod mock;
 pub mod message;
+mod mock;
 
 /// The networking actor that provides a thread-safe interface for network operations.
 ///
@@ -96,9 +93,7 @@ impl Net {
                     .context("Awaiting response from Net actor")
                     .expect("Net actor died")
             }
-            Net::Mock(mock) => {
-                mock.get(url, headers).await
-            }
+            Net::Mock(mock) => mock.get(url, headers).await,
         }
     }
 
@@ -131,9 +126,7 @@ impl Net {
                     .context("Sending message to Net actor")?;
                 rx.await.context("Receiving response from Net actor")?
             }
-            Net::Mock(mock) => {
-                mock.post(url, headers, body).await
-            }
+            Net::Mock(mock) => mock.post(url, headers, body).await,
         }
     }
 
@@ -166,9 +159,7 @@ impl Net {
                     .context("Sending message to Net actor")?;
                 rx.await.context("Receiving response from Net actor")?
             }
-            Net::Mock(mock) => {
-                mock.put(url, headers, body).await
-            }
+            Net::Mock(mock) => mock.put(url, headers, body).await,
         }
     }
 
@@ -194,9 +185,7 @@ impl Net {
                     .context("Sending message to Net actor")?;
                 rx.await.context("Receiving response from Net actor")?
             }
-            Net::Mock(mock) => {
-                mock.delete(url, headers).await
-            }
+            Net::Mock(mock) => mock.delete(url, headers).await,
         }
     }
 
@@ -229,9 +218,7 @@ impl Net {
                     .context("Sending message to Net actor")?;
                 rx.await.context("Receiving response from Net actor")?
             }
-            Net::Mock(mock) => {
-                mock.patch(url, headers, body).await
-            }
+            Net::Mock(mock) => mock.patch(url, headers, body).await,
         }
     }
 }

@@ -1,7 +1,7 @@
 mod core;
 mod data;
-mod mock;
 mod message;
+mod mock;
 #[cfg(test)]
 mod tests;
 
@@ -187,9 +187,7 @@ impl Log {
     /// A vector of all logged messages, or None if this is not a mock instance.
     pub async fn get_messages(&self) -> Option<Vec<LogMessage>> {
         match self {
-            Self::Mock(mock) => {
-                Some(mock.get_messages().await)
-            }
+            Self::Mock(mock) => Some(mock.get_messages().await),
             Self::Actual(_) => None,
         }
     }

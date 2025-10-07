@@ -1,8 +1,8 @@
 use std::sync::Arc;
 use tokio::sync::Mutex;
 
-use crate::{ArcPath, log::LogLevel};
 use crate::app::config::{Data, PathOpt, Renderer, RendererOpt, USizeOpt};
+use crate::{ArcPath, log::LogLevel};
 
 /// Mock implementation of the Config actor for testing purposes.
 ///

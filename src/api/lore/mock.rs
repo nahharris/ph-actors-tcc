@@ -3,7 +3,10 @@ use std::sync::Arc;
 use tokio::sync::Mutex;
 
 use crate::utils::ArcSlice;
-use crate::{ArcStr, api::lore::{LorePage, LorePatchMetadata, LoreMailingList}};
+use crate::{
+    ArcStr,
+    api::lore::{LoreMailingList, LorePage, LorePatchMetadata},
+};
 
 /// Mock implementation of the Lore API for testing purposes.
 ///
@@ -50,7 +53,7 @@ impl Mock {
         let xml = responses.get(&key).cloned().ok_or_else(|| {
             anyhow::anyhow!("Patch feed page not found in mock responses: {}", key)
         })?;
-        
+
         // Parse the XML string into LorePage<LorePatchMetadata>
         let page: LorePage<LorePatchMetadata> =
             crate::api::lore::parse::parse_patch_feed_xml(&xml, min_index)?;
@@ -73,15 +76,11 @@ impl Mock {
         let html = responses.get(&key).cloned().ok_or_else(|| {
             anyhow::anyhow!("Available lists page not found in mock responses: {}", key)
         })?;
-        
+
         let page: LorePage<LoreMailingList> =
-            crate::api::lore::parse::parse_available_lists_html(&html, min_index)?
-                .ok_or_else(|| {
-                    anyhow::anyhow!(
-                        "No available lists page found in mock responses: {}",
-                        key
-                    )
-                })?;
+            crate::api::lore::parse::parse_available_lists_html(&html, min_index)?.ok_or_else(
+                || anyhow::anyhow!("No available lists page found in mock responses: {}", key),
+            )?;
         Ok(Some(page))
     }
 
@@ -93,18 +92,18 @@ impl Mock {
         let responses = self.responses.lock().await;
         let mut all_lists = Vec::new();
         let mut min_index = 0;
-        
+
         loop {
             let key = format!("available_lists_page_{min_index}");
             if let Some(html) = responses.get(&key) {
                 let page: LorePage<LoreMailingList> =
                     crate::api::lore::parse::parse_available_lists_html(html, min_index)?
                         .ok_or_else(|| {
-                        anyhow::anyhow!(
-                            "No available lists page found in mock responses: {}",
-                            key
-                        )
-                    })?;
+                            anyhow::anyhow!(
+                                "No available lists page found in mock responses: {}",
+                                key
+                            )
+                        })?;
                 all_lists.extend(page.items.iter().cloned());
                 if page.next_page_index.is_none() {
                     break;
@@ -114,7 +113,7 @@ impl Mock {
                 break;
             }
         }
-        
+
         Ok(ArcSlice::from(all_lists))
     }
 
@@ -133,9 +132,10 @@ impl Mock {
     ) -> anyhow::Result<ArcStr> {
         let responses = self.responses.lock().await;
         let key = format!("patch_html_{target_list}_{message_id}");
-        responses.get(&key).cloned().ok_or_else(|| {
-            anyhow::anyhow!("Patch HTML not found in mock responses: {}", key)
-        })
+        responses
+            .get(&key)
+            .cloned()
+            .ok_or_else(|| anyhow::anyhow!("Patch HTML not found in mock responses: {}", key))
     }
 
     /// Fetches a raw patch in plain text format.
@@ -153,9 +153,10 @@ impl Mock {
     ) -> anyhow::Result<ArcStr> {
         let responses = self.responses.lock().await;
         let key = format!("raw_patch_{target_list}_{message_id}");
-        responses.get(&key).cloned().ok_or_else(|| {
-            anyhow::anyhow!("Raw patch not found in mock responses: {}", key)
-        })
+        responses
+            .get(&key)
+            .cloned()
+            .ok_or_else(|| anyhow::anyhow!("Raw patch not found in mock responses: {}", key))
     }
 
     /// Fetches patch metadata in JSON format.
@@ -173,8 +174,9 @@ impl Mock {
     ) -> anyhow::Result<ArcStr> {
         let responses = self.responses.lock().await;
         let key = format!("patch_metadata_{target_list}_{message_id}");
-        responses.get(&key).cloned().ok_or_else(|| {
-            anyhow::anyhow!("Patch metadata not found in mock responses: {}", key)
-        })
+        responses
+            .get(&key)
+            .cloned()
+            .ok_or_else(|| anyhow::anyhow!("Patch metadata not found in mock responses: {}", key))
     }
 }

@@ -66,12 +66,10 @@ impl Core {
             Err(VarError::NotPresent) => {
                 // Try USERPROFILE if HOME is not set
                 env.env(ArcOsStr::from("USERPROFILE")).await?
-            },
+            }
             Err(e) => return Err(e.into()),
         };
-        let config_dir = Path::new(&config_base)
-            .join(".config")
-            .join("patch-hub");
+        let config_dir = Path::new(&config_base).join(".config").join("patch-hub");
         let config_file_path = config_dir.join("config.toml");
         let config_path = ArcPath::from(&config_file_path);
 

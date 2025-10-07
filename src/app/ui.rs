@@ -9,8 +9,8 @@ use crate::terminal::Terminal;
 
 mod core;
 mod data;
-mod mock;
 mod message;
+mod mock;
 
 pub use data::{MockData, UiState, ViewKind};
 pub use message::{Message, NavigationAction};
@@ -67,9 +67,7 @@ impl Ui {
                     .context("Awaiting response for show lists from UI actor")
                     .expect("UI actor died")
             }
-            Self::Mock(mock) => {
-                mock.show_lists(page).await
-            }
+            Self::Mock(mock) => mock.show_lists(page).await,
         }
     }
 
@@ -87,9 +85,7 @@ impl Ui {
                     .context("Awaiting response for show feed from UI actor")
                     .expect("UI actor died")
             }
-            Self::Mock(mock) => {
-                mock.show_feed(list, page).await
-            }
+            Self::Mock(mock) => mock.show_feed(list, page).await,
         }
     }
 
@@ -112,9 +108,7 @@ impl Ui {
                     .context("Awaiting response for show patch from UI actor")
                     .expect("UI actor died")
             }
-            Self::Mock(mock) => {
-                mock.show_patch(list, message_id, title).await
-            }
+            Self::Mock(mock) => mock.show_patch(list, message_id, title).await,
         }
     }
 
@@ -124,9 +118,7 @@ impl Ui {
             Self::Actual(sender) => {
                 let _ = sender.send(Message::UpdateSelection { index }).await;
             }
-            Self::Mock(mock) => {
-                mock.update_selection(index).await
-            }
+            Self::Mock(mock) => mock.update_selection(index).await,
         }
     }
 
@@ -144,9 +136,7 @@ impl Ui {
                     .context("Awaiting response for previous page from UI actor")
                     .expect("UI actor died")
             }
-            Self::Mock(mock) => {
-                mock.previous_page().await
-            }
+            Self::Mock(mock) => mock.previous_page().await,
         }
     }
 
@@ -164,9 +154,7 @@ impl Ui {
                     .context("Awaiting response for next page from UI actor")
                     .expect("UI actor died")
             }
-            Self::Mock(mock) => {
-                mock.next_page().await
-            }
+            Self::Mock(mock) => mock.next_page().await,
         }
     }
 
@@ -184,9 +172,7 @@ impl Ui {
                     .context("Awaiting response for navigate back from UI actor")
                     .expect("UI actor died")
             }
-            Self::Mock(mock) => {
-                mock.navigate_back().await
-            }
+            Self::Mock(mock) => mock.navigate_back().await,
         }
     }
 
@@ -204,9 +190,7 @@ impl Ui {
                     .context("Awaiting response for submit selection from UI actor")
                     .expect("UI actor died")
             }
-            Self::Mock(mock) => {
-                mock.submit_selection().await
-            }
+            Self::Mock(mock) => mock.submit_selection().await,
         }
     }
 
@@ -218,9 +202,7 @@ impl Ui {
                 let _ = sender.send(Message::GetState { tx }).await;
                 rx.await.unwrap_or_default()
             }
-            Self::Mock(mock) => {
-                mock.get_state().await
-            }
+            Self::Mock(mock) => mock.get_state().await,
         }
     }
 }

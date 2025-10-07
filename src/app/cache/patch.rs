@@ -2,8 +2,8 @@ use anyhow::Context;
 
 mod core;
 mod data;
-mod mock;
 pub mod message;
+mod mock;
 
 use crate::ArcStr;
 use crate::api::lore::LoreApi;
@@ -59,9 +59,7 @@ impl PatchCache {
                     .context("Awaiting response from PatchCache actor")
                     .expect("PatchCache actor died")
             }
-            Self::Mock(mock) => {
-                mock.get(list, message_id).await
-            }
+            Self::Mock(mock) => mock.get(list, message_id).await,
         }
     }
 
@@ -83,9 +81,7 @@ impl PatchCache {
                     .context("Awaiting response from PatchCache actor")
                     .expect("PatchCache actor died")
             }
-            Self::Mock(mock) => {
-                mock.invalidate(list, message_id).await
-            }
+            Self::Mock(mock) => mock.invalidate(list, message_id).await,
         }
     }
 
@@ -107,9 +103,7 @@ impl PatchCache {
                     .context("Awaiting response from PatchCache actor")
                     .expect("PatchCache actor died")
             }
-            Self::Mock(mock) => {
-                mock.is_available(list, message_id).await
-            }
+            Self::Mock(mock) => mock.is_available(list, message_id).await,
         }
     }
 }

@@ -74,7 +74,12 @@ impl Mock {
     ///
     /// # Returns
     /// Ok(()) if successful
-    pub async fn show_patch(&self, list: ArcStr, message_id: ArcStr, title: ArcStr) -> anyhow::Result<()> {
+    pub async fn show_patch(
+        &self,
+        list: ArcStr,
+        message_id: ArcStr,
+        title: ArcStr,
+    ) -> anyhow::Result<()> {
         let mut mock_data = self.data.lock().await;
         mock_data.state.view = ViewKind::Patch;
         mock_data.rendered_screens.push(format!(

@@ -1,7 +1,7 @@
 mod core;
 mod data;
-mod mock;
 mod message;
+mod mock;
 #[cfg(test)]
 mod tests;
 
@@ -86,9 +86,7 @@ impl Shell {
                     .context("Awaiting response for command execution with Shell")
                     .expect("shell actor died")
             }
-            Self::Mock(mock) => {
-                mock.execute(program, args, stdin).await
-            }
+            Self::Mock(mock) => mock.execute(program, args, stdin).await,
         }
     }
 
@@ -99,9 +97,7 @@ impl Shell {
     /// A vector of all executed commands, or None if this is not a mock instance.
     pub async fn get_commands(&self) -> Option<Vec<data::Command>> {
         match self {
-            Self::Mock(mock) => {
-                Some(mock.get_commands().await)
-            }
+            Self::Mock(mock) => Some(mock.get_commands().await),
             Self::Actual(_) => None,
         }
     }

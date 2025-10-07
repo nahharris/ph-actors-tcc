@@ -47,9 +47,10 @@ impl Mock {
     ) -> Result<ArcStr, anyhow::Error> {
         let responses = self.responses.lock().await;
         let key = MockRequestKey::get(url);
-        responses.get(&key).cloned().ok_or_else(|| {
-            anyhow::anyhow!("GET request not found in mock responses: {}", key.url)
-        })
+        responses
+            .get(&key)
+            .cloned()
+            .ok_or_else(|| anyhow::anyhow!("GET request not found in mock responses: {}", key.url))
     }
 
     /// Performs an HTTP POST request using mock responses.
@@ -69,9 +70,10 @@ impl Mock {
     ) -> Result<ArcStr, anyhow::Error> {
         let responses = self.responses.lock().await;
         let key = MockRequestKey::post(url);
-        responses.get(&key).cloned().ok_or_else(|| {
-            anyhow::anyhow!("POST request not found in mock responses: {}", key.url)
-        })
+        responses
+            .get(&key)
+            .cloned()
+            .ok_or_else(|| anyhow::anyhow!("POST request not found in mock responses: {}", key.url))
     }
 
     /// Performs an HTTP PUT request using mock responses.
@@ -91,9 +93,10 @@ impl Mock {
     ) -> Result<ArcStr, anyhow::Error> {
         let responses = self.responses.lock().await;
         let key = MockRequestKey::put(url);
-        responses.get(&key).cloned().ok_or_else(|| {
-            anyhow::anyhow!("PUT request not found in mock responses: {}", key.url)
-        })
+        responses
+            .get(&key)
+            .cloned()
+            .ok_or_else(|| anyhow::anyhow!("PUT request not found in mock responses: {}", key.url))
     }
 
     /// Performs an HTTP DELETE request using mock responses.

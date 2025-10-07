@@ -1,6 +1,6 @@
 mod core;
-mod mock;
 mod message;
+mod mock;
 #[cfg(test)]
 mod tests;
 
@@ -84,9 +84,7 @@ impl Render {
                     .context("Awaiting response for patch rendering with Render actor")
                     .expect("render actor died")
             }
-            Self::Mock(mock) => {
-                mock.render_patch(content).await
-            }
+            Self::Mock(mock) => mock.render_patch(content).await,
         }
     }
 }

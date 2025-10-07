@@ -55,7 +55,7 @@ impl Core {
         if let Some(parent) = path.parent() {
             let _ = tokio::fs::create_dir_all(parent).await;
         }
-        
+
         let res = OpenOptions::new()
             .write(true)
             .create(true)
@@ -74,7 +74,7 @@ impl Core {
         if let Some(parent) = path.parent() {
             let _ = tokio::fs::create_dir_all(parent).await;
         }
-        
+
         let res = OpenOptions::new()
             .write(true)
             .create(true)

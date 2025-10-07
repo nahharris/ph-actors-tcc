@@ -6,8 +6,8 @@ use tokio::sync::mpsc::Sender;
 use crate::ArcPath;
 
 mod core;
-mod mock;
 mod message;
+mod mock;
 #[cfg(test)]
 mod tests;
 
@@ -53,7 +53,6 @@ impl Fs {
         Self::Mock(mock::Mock::new())
     }
 
-
     /// Opens a file for reading only (does not create if it doesn't exist).
     pub async fn read_file(&self, path: ArcPath) -> Result<tokio::fs::File, io::Error> {
         match self {
@@ -68,9 +67,7 @@ impl Fs {
                     .context("Awaiting response for file read with Fs")
                     .expect("fs actor died")
             }
-            Self::Mock(mock) => {
-                mock.read_file(path).await
-            }
+            Self::Mock(mock) => mock.read_file(path).await,
         }
     }
 
@@ -88,9 +85,7 @@ impl Fs {
                     .context("Awaiting response for file write with Fs")
                     .expect("fs actor died")
             }
-            Self::Mock(mock) => {
-                mock.write_file(path).await
-            }
+            Self::Mock(mock) => mock.write_file(path).await,
         }
     }
 
@@ -108,9 +103,7 @@ impl Fs {
                     .context("Awaiting response for file append with Fs")
                     .expect("fs actor died")
             }
-            Self::Mock(mock) => {
-                mock.append_file(path).await
-            }
+            Self::Mock(mock) => mock.append_file(path).await,
         }
     }
 
@@ -128,9 +121,7 @@ impl Fs {
                     .context("Awaiting response for file removal with Fs")
                     .expect("fs actor died")
             }
-            Self::Mock(mock) => {
-                mock.remove_file(path).await
-            }
+            Self::Mock(mock) => mock.remove_file(path).await,
         }
     }
 
@@ -148,9 +139,7 @@ impl Fs {
                     .context("Awaiting response for directory read with Fs")
                     .expect("fs actor died")
             }
-            Self::Mock(mock) => {
-                mock.read_dir(path).await
-            }
+            Self::Mock(mock) => mock.read_dir(path).await,
         }
     }
 
@@ -168,9 +157,7 @@ impl Fs {
                     .context("Awaiting response for directory creation with Fs")
                     .expect("fs actor died")
             }
-            Self::Mock(mock) => {
-                mock.mkdir(path).await
-            }
+            Self::Mock(mock) => mock.mkdir(path).await,
         }
     }
 
@@ -188,9 +175,7 @@ impl Fs {
                     .context("Awaiting response for directory removal with Fs")
                     .expect("fs actor died")
             }
-            Self::Mock(mock) => {
-                mock.rmdir(path).await
-            }
+            Self::Mock(mock) => mock.rmdir(path).await,
         }
     }
 }

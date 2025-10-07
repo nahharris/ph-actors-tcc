@@ -6,8 +6,8 @@ use crate::log::Log;
 
 mod core;
 mod data;
-mod mock;
 mod message;
+mod mock;
 
 use data::MockData;
 pub use data::{Screen, UiEvent};
@@ -45,9 +45,7 @@ impl Terminal {
                     .expect("Terminal actor died");
                 Ok(())
             }
-            Terminal::Mock(mock) => {
-                mock.show(screen).await
-            }
+            Terminal::Mock(mock) => mock.show(screen).await,
         }
     }
 
@@ -61,9 +59,7 @@ impl Terminal {
                     .expect("Terminal actor died");
                 Ok(())
             }
-            Terminal::Mock(mock) => {
-                mock.quit().await
-            }
+            Terminal::Mock(mock) => mock.quit().await,
         }
     }
 }

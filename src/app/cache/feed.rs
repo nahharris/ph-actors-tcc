@@ -2,8 +2,8 @@ use anyhow::Context;
 
 mod core;
 mod data;
-mod mock;
 pub mod message;
+mod mock;
 
 use crate::ArcStr;
 use crate::api::lore::{LoreApi, LorePatchMetadata};
@@ -59,9 +59,7 @@ impl FeedCache {
                     .context("Awaiting response from FeedCache actor")
                     .expect("FeedCache actor died")
             }
-            Self::Mock(mock) => {
-                mock.get(list, index).await
-            }
+            Self::Mock(mock) => mock.get(list, index).await,
         }
     }
 
@@ -83,9 +81,7 @@ impl FeedCache {
                     .context("Awaiting response from FeedCache actor")
                     .expect("FeedCache actor died")
             }
-            Self::Mock(mock) => {
-                mock.get_slice(list, range).await
-            }
+            Self::Mock(mock) => mock.get_slice(list, range).await,
         }
     }
 
@@ -103,9 +99,7 @@ impl FeedCache {
                     .context("Awaiting response from FeedCache actor")
                     .expect("FeedCache actor died")
             }
-            Self::Mock(mock) => {
-                mock.refresh(list).await
-            }
+            Self::Mock(mock) => mock.refresh(list).await,
         }
     }
 
@@ -123,9 +117,7 @@ impl FeedCache {
                     .context("Awaiting response from FeedCache actor")
                     .expect("FeedCache actor died")
             }
-            Self::Mock(mock) => {
-                mock.invalidate(list).await
-            }
+            Self::Mock(mock) => mock.invalidate(list).await,
         }
     }
 
@@ -143,9 +135,7 @@ impl FeedCache {
                     .context("Awaiting response from FeedCache actor")
                     .expect("FeedCache actor died")
             }
-            Self::Mock(mock) => {
-                mock.is_available(list, range).await
-            }
+            Self::Mock(mock) => mock.is_available(list, range).await,
         }
     }
 
@@ -163,9 +153,7 @@ impl FeedCache {
                     .context("Awaiting response from FeedCache actor")
                     .expect("FeedCache actor died")
             }
-            Self::Mock(mock) => {
-                mock.len(list).await
-            }
+            Self::Mock(mock) => mock.len(list).await,
         }
     }
 
@@ -189,9 +177,7 @@ impl FeedCache {
                     .context("Awaiting response from FeedCache actor")
                     .expect("FeedCache actor died")
             }
-            Self::Mock(mock) => {
-                mock.is_loaded(list).await
-            }
+            Self::Mock(mock) => mock.is_loaded(list).await,
         }
     }
 
@@ -205,9 +191,7 @@ impl FeedCache {
                 }
                 Ok(())
             }
-            Self::Mock(mock) => {
-                mock.ensure_loaded(list).await
-            }
+            Self::Mock(mock) => mock.ensure_loaded(list).await,
         }
     }
 
@@ -225,9 +209,7 @@ impl FeedCache {
                     .context("Awaiting response from FeedCache actor")
                     .expect("FeedCache actor died")
             }
-            Self::Mock(mock) => {
-                mock.persist(list).await
-            }
+            Self::Mock(mock) => mock.persist(list).await,
         }
     }
 
@@ -245,9 +227,7 @@ impl FeedCache {
                     .context("Awaiting response from FeedCache actor")
                     .expect("FeedCache actor died")
             }
-            Self::Mock(mock) => {
-                mock.load(list).await
-            }
+            Self::Mock(mock) => mock.load(list).await,
         }
     }
 }

@@ -6,8 +6,8 @@ use tokio::sync::mpsc::Sender;
 use crate::{ArcOsStr, ArcStr};
 
 mod core;
-mod mock;
 mod message;
+mod mock;
 #[cfg(test)]
 mod tests;
 
@@ -101,9 +101,7 @@ impl Env {
                     .context("Awaiting response for environment variable get with Env")
                     .expect("env actor died")
             }
-            Self::Mock(mock) => {
-                mock.env(key).await
-            }
+            Self::Mock(mock) => mock.env(key).await,
         }
     }
 }

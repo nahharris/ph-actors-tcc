@@ -7,8 +7,8 @@ use anyhow::Context;
 
 mod core;
 mod data;
-mod mock;
 mod message;
+mod mock;
 #[cfg(test)]
 mod tests;
 
@@ -81,9 +81,7 @@ impl Config {
                     .context("Awaiting response for config load with Config actor")
                     .expect("Config actor is dead")
             }
-            Self::Mock(mock) => {
-                mock.load().await
-            }
+            Self::Mock(mock) => mock.load().await,
         }
     }
 
@@ -106,9 +104,7 @@ impl Config {
                     .context("Awaiting response for config save with Config actor")
                     .expect("Config actor is dead")
             }
-            Self::Mock(mock) => {
-                mock.save().await
-            }
+            Self::Mock(mock) => mock.save().await,
         }
     }
 
@@ -132,9 +128,7 @@ impl Config {
                     .context("Awaiting response for path with Config actor")
                     .expect("Config actor is dead")
             }
-            Self::Mock(mock) => {
-                mock.path(opt).await
-            }
+            Self::Mock(mock) => mock.path(opt).await,
         }
     }
 
@@ -152,9 +146,7 @@ impl Config {
                     .context("Setting path with Config actor")
                     .expect("Config actor is dead");
             }
-            Self::Mock(mock) => {
-                mock.set_path(opt, path).await
-            }
+            Self::Mock(mock) => mock.set_path(opt, path).await,
         }
     }
 
@@ -175,9 +167,7 @@ impl Config {
                     .context("Awaiting response for log level with Config actor")
                     .expect("Config actor died")
             }
-            Self::Mock(mock) => {
-                mock.log_level().await
-            }
+            Self::Mock(mock) => mock.log_level().await,
         }
     }
 
@@ -190,9 +180,7 @@ impl Config {
             Self::Actual(sender) => {
                 let _ = sender.send(Message::SetLogLevel { level }).await;
             }
-            Self::Mock(mock) => {
-                mock.set_log_level(level).await
-            }
+            Self::Mock(mock) => mock.set_log_level(level).await,
         }
     }
 
@@ -216,9 +204,7 @@ impl Config {
                     .context("Awaiting response for numeric value with Config actor")
                     .expect("Config actor died")
             }
-            Self::Mock(mock) => {
-                mock.usize(opt).await
-            }
+            Self::Mock(mock) => mock.usize(opt).await,
         }
     }
 
@@ -232,9 +218,7 @@ impl Config {
             Self::Actual(sender) => {
                 let _ = sender.send(Message::SetUSize { opt, size: value }).await;
             }
-            Self::Mock(mock) => {
-                mock.set_usize(opt, value).await
-            }
+            Self::Mock(mock) => mock.set_usize(opt, value).await,
         }
     }
 
@@ -258,9 +242,7 @@ impl Config {
                     .context("Awaiting response for renderer value with Config actor")
                     .expect("Config actor died")
             }
-            Self::Mock(mock) => {
-                mock.renderer(opt).await
-            }
+            Self::Mock(mock) => mock.renderer(opt).await,
         }
     }
 
@@ -274,9 +256,7 @@ impl Config {
             Self::Actual(sender) => {
                 let _ = sender.send(Message::SetRenderer { opt, renderer }).await;
             }
-            Self::Mock(mock) => {
-                mock.set_renderer(opt, renderer).await
-            }
+            Self::Mock(mock) => mock.set_renderer(opt, renderer).await,
         }
     }
 }
