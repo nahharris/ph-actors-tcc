@@ -1,0 +1,19 @@
+\section{Motivação para Redesign}
+
+As limitações descritas acima fornecem um caso convincente para redesign arquitetural. O Modelo de Atores oferece várias vantagens que abordam essas questões:
+
+\subsection{Concorrência e Isolamento}
+
+O Modelo de Atores suporta naturalmente operações concorrentes através de passagem de mensagens, permitindo que a aplicação lide com múltiplas operações de I/O simultaneamente sem bloquear a interface do usuário.
+
+\subsection{Desacoplamento}
+
+Atores se comunicam exclusivamente através de mensagens, criando limites claros entre componentes e reduzindo o acoplamento. Isso torna o sistema mais modular e mais fácil de testar.
+
+\subsection{Isolamento de Estado}
+
+Cada ator gerencia seu próprio estado independentemente, eliminando as questões complexas de ownership que surgem de estado mutável compartilhado em Rust.
+
+\subsection{Extensibilidade}
+
+A arquitetura baseada em mensagens torna mais fácil adicionar novas funcionalidades sem refatoração extensiva, já que novos atores podem ser adicionados sem modificar os existentes.

@@ -1,0 +1,22 @@
+\subsubsection{Ator de Cache de Lista de Discussão}
+
+Armazena em cache a lista de todas as listas de discussão disponíveis da API do Lore. Ele busca a lista completa, ordena alfabeticamente e a persiste no sistema de arquivos para acelerar inicializações subsequentes da aplicação. Ele gerencia validação de cache para atualizar periodicamente a lista.
+
+\textbf{Depends on:}
+
+\begin{itemize}
+    \item \textbf{API do Lore}: Para buscar os dados da lista de discussão
+    \item \textbf{Sistema de Arquivos}: Para persistir o cache em disco
+    \item \textbf{Config}: Para obter o caminho do arquivo de cache
+    \item \textbf{Log}: Para registrar operações de cache
+\end{itemize}
+
+\textbf{Mensagens:}
+
+\begin{itemize}
+    \item \textbf{Get}: Recupera uma única lista de discussão por seu índice na lista ordenada
+    \item \textbf{GetSlice}: Recupera um intervalo de listas de discussão para paginação
+    \item \textbf{Refresh}: Força uma atualização completa do cache da API
+    \item \textbf{Invalidate}: Limpa o cache em memória e em disco
+    \item \textbf{Len}: Retorna o número total de listas de discussão em cache
+\end{itemize}

@@ -1,0 +1,15 @@
+\subsection{Ator de Sistema de Arquivos}
+
+O ator de Sistema de Arquivos fornece acesso thread-safe a operações do sistema de arquivos através do padrão Modelo de Atores. Ele encapsula todas as operações de arquivo e diretório, fornecendo uma interface unificada tanto para acesso real ao sistema de arquivos quanto para implementações mock para testes.
+
+\textbf{Mensagens:}
+
+\begin{itemize}
+    \item \textbf{ReadFile}: Abre um arquivo apenas para leitura (não cria se não existir)
+    \item \textbf{WriteFile}: Abre um arquivo para escrita (trunca conteúdo, cria se necessário)
+    \item \textbf{AppendFile}: Abre um arquivo para anexar (cria se necessário)
+    \item \textbf{RemoveFile}: Remove um arquivo do sistema de arquivos
+    \item \textbf{ReadDir}: Lê o conteúdo de um diretório
+    \item \textbf{MkDir}: Cria um diretório e seus pais
+    \item \textbf{RmDir}: Remove um diretório e seu conteúdo
+\end{itemize}

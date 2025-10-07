@@ -1,0 +1,16 @@
+\section{Arquitetura Atual}
+
+A implementação atual do Patch-Hub segue uma arquitetura principalmente single-threaded e monolítica com os seguintes módulos principais:
+
+\begin{itemize}
+    \item \textbf{\texttt{lore}}: Interface para interagir com a API do lore para buscar dados de patches
+    \item \textbf{\texttt{ui}}: Renderização de terminal e lógica de exibição
+    \item \textbf{\texttt{cli}}: Parsing de argumentos de linha de comando
+    \item \textbf{\texttt{app}}: Estado central da aplicação e gerenciamento de dados
+    \begin{itemize}
+        \item \texttt{logger}: Gerencia funcionalidade de logging
+        \item \texttt{popup}: Cria e gerencia diálogos popup
+        \item \texttt{config}: Gerencia configurações da aplicação
+    \end{itemize}
+    \item \textbf{\texttt{handler}}: Manipulação de entrada do usuário e processamento de eventos
+\end{itemize}

@@ -1,0 +1,17 @@
+\subsection{Ator da API do Lore}
+
+O ator da API do Lore gerencia toda a comunicação com a API externa do Lore patchwork. Ele abstrai os detalhes das requisições HTTP e parsing de dados, fornecendo uma interface limpa e tipada para buscar dados como listas de discussão, séries de patches e patches individuais. Ele atua como um tradutor entre as estruturas de dados internas da aplicação e as respostas brutas da API. Ele não realiza nenhum cache por si só.
+
+\textbf{Depends on:}
+
+\begin{itemize}
+    \item \textbf{Rede}: Para executar as requisições HTTP subjacentes
+\end{itemize}
+
+\textbf{Mensagens:}
+
+\begin{itemize}
+    \item \textbf{GetAvailableListsPage}: Busca uma lista paginada de listas de discussão disponíveis
+    \item \textbf{GetPatchFeedPage}: Busca um feed paginado de patches para uma lista de discussão específica
+    \item \textbf{GetRawPatch}: Busca o conteúdo bruto de um único patch
+\end{itemize}

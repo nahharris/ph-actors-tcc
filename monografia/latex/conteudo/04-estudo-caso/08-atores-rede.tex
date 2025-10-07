@@ -1,0 +1,13 @@
+\subsection{Ator de Rede}
+
+O ator de Rede fornece acesso thread-safe a operações HTTP através do padrão Modelo de Atores. Ele gerencia todas as requisições HTTP usando a biblioteca reqwest, fornecendo uma interface unificada tanto para operações reais de rede quanto para implementações mock para testes.
+
+\textbf{Mensagens:}
+
+\begin{itemize}
+    \item \textbf{Get}: Executa uma requisição HTTP GET para a URL especificada com headers opcionais
+    \item \textbf{Post}: Executa uma requisição HTTP POST para a URL especificada com headers opcionais e corpo
+    \item \textbf{Put}: Executa uma requisição HTTP PUT para a URL especificada com headers opcionais e corpo
+    \item \textbf{Delete}: Executa uma requisição HTTP DELETE para a URL especificada com headers opcionais
+    \item \textbf{Patch}: Executa uma requisição HTTP PATCH para a URL especificada com headers opcionais e corpo
+\end{itemize}

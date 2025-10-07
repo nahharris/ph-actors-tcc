@@ -1,0 +1,40 @@
+\section{Limitações Arquiteturais}
+
+Apesar de sua funcionalidade, a implementação atual do Patch-Hub enfrenta desafios arquiteturais significativos que limitam sua flexibilidade e manutenibilidade:
+
+\subsection{Restrições do Sistema de Ownership do Rust}
+
+A limitação mais crítica vem do sistema rigoroso de ownership do Rust. A aplicação usa uma variável central \texttt{app} que mantém configurações, popups e estado da aplicação. Isso cria um problema arquitetural fundamental:
+
+\begin{itemize}
+    \item Todo valor em Rust deve ter exatamente um proprietário
+    \item Para modificar o app, uma referência mutável (\texttt{\&mut}) é necessária
+    \item Popups precisam modificar dados no app, requerendo uma segunda referência \texttt{\&mut} ao app
+    \item Rust proíbe ter duas referências \texttt{\&mut} simultâneas aos mesmos dados
+\end{itemize}
+
+Esta restrição impede que popups modifiquem dados da aplicação, limitando-os à funcionalidade apenas de exibição. A solução atual envolve refatoração extensiva sempre que novas funcionalidades precisam ser adicionadas.
+
+\subsection{Limitações Single-Threaded}
+
+A aplicação é principalmente single-threaded, o que cria gargalos ao realizar operações de I/O, tais como:
+
+\begin{itemize}
+    \item Requisições de rede para a API do lore
+    \item Operações do sistema de arquivos
+    \item Atualizações de renderização do terminal
+    \item Lógica complicada para mostrar telas de carregamento
+\end{itemize}
+
+Este design impede que a aplicação lide eficientemente com operações concorrentes e pode levar a interfaces de usuário não responsivas durante operações de rede ou arquivo.
+
+\subsection{Acoplamento Forte}
+
+A arquitetura atual exibe acoplamento forte entre diferentes componentes:
+
+\begin{itemize}
+    \item Lógica de UI está entrelaçada com lógica de negócio
+    \item Gerenciamento de configuração está profundamente embarcado no estado da aplicação
+    \item Tratamento de erro está espalhado por todo o código
+    \item Testes se tornam difíceis devido à estrutura monolítica e código com efeitos colaterais usado em todos os lugares
+\end{itemize}

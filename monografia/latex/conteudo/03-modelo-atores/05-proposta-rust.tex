@@ -1,0 +1,61 @@
+\section{Proposta para Rust}
+
+Uma das principais contribuições deste trabalho é a proposta de um framework para aplicações centralizadas escritas em Rust usando o Modelo de Atores. Uma vez que a teoria sobre o Modelo de Atores e as implementações conhecidas foram discutidas, é hora de adaptar suas abstrações para as necessidades e características específicas de aplicações centralizadas em Rust.
+
+\subsection{Por que Rust?}
+
+O Modelo de Atores é amplamente conhecido por sua dinamicidade e flexibilidade, com a maioria de suas implementações famosas sendo em runtimes flexíveis como BEAM ou JVM. Rust é bem o oposto disso, uma linguagem moderna com um sistema de tipos forte e um compilador poderoso o suficiente para validar quase tudo em tempo de compilação.
+
+Pode soar contraditório usar uma linguagem rígida com um padrão flexível, mas é exatamente o propósito deste trabalho: experimentar com o Modelo de Atores fora de sua zona de conforto. Isso permitirá a experimentação dos limites tanto do Modelo de Atores quanto da linguagem de programação Rust.
+
+\subsection{Introdução Rápida ao Rust}
+
+Rust é conhecido por seus mecanismos de segurança que forçam verificação em tempo de compilação de muitas coisas e tornam estados inválidos impossíveis de serem escritos em certos casos.
+
+Os conceitos mais importantes aqui são:
+
+\subsubsection{Segurança de Memória}
+
+Um espaço de memória tem um, e apenas um, proprietário (uma variável), este proprietário determina o ciclo de vida do espaço de memória. Uma vez que o proprietário é destruído, o espaço de memória é liberado. O proprietário também determina se a região é mutável ou não.
+
+\subsubsection{Sistema de Tipos}
+
+O sistema de tipos forte e poderoso é uma característica-chave do Rust. Ele não tem herança, mas compensa isso com tuplas, structs, enums e traits.
+
+\subsection{Concorrência e Paralelismo}
+
+Esta proposta engloba o uso de green-threads que não têm suporte nativo em Rust. Isso é porque Rust, ao contrário de Elixir, Golang, ou Java, tem um runtime muito mínimo, similar ao runtime do C. O suporte para green-threads é fornecido pela biblioteca Tokio e eles são chamados de \emph{tasks}.
+
+\subsection{Compartilhamento de Memória}
+
+O isolamento de memória é desejável e uma característica nativa do Modelo de Atores, já que atores são projetados para executar em ambientes físicamente isolados. Isso aumenta a segurança, mas degrada a performance, já que dados entre atores são compartilhados por cópia, não por referência.
+
+Mas esse não é o caso para esta proposta, já que a aplicação não é distribuída. Além disso, os problemas com compartilhamento de memória em sistemas concorrentes estão geralmente relacionados a condições de corrida e mutabilidade indesejada. Rust fornece mecanismos nativos eficientes para compartilhar espaços de memória de forma segura.
+
+\subsection{Passagem de Mensagens e Endereços}
+
+Tanto Rust quanto Tokio têm uma abstração nativa de passagem de mensagens chamada \emph{channel}. Ao contrário do método \texttt{send} do Elixir, channels são fortemente tipados e com ciclos de vida definidos.
+
+\subsection{Mensagens Tipadas}
+
+Assim como tudo mais em Rust, as mensagens enviadas através de channels devem ser tipadas. Como um ator pode aceitar diferentes tipos de mensagens, um \emph{enum} será usado.
+
+\subsection{Representação do Ator}
+
+Agora é hora de definir como um ator será em termos de código Rust. Primeiro, haverá um módulo para cada ator, e se um ator é subordinado à existência de outro ator pela lógica de negócio, ele pode ser criado como um submódulo.
+
+Três partes principais de um ator foram apresentadas:
+
+\begin{itemize}
+    \item O endereço que permite a comunicação entre atores
+    \item As mensagens que serão enviadas ao ator
+    \item O manipulador que lida com as mensagens recebidas
+\end{itemize}
+
+Essas três partes serão traduzidas para partes separadas do código Rust como:
+
+\begin{itemize}
+    \item Uma struct pública para envolver o channel \emph{mpsc} que serve como o endereço com métodos de envio
+    \item Um enum privado para definir os tipos das mensagens
+    \item Uma struct privada para gerenciar o estado do ator e definir como lidar com cada mensagem
+\end{itemize}

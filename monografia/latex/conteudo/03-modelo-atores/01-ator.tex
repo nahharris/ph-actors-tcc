@@ -1,0 +1,17 @@
+\section{O que é um Ator?}
+
+Hewitt propõe este primitivo chamado Ator que é identificado por um endereço. Atores são entidades que se comunicarão entre si através de mensagens. Uma vez que uma mensagem é recebida, um Ator pode:
+
+\begin{itemize}
+    \item Enviar mensagens para Atores cujos endereços conhece
+    \item Criar novos Atores
+    \item Modificar seu próprio comportamento para lidar com mensagens futuras recebidas
+\end{itemize}
+
+Mensagens são a unidade de comunicação e são passadas de forma assíncrona entre atores. De acordo com o princípio de segurança e localidade, ao processar uma mensagem recebida, um Ator pode apenas enviar mensagens para Atores cujos endereços foram:
+
+\begin{itemize}
+    \item Conhecidos anteriormente
+    \item Parte da mensagem recebida
+    \item Criados durante o processamento atual
+\end{itemize}
