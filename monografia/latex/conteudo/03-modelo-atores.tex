@@ -1,8 +1,201 @@
 \chapter{Modelo de Atores}
 
-\input{conteudo/03-modelo-atores/00-introducao}
-\input{conteudo/03-modelo-atores/01-ator}
-\input{conteudo/03-modelo-atores/02-indeterminacao}
-\input{conteudo/03-modelo-atores/03-teoria}
-\input{conteudo/03-modelo-atores/04-implementacoes}
-\input{conteudo/03-modelo-atores/05-proposta-rust}
+O Modelo de Atores de computação foi estabelecido por Carl Hewitt em 1973, baseado em trabalhos anteriores de Peter Bishop e Richard Steiger. Seus objetivos eram abordar os novos desafios impostos pelos sistemas massivamente concorrentes e paralelos que emergiram com a computação em nuvem e arquiteturas many-core.
+
+Seus objetivos foram alcançados criando um modelo computacional que é inerentemente concorrente. Uma grande mudança dos modelos anteriores é que ele é baseado em leis físicas, ao invés de álgebra pura. A hipótese mais importante defendida pelo trabalho de Hewitt é:
+
+\begin{quote}
+Toda computação fisicamente possível pode ser diretamente implementada com Atores
+\end{quote}
+
+O Modelo de Atores representa uma reformulação completa da computação concorrente, passando de máquinas de estado globais para sistemas distribuídos, assíncronos e baseados em passagem de mensagens que melhor refletem a realidade física dos sistemas de computação modernos.
+
+\section{O que é um Ator?}
+
+Hewitt propõe este primitivo chamado Ator que é identificado por um endereço. Atores são entidades que se comunicarão entre si através de mensagens. Uma vez que uma mensagem é recebida, um Ator pode:
+
+\begin{itemize}
+    \item Enviar mensagens para Atores cujos endereços conhece
+    \item Criar novos Atores
+    \item Modificar seu próprio comportamento para lidar com mensagens futuras recebidas
+\end{itemize}
+
+Mensagens são a unidade de comunicação e são passadas de forma assíncrona entre atores. De acordo com o princípio de segurança e localidade, ao processar uma mensagem recebida, um Ator pode apenas enviar mensagens para Atores cujos endereços foram:
+
+\begin{itemize}
+    \item Conhecidos anteriormente
+    \item Parte da mensagem recebida
+    \item Criados durante o processamento atual
+\end{itemize}
+
+\section{Indeterminação}
+
+Aqui vem um dos princípios fundamentais do Modelo de Atores e o que o diferencia de outros padrões. A ordem de chegada das mensagens não é garantida e o Modelo de Atores não tentará resolver isso, mas sim tratar isso como uma propriedade natural do domínio. O Modelo de Atores é projetado para sistemas distribuídos, o que significa que dois atores podem estar se comunicando através de longas distâncias físicas.
+
+Isso significa que as mensagens enviadas podem levar tempo ilimitado para chegar na máquina destino, e mesmo que cheguem exatamente ao mesmo tempo, os árbitros de hardware que as ordenarão não garantirão nenhum tipo de ordenação. Considerar os fatores físicos é o que diferencia o Modelo de Atores de padrões de sistemas concorrentes puramente algébricos.
+
+A ordenação indeterminada de mensagens, somada ao fato de que as mensagens podem alterar o comportamento de um Ator, tem por consequência que as mesmas condições iniciais podem resultar em resultados diferentes. Além disso, o próprio sistema é dito não ter um estado global definido. Como a comunicação é assíncrona, a qualquer momento é possível ter mensagens transito ou Atores em estado transitório não sendo possível garantir que em algum momento todos os atores estarão em estados bem definidos.
+
+Isso é o que garante a justiça (fairness).
+
+\section{Implementações Conhecidas}
+
+O Modelo de Atores recebeu a devida atenção e saiu do estado de um modelo/teoria computacional para se transformar em um padrão arquitetural com foco em abordar sistemas distribuidos. Bibliotecas e arcabouços como Akka (Java) e Orleans (C\#) fornecem suporte ao Modelo de Atores para linguagens de programação. No entanto, a implementação mais proeminente e bem-sucedida é a linguagem de programação Elixir.
+
+Na década de 1980, a empresa de telecomunicações sueca Ericsson experimentou com linguagens de programação funcional para abordar desafios de telecomunicações, desenvolvendo eventualmente Erlang. Erlang focou em concorrência, distribuição e tolerância a falhas implementando o Modelo de Atores no nível da linguagem. BEAM, a máquina abstrata que serviu como runtime para programas Erlang, representou a maior conquista da Ericsson neste domínio. (Na época, o termo "máquina virtual" ainda não era aplicado a tais sistemas.) No entanto, a sintaxe do Erlang era considerada complexa, criando uma barreira para adoção mais ampla.
+
+No início dos anos 2010, José Valim estava desenvolvendo soluções para sistemas distribuídos, os mesmos desafios que a Ericsson havia abordado três décadas antes. Ao descobrir Erlang e BEAM, ele reconheceu sua eficácia, mas os achou difíceis de usar. Isso levou à criação de Elixir, que combinou o poder do BEAM e a flexibilidade do Modelo de Atores com uma sintaxe mais acessível inspirada em Ruby.
+
+Ao contrário de implementações baseadas em bibliotecas que adicionam suporte ao Modelo de Atores a linguagens existentes, Elixir torna o Modelo de Atores o paradigma central da linguagem. Isso é alcançado através de suporte nativo para green threads, tolerância a falhas e comunicação inter-processo remota. Esses são diferenciadores que estabeleceram Elixir como a principal plataforma do Modelo de Atores.
+
+Esta linguagem dinâmica continua ganhando reconhecimento, sendo eleita como a segunda linguagem de programação mais admirada por três anos consecutivos na Pesquisa de Desenvolvedores do Stack Overflow. Portanto, este trabalho usará Elixir como a implementação de referência e exemplo de estado da arte do Modelo de Atores.
+
+\subsection{A Linguagem de Programação Elixir}
+
+A filosofia de design do Elixir difere fundamentalmente das linguagens orientadas a objetos. Ao invés de classes instanciadas em objetos, Elixir usa módulos que geram atores por design. Esta abordagem torna o Modelo de Atores o paradigma central da linguagem.
+
+Os atores no Elixir são representados por processos Erlang (daqui em diante referidos simplesmente como processos). Estes processos leves são criados usando a função \texttt{spawn}, que recebe três parâmetros: um módulo, um nome de função daquele módulo e uma lista de argumentos. Quando chamada, \texttt{spawn} executa a função especificada em um processo dedicado a ele e retorna um \emph{Process Identifier} (PID) que serve como o endereço do ator.
+
+A comunicação entre atores acontece através de passagem de mensagens usando duas funções: \texttt{send} para despachar mensagens para um processo usando seu PID como referência, e \texttt{receive} para lidar com mensagens recebidas dentro de um processo. Este mecanismo de passagem de mensagens assíncrono forma a base das capacidades concorrentes e distribuídas do Elixir.
+
+Como Elixir é construída extensivamente sobre o ecossistema do Erlang e executa na máquina virtual BEAM, referências tanto ao Erlang quanto ao BEAM aparecerão frequentemente ao longo desta discussão.
+
+\subsubsection{O Modelo de Atores em Elixir}
+
+A implementação do Modelo de Atores em Elixir é simples, requerendo esforço mínimo para criar sistemas de atores concorrentes e distribuídos. O design da linguagem torna a programação baseada em atores natural ao invés de um padrão adicional a aprender.
+
+\textbf{Mensagens} em Elixir são representadas por qualquer estrutura de dados válida: átomos, strings, números, tuplas, listas, ou mesmo estruturas aninhadas complexas. Esta flexibilidade permite que desenvolvedores projetem protocolos de mensagem que melhor se adequem às necessidades de sua aplicação sem serem restringidos por formatos de mensagem rígidos.
+
+\textbf{Endereços} são \emph{Process Identifiers} do Erlang (PIDs), que são identificadores únicos automaticamente gerados pela máquina virtual BEAM quando um processo é gerado. Estes PIDs servem como o endereço do ator, permitindo roteamento de mensagens tanto em ambientes locais quanto distribuídos.
+
+\textbf{Manipulação de mensagens} ocorre através da função \texttt{receive}, que permite que um processo aguarde o recebimento de uma mensagem, faça casamento de padrões. Este mecanismo permite que atores processem diferentes tipos de mensagens com lógica de manipulação apropriada, tornando o sistema tanto robusto quanto expressivo.
+
+\subsubsection{Noções Básicas do Elixir}
+
+Elixir é uma linguagem de programação dinamicamente tipada, o que significa que tipos são verificados apenas em tempo de execução. Versões mais novas da linguagem estão experimentando com anotações de tipo estáticas opcionais, mas ainda em estágios iniciais de desenvolvimento e adoção.
+
+Existem muitos tipos de dados nativos diferentes no Elixir:
+
+\begin{lstlisting}[language=ruby, caption=Tipos de Dados em Elixir]
+i = 123 
+f = 3.14 
+s = "héllo" # UTF-8 
+c = 'hello' # Charlists (lista de ints)
+b = true
+a = :atom
+\end{lstlisting}
+
+A sintaxe especial \texttt{:identificador} é usada para declarar átomos, um conceito do Erlang. Eles são constantes nomeadas por si mesmas e usadas em muitos cenários. Eles são usados para representar códigos de status, nomes de funções, tags ou mesmo representar valores de dados primitivos:
+
+\begin{lstlisting}[language=ruby, caption=Átomos em Elixir]
+true == :true
+false == :false
+nil == :nil
+\end{lstlisting}
+
+Quando se trata de dados compostos, Elixir tem 2 tipos principais (para o escopo deste trabalho): tuplas e listas. As primeiras têm tamanho fixo e são rapidamente indexáveis. As últimas são listas encadeadas simples com comprimento dinâmico. Tuplas são muito usadas para representar dados estruturados simples. Os dados como um todo no Elixir são imutáveis, o que significa que você não pode alterar dados, mas apenas usá-los para produzir novos dados.
+
+\begin{lstlisting}[language=ruby, caption=Estruturas de Dados em Elixir]
+response = {:ok, "Some message"}
+status = elem(response, 0) # :ok
+response = put_elem(response, 1, "Another message") # {:ok, "Another message"}
+
+data = [1, 2, 3, 4]
+data = ["0" | data] # ["0", 1, 2, 3, 4]
+data = data ++ [5] # ["0", 1, 2, 3, 4, 5]
+\end{lstlisting}
+
+O \texttt{=} é chamado de operador de \emph{binding}, isso porque não simplesmente faz atribuição, mas pode ser usado para casamento de padrões.
+
+\begin{lstlisting}[language=ruby, caption=Casamento de Padrões em Elixir]
+x = 1
+1 = x # Isso funciona
+2 = x # Isso irá causar um erro
+
+# Desestruturar tuplas
+{status, message} = {:err, "the system panicked"}
+
+IO.puts "It's a #{status}. Because #{message}"
+# It's a err. Because the system panicked
+\end{lstlisting}
+
+Mais amplamente, correspondência de padrões pode ser feita com a sintaxe \texttt{->}:
+
+\begin{lstlisting}[language=ruby, caption=Estruturas de Controle em Elixir]
+response = {:ok, "Content"}
+
+case response do
+	{:ok, content} -> IO.puts "Success with content: #{content}"
+	{:err, cause} -> IO.puts "Ugh, it failed due to: #{cause}"
+end
+\end{lstlisting}
+
+Em Elixir, existem algumas formas diferentes de declarar funções, e elas podem ser agrupadas com o uso de módulos:
+
+\begin{lstlisting}[language=ruby, caption=Módulos e Funções em Elixir]
+defmodule Math do
+  # Função pública
+  def add(a, b) do
+    a + b
+  end
+
+  # Forma abreviada de uma linha
+  def mul(a, b), do: a * b
+
+  # Função privada (apenas chamável dentro do módulo)
+  defp square(x), do: x * x
+
+  # Múltiplas declarações de função com casamento de padrões
+  def abs(n) when is_number(n) and n < 0, do: -n
+  def abs(n) when is_number(n), do: n
+end
+
+IO.puts(Math.add(2, 3))   # 5
+IO.puts(Math.mul(4, 5))   # 20
+\end{lstlisting}
+
+\subsection{Exemplo em Elixir}
+
+Agora que você foi introduzido a alguma sintaxe do Elixir, veja um exemplo simples de como implementar um sistema usando atores em Elixir:
+
+\begin{lstlisting}[language=ruby, caption=Exemplo de Ator Echo em Elixir]
+defmodule Echo do
+    def init do
+        # Aguarda por uma mensagem
+        receive do
+            # Obtém o remetente e conteúdo da mensagem
+            {sender, msg} -> 
+                # Ecoa a resposta com sucesso (`:ok`)
+                send(sender, {:ok, "Echoing: #{msg}"})
+                # Loop
+                init()
+        end
+    end
+end
+
+defmodule Example do
+    def main do
+        # Inicia o ator
+        addr = spawn(Echo, :init, []) 
+        # Envia uma mensagem
+        send(addr, {self(), "Hello world"}) 
+        
+        # Aguarda a resposta
+        receive do 
+            {:ok, response} -> 
+                # Exibe a resposta
+                IO.puts(response) 
+        end
+    end
+end
+\end{lstlisting}
+
+No exemplo acima, é definido um ator echo simples. Ele recebe uma mensagem que deve conter o endereço do remetente e alguma mensagem. Ele então envia de volta ao remetente uma mensagem com conteúdo \texttt{:ok} e a mensagem recebida prefixada com \texttt{Echoing: }. Finalmente, há uma chamada recursiva para \texttt{init} para que o ator possa lidar com mais mensagens, já que Elixir não tem loops.
+
+No módulo \texttt{Example}, a chamada para \texttt{spawn} iniciará o ator através da função \texttt{init} do módulo \texttt{Echo} sem parâmetros. Esta função retornará o PID do processo criado que serve como o endereço do ator. A função \texttt{send} envia ao ator recém-criado uma tupla onde o primeiro elemento é o PID do processo atual e o segundo é a string \texttt{"Hello world"}.
+
+Neste momento, a chamada para \texttt{receive} na função \texttt{init} entra em ação. Ela receberá a mensagem e retornará ao remetente uma nova tupla onde o primeiro elemento é \texttt{:ok} e o segundo é a string \texttt{"Echoing: Hello world"}. Por causa da chamada recursiva, este ator está pronto para receber mais mensagens.
+
+A chamada para \texttt{receive} na função \texttt{main} agora lidará com a resposta do ator. Ela aguardou pacientemente por uma resposta e pode agora verificar com casamento de padrões que a resposta realmente contém um \texttt{:ok} e exibir a string \texttt{Echoing: Hello world} no terminal.
+
+Note que esse código não é executado sequencialmente. A chamada de \texttt{send} do lado do módulo \texttt{Example} não vai aguardar o ator de echo processar a mensagem e gerar uma resposta. Assim que a mensagem é enviada o módulo \texttt{Example} fica parado na chamada \texttt{receive} aguardando uma resposta.

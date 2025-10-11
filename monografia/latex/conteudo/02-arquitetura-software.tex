@@ -1,9 +1,63 @@
 \chapter{Arquitetura de Software}
 
-\input{conteudo/02-arquitetura-software/00-introducao}
-\input{conteudo/02-arquitetura-software/01-requisitos}
-\input{conteudo/02-arquitetura-software/02-definicao}
-\input{conteudo/02-arquitetura-software/03-padroes}
-\input{conteudo/02-arquitetura-software/04-solid}
-\input{conteudo/02-arquitetura-software/05-avaliacao}
-\input{conteudo/02-arquitetura-software/06-justificativa}
+Todo sistema é desenvolvido com um propósito. A forma de saber se o sistema está atendendo ao seu propósito é estabelecendo requisitos que impõem restrições e direcionam o processo de desenvolvimento para a direção correta. Os requisitos em si são uma grande área de pesquisa, mas podem ser principalmente divididos em dois grupos: funcionais e não funcionais.
+
+\section{Requisitos Funcionais e Não Funcionais}
+
+Requisitos funcionais são restrições que especificam o que o sistema deve ser capaz de fazer. Um requisito funcional para uma rede social pode ser a capacidade de postar fotos. Por outro lado, requisitos não funcionais, ou requisitos de qualidade, são restrições que definem como algo deve ser feito. Um requisito não funcional para a rede social mencionada pode ser o armazenamento seguro das fotos dos usuários, impedindo acesso não autorizado a elas.
+
+Em resumo, requisitos funcionais definem funcionalidades, enquanto os não funcionais estabelecem expectativas de qualidade.
+
+\section{Definição de Arquitetura de Software}
+
+A arquitetura de software é definida como um campo de pesquisa que busca entender como decisões de design afetam a estrutura, comportamento e qualidade geral de um sistema de software, servindo como base para decisões subsequentes. É o campo que lança luz sobre a definição de requisitos de qualidade e como atender a eles. 
+
+\section{Padrões Arquiteturais}
+
+Muitas decisões de design estudas pela arquitetura de software podem ser agrupadas de acordo com a categoria de problema que resolvem. Desse modo, se cria um arcabouço de conceitos bem estabelecidos reutilizáveis chamados de padrões arquiteturais (daqui em diante simplesmente referidos como "padrões").  
+
+Padrões tem por objetivo garantir a qualidade do software oferecendo soluções para atender aos requisitos não funcionais de sistemas. Isso significa que podem ser aplicados a qualquer sistema, independentemente de suas funcionalidades, desde que tenham requisitos de qualidade similares.
+
+Todavia, como explorado pelo artigo \emph{Software Patterns in Practice: an Empirical Study}, em geral, na indústria, na concepção dos projetos, as funcionalidades são mais levadas em conta do que os requisitos de qualidade. O mesmo artigo ainda afirma que se funcionalidades fossem a única parte importante, não haveria necessidade de ter arquitetura de software. 
+
+Por isso, é necessário estudar e entender os padrões existentes e como isso traz consequências de longo prazo para confiabilidade, manutenibilidade, testabilidade, entre outras complicações para um sistema.
+
+\section{Avaliação de Adequação de Padrões}
+
+O primeiro e mais importante fator a ser analisado para se identificar a adequação de um padrão para um projeto é, evidentemente, o casamento entre os requisitos de qualidade que o padrão aborda e o requisitos de qualidade do sistema.
+
+Uma outra caracteristica a ser considerada é o contexto da aplicação. Existem padrões que abordam desafios comuns para aplicações de nuvem, outros para aplicações de interface gráfica. Escolher um padrão de um domínio distinto irá fornecer poucas ferramentas úteis para a resolução do problema.
+
+Por fim, é necessário entender os custos que aquele padrão trás. Qual impacto esperado na performance do sistema? O quanto ele enrijece a estrutura pro projeto? O quão mais complicado fica a organização do código? Todas essas perguntas precisam ser feitas.
+
+\section{Princípios SOLID}
+
+Os princípios SOLID são um conjunto de diretrizes para o design de software orientado a objetos que visam criar sistemas mais flexíveis, manuteníveis e extensíveis. Estes princípios são:
+
+\begin{itemize}
+    \item \textbf{Single Responsibility Principle (SRP)}: Uma classe deve ter apenas uma razão para mudar, ou seja, deve ter apenas uma responsabilidade.
+    
+    \item \textbf{Open/Closed Principle (OCP)}: Entidades de software devem estar abertas para extensão, mas fechadas para modificação.
+    
+    \item \textbf{Liskov Substitution Principle (LSP)}: Objetos de uma superclasse devem ser substituíveis por objetos de suas subclasses sem alterar a funcionalidade do programa.
+    
+    \item \textbf{Interface Segregation Principle (ISP)}: Clientes não devem ser forçados a depender de interfaces que não utilizam.
+    
+    \item \textbf{Dependency Inversion Principle (DIP)}: Módulos de alto nível não devem depender de módulos de baixo nível. Ambos devem depender de abstrações.
+\end{itemize}
+
+Estes princípios são especialmente relevantes para o Modelo de Atores, pois cada ator pode ser visto como uma unidade que segue o princípio de responsabilidade única, enquanto a comunicação baseada em mensagens facilita a inversão de dependências e a segregação de interfaces.
+
+\section{Justificativa para o Modelo de Atores}
+
+O propósito deste trabalho é experimentar com um padrão arquitetural específico chamado Modelo de Atores. A ideia é usar este padrão em um projeto que está bem distante dos requisitos de qualidade que ele tradicionalmente atende e entender quais são as consequências.
+
+Esta abordagem experimental permitirá:
+
+\begin{itemize}
+    \item Explorar os limites do Modelo de Atores em contextos não distribuídos
+    \item Avaliar se os benefícios do padrão se mantêm em aplicações centralizadas
+    \item Identificar possíveis adaptações necessárias para diferentes domínios
+    \item Contribuir para o conhecimento sobre a aplicabilidade de padrões arquiteturais
+\end{itemize}
+
