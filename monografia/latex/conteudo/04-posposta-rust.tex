@@ -1,3 +1,121 @@
 \chapter{Proposta para Rust}
 
-\input{conteudo/04-proposta-rust/00-introducao}
+Uma das principais contribuições deste trabalho é a proposta de um \emph{framework} para aplicações centralizadas escritas em Rust usando o Modelo de Atores. Uma vez que a teoria sobre o Modelo de Atores e as implementações conhecidas foram discutidas, é hora de adaptar suas abstrações para as necessidades e características específicas de aplicações centralizadas em Rust.
+
+\section{Por que Rust?}
+
+O Modelo de Atores é amplamente conhecido por sua dinamicidade e flexibilidade, com a maioria de suas implementações famosas sendo em runtimes flexíveis como BEAM ou JVM. Rust é bem o oposto disso, uma linguagem moderna com um sistema de tipos forte e um compilador poderoso o suficiente para validar quase tudo em tempo de compilação.
+
+Pode soar contraditório usar uma linguagem rígida com um padrão flexível, mas é exatamente o propósito deste trabalho: experimentar com o Modelo de Atores fora do seu domínio específico. Isso permitirá a experimentação dos limites tanto do Modelo de Atores quanto da linguagem de programação Rust.
+
+Apesar desta distância, Rust ainda possui diversos recursos de linguagem análogos a mecanismos fornecidos por Elixir, fazendo essa adaptação ser possível. Além disso, se Elixir foi eleita a segunda linguagem mais amadas nos últimos 3 anos. A mesma pesquisa aponta Rust como sendo a linguagem mais amada desde 2016. Vale ressaltar que Rust 1.0 foi lançado em 2015.
+
+\section{Introdução Rápida ao Rust}
+
+Rust é conhecido por seus mecanismos de segurança que forçam verificação em tempo de compilação, tornando diversos estados inválidos impossíveis de serem representados como código.
+
+Os conceitos mais importantes aqui são:
+
+\subsection{Segurança de Memória}
+
+Um espaço de memória tem um, e apenas um, proprietário (uma variável), este proprietário determina o ciclo de vida do espaço de memória. Uma vez que o proprietário é destruído, o espaço de memória é liberado. O proprietário também determina se a região é mutável ou não.
+
+\begin{lstlisting}[language=Rust, caption=Declaração de variáveis em Rust]
+fn main() {
+    let data = [1, 2, 3, 4]; // Cria variável imutável
+    // As duas operações a seguir são probidas pelo compilador
+    data = [2, 3, 4, 5];
+    data[0] = 0;
+
+    let mut data2 = data; // Variável mutável data2
+    // Uso de data probido pelo compilador desse ponto em diante,
+    // já que seu conteúdo foi transferido para data2
+    println!("{}", data[0]);
+
+    // Permitido
+    data2[0] = 0;
+    data2 = [2, 3, 4, 5]; 
+
+}
+\end{lstlisting}
+
+Um valor pode ser emprestado com o uso de referências, mas existem regras checadas pelo compilador:
+
+\begin{enumerate}
+    \item Referências não podem ser nulas
+    \item As referências não podem existir por mais tempo do que o dono original
+    \item Podem existir infinitas referências imutáveis (\texttt{\&}) a um valor
+    \item Pode existir no máximo uma referência mutável (\texttt{\&mut}) a um valor (desde que ele seja mutável)
+    \item Um valor não pode ter ambas referências ao mesmo tempo
+\end{enumerate}
+
+\begin{lstlisting}[language=Rust, caption=Criação e uso de referências]
+fn main() {
+    let data = [0, 1, 2, 3];
+    let r = &data;
+    // Permitido
+    let r2 = &data;
+    
+    // Proibido pois data não é mutável e já existem referências imutáveis
+    let m = &mut data;
+}
+\end{lstlisting}
+
+\begin{lstlisting}[language=Rust, caption=Mutabilidade em foco]
+    fn main() {
+        let mut data = [0, 1, 2, 3];
+        let r = &mut data;
+        
+        // Permitido
+        r[0] = 10;
+        
+        // Proibido pois r deve ser a única fonte de mutabilidade
+        data[1] = 11; 
+    }
+    \end{lstlisting}
+
+\subsection{Sistema de Tipos}
+
+O sistema de tipos forte e expressivo é uma característica-chave do Rust. Ele não tem herança, mas compensa isso com tuplas, structs, enums e traits.
+
+
+
+\section{Concorrência e Paralelismo}
+
+Esta proposta engloba o uso de green-threads que não têm suporte nativo em Rust. Isso é porque Rust, ao contrário de Elixir, Golang, ou Java, tem um runtime muito mínimo, similar ao runtime do C. O suporte para green-threads é fornecido pela biblioteca Tokio e eles são chamados de \emph{tasks}.
+
+\section{Compartilhamento de Memória}
+
+O isolamento de memória é desejável e uma característica nativa do Modelo de Atores, já que atores são projetados para executar em ambientes físicamente isolados. Isso aumenta a segurança, mas degrada a performance, já que dados entre atores são compartilhados por cópia, não por referência.
+
+Mas esse não é o caso para esta proposta, já que a aplicação não é distribuída. Além disso, os problemas com compartilhamento de memória em sistemas concorrentes estão geralmente relacionados a condições de corrida e mutabilidade indesejada. Rust fornece mecanismos nativos eficientes para compartilhar espaços de memória de forma segura.
+
+\section{Passagem de Mensagens e Endereços}
+
+Tanto Rust quanto Tokio têm uma abstração nativa de passagem de mensagens chamada \emph{channel}. Ao contrário do método \texttt{send} do Elixir, channels são fortemente tipados e com ciclos de vida definidos.
+
+\section{Mensagens Tipadas}
+
+Assim como tudo mais em Rust, as mensagens enviadas através de channels devem ser tipadas. Como um ator pode aceitar diferentes tipos de mensagens, um \emph{enum} será usado.
+
+\section{Representação do Ator}
+
+Agora é hora de definir como um ator será em termos de código Rust. Primeiro, haverá um módulo para cada ator, e se um ator é subordinado à existência de outro ator pela lógica de negócio, ele pode ser criado como um submódulo.
+
+Três partes principais de um ator foram apresentadas:
+
+\begin{itemize}
+    \item O endereço que permite a comunicação entre atores
+    \item As mensagens que serão enviadas ao ator
+    \item O manipulador que lida com as mensagens recebidas
+\end{itemize}
+
+Essas três partes serão traduzidas para partes separadas do código Rust como:
+
+\begin{itemize}
+    \item Uma struct pública para envolver o channel \emph{mpsc} que serve como o endereço com métodos de envio
+    \item Um enum privado para definir os tipos das mensagens
+    \item Uma struct privada para gerenciar o estado do ator e definir como lidar com cada mensagem
+\end{itemize}
+
+-- Código do ator -- 

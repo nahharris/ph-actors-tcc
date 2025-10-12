@@ -1,9 +1,0 @@
-\section{Indeterminação}
-
-Aqui vem um dos princípios fundamentais do Modelo de Atores e o que o diferencia de outros padrões. A ordem de chegada das mensagens não é garantida e o Modelo de Atores não tentará resolver isso, mas sim tratar isso como uma propriedade natural do domínio. O Modelo de Atores é projetado para sistemas distribuídos, o que significa que dois atores podem estar se comunicando através de longas distâncias físicas.
-
-Isso significa que as mensagens enviadas podem levar tempo ilimitado para chegar na máquina destino, e mesmo que cheguem exatamente ao mesmo tempo, os árbitros de hardware que as ordenarão não garantirão nenhum tipo de ordenação. Considerar os fatores físicos é o que diferencia o Modelo de Atores de padrões de sistemas concorrentes puramente algébricos.
-
-A ordenação indeterminada de mensagens, somada ao fato de que as mensagens podem alterar o comportamento de um Ator, tem por consequência que as mesmas condições iniciais podem resultar em resultados diferentes. Além disso, o próprio sistema é dito não ter um estado global definido. Como a comunicação é assíncrona, a qualquer momento é possível ter mensagens transito ou Atores em estado transitório não sendo possível garantir que em algum momento todos os atores estarão em estados bem definidos.
-
-Isso é o que garante a justiça (fairness).
