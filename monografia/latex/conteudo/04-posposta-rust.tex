@@ -20,22 +20,33 @@ Os conceitos mais importantes aqui são:
 
 Um espaço de memória tem um, e apenas um, proprietário (uma variável), este proprietário determina o ciclo de vida do espaço de memória. Uma vez que o proprietário é destruído, o espaço de memória é liberado. O proprietário também determina se a região é mutável ou não.
 
-\begin{lstlisting}[language=Rust, caption=Declaração de variáveis em Rust]
+\begin{lstlisting}[language=Rust, caption=Declaração de variáveis e mutabilidade]
+fn main() {
+    let a = 10;
+    let mut b = 20;
+    
+    // a += 1; // Proibido: a não é mutável
+    b += 1; // Permitido: b é mutável
+    
+    // Quando o código termina aqui, a e b são liberados da memória
+}
+\end{lstlisting}
+
+\begin{lstlisting}[language=Rust, caption=Transferência de propriedade]
 fn main() {
     let data = [1, 2, 3, 4]; // Cria variável imutável
-    // As duas operações a seguir são probidas pelo compilador
-    data = [2, 3, 4, 5];
-    data[0] = 0;
+    // As duas operações a seguir são proibidas pelo compilador
+    // data = [2, 3, 4, 5];
+    // data[0] = 0;
 
     let mut data2 = data; // Variável mutável data2
-    // Uso de data probido pelo compilador desse ponto em diante,
+    // Uso de data proibido pelo compilador desse ponto em diante,
     // já que seu conteúdo foi transferido para data2
-    println!("{}", data[0]);
+    // println!("{}", data[0]); // Erro de compilação
 
     // Permitido
     data2[0] = 0;
     data2 = [2, 3, 4, 5]; 
-
 }
 \end{lstlisting}
 
@@ -49,73 +60,356 @@ Um valor pode ser emprestado com o uso de referências, mas existem regras checa
     \item Um valor não pode ter ambas referências ao mesmo tempo
 \end{enumerate}
 
-\begin{lstlisting}[language=Rust, caption=Criação e uso de referências]
+\begin{lstlisting}[language=Rust, caption=Referências imutáveis]
 fn main() {
-    let data = [0, 1, 2, 3];
-    let r = &data;
-    // Permitido
-    let r2 = &data;
+    let numbers = vec![1, 2, 3, 4];
+    let nref = &numbers;
+    println!("{}", nref[1]); // -> 2
     
-    // Proibido pois data não é mutável e já existem referências imutáveis
-    let m = &mut data;
+    // Permitido: múltiplas referências imutáveis
+    let nref2 = &numbers;
+    
+    // Proibido: não pode ter referência mutável 
+    // quando já existem referências imutáveis
+    // let mref = &mut numbers;
 }
 \end{lstlisting}
 
-\begin{lstlisting}[language=Rust, caption=Mutabilidade em foco]
-    fn main() {
-        let mut data = [0, 1, 2, 3];
-        let r = &mut data;
-        
-        // Permitido
-        r[0] = 10;
-        
-        // Proibido pois r deve ser a única fonte de mutabilidade
-        data[1] = 11; 
-    }
-    \end{lstlisting}
+\begin{lstlisting}[language=Rust, caption=Referências mutáveis]
+fn main() {
+    let mut numbers = vec![1, 2, 3];
+    let nref = &mut numbers;
+    
+    // Permitido: operação mutável usando &mut
+    nref.push(4);
+    
+    // Proibido: só pode haver uma referência mutável
+    // let nref2 = &mut numbers;
+    
+    // Proibido: não pode usar o valor original
+    // enquanto existe referência mutável
+    // numbers.push(5);
+}
+\end{lstlisting}
+
+\begin{lstlisting}[language=Rust, caption=Ciclo de vida de referências]
+fn main() {
+    let numbers = vec![1, 2, 3, 4];
+    let nref = &numbers;
+    println!("{}", nref[1]); // -> 2
+    
+    drop(numbers); // Libera numbers da memória
+    
+    // A partir deste ponto, o compilador proibirá
+    // o uso de tanto numbers quanto nref
+    // println!("{}", nref[1]); // Erro de compilação
+}
+\end{lstlisting}
 
 \subsection{Sistema de Tipos}
 
 O sistema de tipos forte e expressivo é uma característica-chave do Rust. Ele não tem herança, mas compensa isso com tuplas, structs, enums e traits.
 
+\subsubsection{Tuplas}
 
+Uma tupla é simplesmente um tipo produto, tem tamanho fixo e cada campo (nomeado por seu índice) pode ter um tipo diferente. Não é uma coleção!
+
+\begin{lstlisting}[language=Rust, caption=Declaração e uso de tuplas]
+fn main() {
+    let value: (i32, f32) = (20, 3.14);
+    println!("{}", value.0); // -> 20
+}
+\end{lstlisting}
+
+\subsubsection{Structs}
+
+Um struct é similar a uma tupla, mas tem campos nomeados e pode ter métodos com o uso de um bloco \texttt{impl}:
+
+\begin{lstlisting}[language=Rust, caption=Definição e uso de structs]
+struct Point {
+    timestamp: i32,
+    value: f32
+}
+
+impl Point {
+    // Método que pode mutar o valor de self
+    fn add(&mut self, value: f32) {
+        self.value += value;
+    }
+    
+    // Método estático que serve como construtor
+    fn new(timestamp: i32, value: f32) -> Self {
+        Self { timestamp, value } // Sintaxe abreviada
+    }
+}
+
+fn main() {
+    let mut p = Point::new(20, 2.14);
+    p.add(1.0);
+}
+\end{lstlisting}
+
+Existe também um construto chamado tuple-struct que é um struct mas os campos são nomeados por seus índices, como uma tupla:
+
+\begin{lstlisting}[language=Rust, caption=Tuple-struct]
+struct Coordinate(i32, i32);
+
+fn main() {
+    let origin = Coordinate(0, 0);
+}
+\end{lstlisting}
+
+\subsubsection{Enums}
+
+Diferente da maioria das linguagens, enums em Rust podem ter payloads já que cada variante pode ser tratada como um struct:
+
+\begin{lstlisting}[language=Rust, caption=Enums com payloads]
+enum Coordinate {
+    Polar { 
+        theta: f32, 
+        radius: f32
+    },
+    Cartesian(f32, f32),
+    Origin,
+}
+
+fn main() {
+    let origin: Coordinate = Coordinate::Origin;
+    let point1: Coordinate = Coordinate::Cartesian(1.0, 1.0);
+    let point2: Coordinate = Coordinate::Polar { theta: 45.0, radius: 2.0 };
+}
+\end{lstlisting}
+
+\subsubsection{Traits}
+
+Traits são o equivalente Rust de uma interface, define métodos que devem ser implementados por um tipo para que ele tenha uma dada característica. São úteis para limitar tipos genéricos ou sobrecarregar operadores:
+
+\begin{lstlisting}[language=Rust, caption=Implementação de traits]
+use std::fmt::{Display, Formatter, Error};
+
+// Display é um trait usado para formatação de string com {}
+impl Display for Coordinate {
+    fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), Error> {
+        match self {
+            Coordinate::Origin => write!(f, "Origin"),
+            Coordinate::Cartesian(x, y) => write!(f, "({}, {})", x, y),
+            Coordinate::Polar { theta, radius } => 
+                write!(f, "{} ({})", radius, theta)
+        }
+    }
+}
+
+fn main() {
+    let coord = Coordinate::Polar { radius: 10.0, theta: 75.0 };
+    println!("A coordenada é {}", coord); // -> 10 (75)
+}
+\end{lstlisting}
+
+Com conhecimento básico da linguagem, é momento de começar a introduzir os elementos da proposta em si. Para isso, os elementos da linguagem Elixir que foram discutidos previamente serão usados como referência fortemente.
 
 \section{Concorrência e Paralelismo}
 
-Esta proposta engloba o uso de green-threads que não têm suporte nativo em Rust. Isso é porque Rust, ao contrário de Elixir, Golang, ou Java, tem um runtime muito mínimo, similar ao runtime do C. O suporte para green-threads é fornecido pela biblioteca Tokio e eles são chamados de \emph{tasks}.
+Esta proposta contempla o uso de \emph{green-threads} que não têm suporte nativo em Rust. Isso é porque a linguagem, ao contrário de Elixir, Golang, ou Java, tem um runtime muito mínimo, similar ao runtime do C. O suporte para green-threads é fornecido pela biblioteca Tokio e eles são chamados de \emph{tasks} e serão usados de forma equivalente aos processos Erlang.
+
+As tasks são criadas e executadas com isolamento, seja de forma concorrente ou paralela, dependendo da quantidade de threads do sistema operacional que estão sendo utilizadas pelo ambiente de execução Tokio. Isso permite que múltiplas tasks sejam executadas simultaneamente sem a necessidade de gerenciar manualmente threads do sistema operacional.
+
+\begin{lstlisting}[language=Rust, caption=Exemplo de tasks concorrentes com Tokio]
+use tokio;
+
+#[tokio::main]
+async fn main() {
+    // Gera a primeira task
+    let task1 = tokio::spawn(async {
+        println!("Task 1 executando!");
+    });
+    
+    // Gera a segunda task
+    let task2 = tokio::spawn(async {
+        println!("Task 2 executando!");
+    });
+    
+    // Aguarda ambas as tasks terminarem
+    let _ = tokio::join!(task1, task2);
+}
+\end{lstlisting}
+
+No exemplo acima, duas tasks são criadas usando \texttt{tokio::spawn}, cada uma executando de forma independente e concorrente (sem garantia de ordenação). A função \texttt{tokio::join!} aguarda que ambas as tasks sejam concluídas antes de prosseguir.
+
+Similarmente ao que foi aprensentado nos exemplos com Elixir, onde um ator teria um processo dedicado para lidar com a lógica de processamento de mensagens, aqui será feito uso de \emph{tasks} para isso.
 
 \section{Compartilhamento de Memória}
 
-O isolamento de memória é desejável e uma característica nativa do Modelo de Atores, já que atores são projetados para executar em ambientes físicamente isolados. Isso aumenta a segurança, mas degrada a performance, já que dados entre atores são compartilhados por cópia, não por referência.
+O isolamento de memória é desejável e uma característica nativa do Modelo de Atores, já que atores são projetados para executar em ambientes físicamente isolados. Isso aumenta a segurança, mas pode degradar a performance já que o compartilhamento de dados entre máquinas remotas só pode ser feito por cópia.
 
-Mas esse não é o caso para esta proposta, já que a aplicação não é distribuída. Além disso, os problemas com compartilhamento de memória em sistemas concorrentes estão geralmente relacionados a condições de corrida e mutabilidade indesejada. Rust fornece mecanismos nativos eficientes para compartilhar espaços de memória de forma segura.
+Mas esse não é o caso para esta proposta, já que a aplicação não é distribuída, temos a garantia que a memória sempre pode ser compartilhada. Além disso, os problemas com compartilhamento de memória em sistemas concorrentes estão geralmente relacionados a condições de corrida e mutabilidade indesejada. 
+
+Assim como Elixir garante a imutabilidade dos valores para impedir condições de corrida na comunicação entre processos, Rust e Tokio fornece diversos mecanismos nativos eficientes para compartilhar espaços de memória de forma segura entre \emph{tasks}. Desse modo, usando a abstração correta no cenário correto, é possível de se obter resultados interessantes.
+
+O tipo \texttt{Arc<T>} será o principal utilizado para dados complexos, já que permite que um espaço de memória imutável seja compartilhado com contagem de referência atômica (uma vez que ninguém está referenciando-o, ele é liberado). Isso garante que múltiplas tasks possam acessar os mesmos dados de forma segura sem a necessidade de cópia.
 
 \section{Passagem de Mensagens e Endereços}
 
-Tanto Rust quanto Tokio têm uma abstração nativa de passagem de mensagens chamada \emph{channel}. Ao contrário do método \texttt{send} do Elixir, channels são fortemente tipados e com ciclos de vida definidos.
+Tanto Rust quanto Tokio têm uma abstração nativa de passagem de mensagens chamada de canal. Ao contrário da função \texttt{send} do Elixir que recebe como parametros um endereço e um dado qualquer como mensagem, o método \texttt{send} dos canais são fortemente tipados quanto a mensagem e usam um endereço bem definido.
 
-\section{Mensagens Tipadas}
+Existem alguns tipos diferentes de canais. Os 2 principais tipos para o escopo deste trabalho são:
 
-Assim como tudo mais em Rust, as mensagens enviadas através de channels devem ser tipadas. Como um ator pode aceitar diferentes tipos de mensagens, um \emph{enum} será usado.
+\subsection{\texttt{mpsc} - \emph{Multiple producer, single consumer}}
+
+Um canal de múltiplos produtores, consumidor único é a abstração que será usada como endereço de ator. Ele tem 2 extremidades: \texttt{Sender} e \texttt{Receiver}. O \texttt{Sender} pode ser compartilhado entre todos os atores que querem se comunicar com um ator particular apenas criando uma duplicata com o método \texttt{clone}. A extremidade \texttt{Receiver} é única e será mantida na \emph{task} onde a lógica do ator se encontra e receberá mensagens até o canal ser fechado, ou seja, até não existirem mais clones da extremidade \texttt{Sender} correspondente.
+
+Note que o principio de localidade e segurança do Modelo de Atores nos garante que ninguém deve ser capaz de descobrir o endereço de um ator sem que esse tenha lhe sido dado. Portanto, no momento que não existem mais extremidades \texttt{Sender} a um ator, este garantidamente não receberá mais nenhuma mensagem e pode ser finalizado. Isso acontece de forma natural em Rust com o uso de um loop, enquanto que em Elixir um ator não recebe nenhum indicativo que seu endereço se tornou desconhecido.
+
+\begin{lstlisting}[language=Rust, caption=Exemplo de loop de recebimento de mensagens]
+// Loop que processa mensagens até o canal ser fechado
+while let Some(message) = rx.recv().await {
+    match message {
+        Message::SetThing { value } => {
+            println!("Definindo valor: {}", value);
+        }
+        Message::GetThing { tx } => {
+            let _ = tx.send(42); // Envia resposta
+        }
+    }
+}
+// Quando não há mais Senders, rx.recv() retorna None
+// e o loop se encerra automaticamente
+println!("Ator finalizando - canal fechado");
+\end{lstlisting}
+
+No exemplo acima, o loop \texttt{while let Some(message) = rx.recv().await} continuará processando mensagens enquanto houver extremidades \texttt{Sender} ativas. Quando todas as extremidades \texttt{Sender} são descartadas (saem de escopo ou são explicitamente liberadas com o uso de \texttt{drop}), o método \texttt{recv()} retorna \texttt{None}, fazendo com que o loop se encerre naturalmente e a task do ator seja finalizada.
+
+Em Elixir, o equivalente seria:
+
+\begin{lstlisting}[language=ruby, caption=Exemplo equivalente em Elixir]
+defmodule Actor do
+  def loop do
+    receive do
+      {:set_thing, value} ->
+        IO.puts("Definindo valor: #{value}")
+        loop()
+      {:get_thing, sender} ->
+        send(sender, {:ok, 42})
+        loop()
+    end
+  end
+end
+\end{lstlisting}
+
+Exemplo acima, em Elixir, é um ator que pode se tornar um ator zumbi, ou seja, que está consumindo recursos ainda que não seja mais usado. Para resolver isso é necessário o uso de um timeout ou de uma mensagem que indique ao ator que ele pode terminar.
+
+É importante notar que o Rust garante, em tempo de compilação, que o receptor de um canal é único. Assim, é garantido que as mensagens chegam ao destino correto. Além disso, o canal tem uma fila com tamanho configurável, e é garantido que a mensagem chegará se a fila não estiver cheia.
+
+\subsection{oneshot}
+
+Um canal que é destruído após uma mensagem ser enviada. Como os canais são unidirecionais, se uma mensagem enviada precisar de uma resposta, um canal oneshot deverá ser criado para envio da resposta.
+
+Também vale ressaltar que o "uso após liberação" de um canal oneshot é verificado em tempo de compilação.
+
 
 \section{Representação do Ator}
 
-Agora é hora de definir como um ator será em termos de código Rust. Primeiro, haverá um módulo para cada ator, e se um ator é subordinado à existência de outro ator pela lógica de negócio, ele pode ser criado como um submódulo.
+Uma vez definida as abstrações a serem usadas, é hora de definir como um ator será em termos de código Rust. 
 
-Três partes principais de um ator foram apresentadas:
+Primeiramente, haverá um módulo para cada ator, e se um ator é subordinado à existência de outro ator pela lógica de negócio, ele pode ser criado como um submódulo.
+
+Neste trabalho, o padrão para módulos será ter um arquivo e uma pasta com o mesmo nome (exceto pela extensão \texttt{.rs}). Por exemplo, para um ator chamado App, deve haver um \texttt{app.rs} e uma pasta \texttt{app/} no mesmo diretório.
+
+Até aqui, três partes principais de um ator foram apresentadas:
 
 \begin{itemize}
-    \item O endereço que permite a comunicação entre atores
     \item As mensagens que serão enviadas ao ator
-    \item O manipulador que lida com as mensagens recebidas
+    \item A lógica de processamento das mensagens recebidas
+    \item O endereço que permite a comunicação entre atores
 \end{itemize}
 
 Essas três partes serão traduzidas para partes separadas do código Rust como:
 
 \begin{itemize}
-    \item Uma struct pública para envolver o channel \emph{mpsc} que serve como o endereço com métodos de envio
     \item Um enum privado para definir os tipos das mensagens
     \item Uma struct privada para gerenciar o estado do ator e definir como lidar com cada mensagem
+    \item Uma struct pública para abstrair o canal \emph{mpsc} que serve como o endereço
 \end{itemize}
 
--- Código do ator -- 
+Para o exemplo do ator App, haverá:
+
+\begin{itemize}
+    \item Um enum \texttt{Message} em \texttt{app/message.rs} definindo o tipo para as mensagens
+    \item Uma struct \texttt{Core} em \texttt{app/core.rs} que mantém a lógica do ator
+    \item Uma struct \texttt{App} em \texttt{app.rs} para servir como a interface pública para dependentes deste ator
+\end{itemize}
+
+Onde \texttt{App} deve ser público globalmente, enquanto \texttt{Message} e \texttt{Core} ficam restritos ao super-módulo \texttt{app}.
+
+Note que a convenção é que a struct que serve como interface pública para o ator será nomeada com o nome efetivo do ator para melhor legibilidade. Esta chamada interface pública deve fornecer métodos que abstraem a lógica de construção de mensagens e utilização de canais.
+
+A seguir está destrinchado em mais detalhes o que estará em cada uma das 3 partes.
+
+\subsection{Mensagens}
+
+Assim como tudo em Rust, as mensagens enviadas através de canais devem ser tipadas. Caso um ator só execute um tipo de ação, ou seja, só receba um tipo de mensagem então qualquer tipo pode ser usado para representar as mensagens. Caso ele lide com diferentes tipos de mensagens (o que acontece na maioria dos casos)um \emph{enum} será usado.
+
+\begin{lstlisting}[language=Rust, caption=Exemplo de mensagens tipadas]
+enum Message {
+    SetThing { value: i32 }, 
+    GetThing { tx: oneshot::Sender<i32> }
+}
+\end{lstlisting}
+
+A maior vantagem de tipar mensagens com \emph{enums} é que o envio e o tratamento são verificados em tempo de compilação. Isso cria uma garantia forte sobre quais mensagens que podem estar envolvidas em uma dada comunicação e o compilador Rust garantirá que:
+
+\begin{itemize}
+    \item O receptor fornecerá tratamento explícito para todas as mensagens possíveis
+    \item O remetente nunca enviará uma mensagem inválida
+\end{itemize}
+
+As garantias acima não se aplicam à implementação do Modelo de Atores em Elixir. 
+
+\subsection{Lógica}
+
+
+
+
+\subsection{Endereço}
+
+Para se aproveitar ao máximo dos recursos que a linguagem Rust oferece, é ideal a criação de um tipo que abstraia a lógica de uso dos canais, tanto para facilitar a leitura do código, quanto para diminuir duplicação de código. Ao contrário do que é feito em Elixir, onde se atribui o nome do ator ao módulo onde se encontra a lógica de processamento, aqui o nome será atribuído a essa abstração sobre o endereço.
+
+\begin{lstlisting}[language=Rust, caption=Exemplo de struct para endereço do ator]
+use tokio::sync::{mpsc, oneshot};
+
+pub struct App {
+    tx: mpsc::Sender<Message>,
+}
+
+impl App {
+    pub async fn thing(&self) -> i32 {
+        let (tx, rx) = oneshot::channel();
+        let message = Message::GetThing { tx };
+        
+        self.tx.send(message).await
+            .expect("Ator não deve morrer");
+        
+        rx.await.expect("Ator não deve morrer")
+    }
+    
+    pub async fn thing_alt(&self) -> oneshot::Receiver<i32> {
+        let (tx, rx) = oneshot::channel();
+        let message = Message::GetThing { tx };
+        
+        self.tx.send(message).await
+            .expect("Ator não deve morrer");
+        
+        rx
+    }
+    
+    pub async fn set_thing(&self, value: i32) {
+        let message = Message::SetThing { value };
+        
+        self.tx.send(message).await
+            .expect("Ator não deve morrer");
+    }
+}
+\end{lstlisting}
+
+No exemplo acima, a struct \texttt{App} encapsula o \texttt{Sender} do canal \texttt{mpsc} e fornece métodos públicos que abstraem completamente a lógica de envio de mensagens. O método \texttt{thing()} cria um canal \texttt{oneshot} para receber a resposta, envia a mensagem \texttt{GetThing} e aguarda a resposta. O método \texttt{thing\_alt()} oferece uma alternativa onde retorna o \texttt{Receiver} diretamente, permitindo que o invocador decida quando aguardar pela resposta. O método \texttt{set\_thing()} simplesmente envia a mensagem \texttt{SetThing} com o valor fornecido.
+
+Essa abstração permite que outros atores interajam com o ator sem precisar se preocupar com detalhes de comunicação por canais, mantendo a interface limpa e tipada.
