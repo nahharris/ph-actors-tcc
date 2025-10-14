@@ -346,7 +346,9 @@ A seguir está destrinchado em mais detalhes o que estará em cada uma das 3 par
 
 \subsection{Mensagens}
 
-Assim como tudo em Rust, as mensagens enviadas através de canais devem ser tipadas. Caso um ator só execute um tipo de ação, ou seja, só receba um tipo de mensagem então qualquer tipo pode ser usado para representar as mensagens. Caso ele lide com diferentes tipos de mensagens (o que acontece na maioria dos casos)um \emph{enum} será usado.
+Assim como tudo em Rust, as mensagens enviadas através de canais devem ser tipadas. Caso um ator só execute um tipo de ação, ou seja, só receba um tipo de mensagem então qualquer tipo pode ser usado para representar as mensagens. Caso ele lide com diferentes tipos de mensagens (o que acontece na maioria dos casos) um \emph{enum} será usado.
+
+No contexto do exemplo dado, o \emph{enum} a ser criado no arquivo \texttt{app/message.rs} seria:
 
 \begin{lstlisting}[language=Rust, caption=Exemplo de mensagens tipadas]
 enum Message {
@@ -366,8 +368,72 @@ As garantias acima não se aplicam à implementação do Modelo de Atores em Eli
 
 \subsection{Lógica}
 
+Toda a lógica de processamento de mensagens para um ator ficará dentro de uma \emph{struct} chamada de \texttt{Core}. Ela será também onde será feito o gerenciamento de estado do ator e pelos detalhes específicos para criação da \emph{task} e do canal \texttt{mspc} dedicado para a comunicação.
+
+No contexto do exemplo dado, a \emph{struct} a ser criada no arquivo \texttt{app/core.rs} seria:
+
+\begin{lstlisting}[language=Rust, caption=Exemplo de struct Core para lógica do ator]
+pub struct Core {
+    thing: i32,
+}
+\end{lstlisting}
 
 
+O \texttt{Core} deve ser instanciado com a invocação do seu construtor, nesse momento as dependências do ator deverão ser injetadas como argumentos do construtor. O construtor será chamado \texttt{new} caso não possa falhar, caso contrário será chamado de \texttt{build}. Por exemplo, a inicialização de um ator pode depender do valor de uma variável de ambiente que talvez não exista, e isso leva a uma falha.
+
+\begin{lstlisting}[language=Rust, caption=Exemplo de construtor]
+impl Core {
+    pub fn new(thing: i32) -> Self {
+        Self {
+            thing
+        }
+    }
+}
+\end{lstlisting}
+
+Deverá ser fornecido um método de instância \texttt{spawn} responsável por conter a lógica por trás da criação da \emph{task} e da comunicação com ela. Além disso, dentro dessa função ficará definida a lógica de processamento das mensagens recebidas, delegando elas para os métodos responsáveis.
+
+\begin{lstlisting}[language=Rust, caption=Exemplo de construtor]
+    impl Core {
+        // ...
+        pub fn spawn(self) -> App {
+            // Cria um canal com um buffer de tamanho 32
+            let (tx, mut rx) = mpsc::channel(32);
+            let app = App { tx };
+            
+            // Cria a task especificando a callback a ser usada
+            tokio::spawn(async move {
+                while let Some(message) = rx.recv().await {
+                    match message {
+                        Message::SetThing { value } => {
+                            self.handle_set_thing(value);
+                        }
+                        Message::GetThing { tx } => {
+                            let result = self.handle_get_thing();
+                            let _ = tx.send(result);
+                        }
+                    }
+                }
+            });
+            
+            return app;
+        }
+        
+        fn handle_set_thing(&mut self, value: i32) {
+            self.thing = value;
+        }
+        
+        fn handle_get_thing(&self) -> i32 {
+            self.thing
+        }
+    }
+\end{lstlisting}
+
+Note que o método spawn recebe \texttt{self} como primeiro argumento, isso significa que ele consome a instância. Em outras palavras, aquele que tiver posse de uma instância do \texttt{Core} do App a perderá assim que \texttt{spawn} for invocada, impedindo que um mesmo objeto seja instanciado como 2 atores compartilhando o mesmo espaço de memória.
+
+Adicionalmente, cada ramo do bloco \texttt{match} apenas obtém os valores da mensagem e delega a execução para um método privado \texttt{handle\_}. Em caso de necessidade de enviar resposta, isso não deve ser feito dentro método \texttt{handle}, assegurando assim o princípio de responsabilidade única.
+
+Por fim, o método \texttt{spawn} já cuida de retornar diretamente a interface pública envelopando a ponta de envio do canal \emph{mpsc}.
 
 \subsection{Endereço}
 
