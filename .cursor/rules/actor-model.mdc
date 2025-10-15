@@ -37,16 +37,12 @@ impl Core {
     // or
     pub async fn build() -> Result<Self, Error> { /* ... */ }
     
-    pub fn spawn(self) -> (PublicInterface, JoinHandle<()>) {
-        let (tx, mut rx) = tokio::sync::mpsc::channel(BUFFER_SIZE);
-        let handle = tokio::spawn(async move {
-            while let Some(message) = rx.recv().await {
-                match message {
-                    // Handle all message variants
-                }
+    pub fn init(self, mut rx: mpsc::Receiver<Message>) {
+        while let Some(message) = rx.recv().await {
+            match message {
+                // Handle all message variants
             }
-        });
-        (PublicInterface::Actual(tx), handle)
+        }
     }
 
     // private message handling methods
@@ -77,49 +73,44 @@ pub enum Message {
 
 ## Public Interface (main module)
 
-- Create a public enum with `Actual` and `Mock` variants
-- `Actual` variant wraps `mpsc::Sender<Message>` 
-- `Mock` variant wraps `Arc<Mutex<MockData>>` for testing
+- Name it after the module in pascal case
+- Create a public struct with a tx field of type `mpsc::Sender<Message>` 
 - Implement `Debug` and `Clone` traits
-- Provide `spawn()` method for real actors
-- Provide `mock()` method for testing
+- Use `mock!` to create a Mock struct for it with the Clone trait implemented
+- Provide `spawn()` method to take care of creating a new task with the actor `init` method
 - All public methods must be `async`
-- Handle both real and mock implementations in each method
+- Whnt convinent, for long async tasks, return the `rx` directly so the caller can decide when to await for the response 
 
 ```rust
 #[derive(Debug, Clone)]
-pub enum PublicInterface {
-    Actual(Sender<Message>),
-    Mock(Arc<Mutex<MockData>>),
+pub struct Actor {
+    tx: mpsc::Sender<Message>,
 }
 
-impl PublicInterface {
+#[automock]
+impl Actor {
     pub fn spawn() -> Self {
-        let (interface, _) = Core::new().spawn();
-        interface
-    }
-    
-    pub fn mock(data: MockData) -> Self {
-        Self::Mock(Arc::new(Mutex::new(data)))
+        let (tx, rx) = mpsc::channel(crate::BUFFER_SIZE);
+        let core = Core::new();
+        let _ = tokio::spawn(async move {
+            core.init(rx);
+        });
+
+        return Self { tx };
     }
     
     pub async fn operation(&self, params: Params) -> Result<Value, Error> {
-        match self {
-            Self::Actual(sender) => {
-                let (tx, rx) = tokio::sync::oneshot::channel();
-                sender.send(Message::Operation { tx, params })
-                    .await
-                    .context("Doing operation with Foo")
-                    .expect("Foo actor died");
-                rx.await
-                    .context("Awaiting response for operation with Foo")
-                    .expect("Foo actor died");
-            }
-            Self::Mock(data) => {
-                // Mock implementation
-            }
-        }
+        let (tx, rx) = tokio::sync::oneshot::channel();
+        sender.send(Message::Operation { tx, params })
+            .await
+            .context("Doing operation with Foo")
+            .expect("Foo actor died");
+        rx.await
+            .context("Awaiting response for operation with Foo")
+            .expect("Foo actor died")
     }
+
+    // ...
 }
 ```
 
