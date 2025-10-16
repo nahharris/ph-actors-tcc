@@ -1,40 +1,73 @@
 \section{Limitações Arquiteturais}
 
-Apesar de sua funcionalidade, a implementação atual do Patch-Hub enfrenta desafios arquiteturais significativos que limitam sua flexibilidade e manutenibilidade:
+Apesar de sua funcionalidade, a implementação atual do Patch-Hub apresenta limitações arquiteturais fundamentais que comprometem sua extensibilidade, manutenibilidade e capacidade de evolução. Essas limitações emergem de decisões de design que, embora funcionais para o escopo inicial, criam gargalos estruturais que dificultam a adição de novas funcionalidades e a manutenção do código.
 
-\subsection{Restrições do Sistema de Ownership do Rust}
+\subsection{Gargalo de Mutação Centralizada}
 
-A limitação mais crítica vem do sistema rigoroso de ownership do Rust. A aplicação usa uma variável central \texttt{app} que mantém configurações, popups e estado da aplicação. Isso cria um problema arquitetural fundamental:
+O principal problema arquitetural reside na concentração de todo o estado da aplicação em uma única estrutura \texttt{App} que deve ser passada como \texttt{\&mut App} através de toda a cadeia de chamadas. Esta abordagem cria um \textit{gargalo de mutação centralizada} que viola princípios fundamentais de design modular.
 
-\begin{itemize}
-    \item Todo valor em Rust deve ter exatamente um proprietário
-    \item Para modificar o app, uma referência mutável (\texttt{\&mut}) é necessária
-    \item Popups precisam modificar dados no app, requerendo uma segunda referência \texttt{\&mut} ao app
-    \item Rust proíbe ter duas referências \texttt{\&mut} simultâneas aos mesmos dados
-\end{itemize}
-
-Esta restrição impede que popups modifiquem dados da aplicação, limitando-os à funcionalidade apenas de exibição. A solução atual envolve refatoração extensiva sempre que novas funcionalidades precisam ser adicionadas.
-
-\subsection{Limitações Single-Threaded}
-
-A aplicação é principalmente single-threaded, o que cria gargalos ao realizar operações de I/O, tais como:
+O sistema de ownership do Rust impõe que quando uma função recebe \texttt{\&mut App}, ela adquire uma referência mutável exclusiva de toda a estrutura. Isso significa que:
 
 \begin{itemize}
-    \item Requisições de rede para a API do lore
-    \item Operações do sistema de arquivos
-    \item Atualizações de renderização do terminal
-    \item Lógica complicada para mostrar telas de carregamento
+    \item Nenhum outro código pode ler ou escrever qualquer campo de \texttt{App} até que essa referência seja liberada
+    \item Campos não podem ser emprestados independentemente enquanto \texttt{\&mut App} está ativa
+    \item Componentes internos não podem modificar componentes irmãos sem liberar a referência primeiro
 \end{itemize}
 
-Este design impede que a aplicação lide eficientemente com operações concorrentes e pode levar a interfaces de usuário não responsivas durante operações de rede ou arquivo.
+Esta restrição força a centralização de toda lógica de mutação nos métodos de \texttt{App}, impedindo que componentes gerenciem seu próprio estado de forma independente. O resultado é uma violação do princípio da responsabilidade única, onde a estrutura central deve conhecer detalhes de implementação de todos os seus componentes.
 
-\subsection{Acoplamento Forte}
+\subsection{Substituição Inadequada do Gerenciamento de Ciclo de Vida}
 
-A arquitetura atual exibe acoplamento forte entre diferentes componentes:
+A arquitetura atual utiliza o padrão \texttt{Option<T>} como substituto inadequado para o gerenciamento adequado do ciclo de vida de componentes. Como a estrutura \texttt{App} sempre existe, mas as telas precisam ser inicializadas e destruídas, o código utiliza \texttt{Option<T>} para representar estados de presença:
 
 \begin{itemize}
-    \item Lógica de UI está entrelaçada com lógica de negócio
-    \item Gerenciamento de configuração está profundamente embarcado no estado da aplicação
-    \item Tratamento de erro está espalhado por todo o código
-    \item Testes se tornam difíceis devido à estrutura monolítica e código com efeitos colaterais usado em todos os lugares
+    \item \texttt{latest\_patchsets: Option<LatestPatchsets>}
+    \item \texttt{details\_actions: Option<DetailsActions>}
+    \item \texttt{edit\_config: Option<EditConfig>}
 \end{itemize}
+
+Esta abordagem introduz riscos de pânico em tempo de execução através de constantes chamadas \texttt{.as\_ref().unwrap()} e \texttt{.as\_mut().unwrap()}, substituindo a segurança em tempo de compilação oferecida pelo sistema de tipos do Rust por verificações dinâmicas propensas a falhas.
+
+\subsection{Impossibilidade de Composição Modular}
+
+O design atual impede a composição modular de handlers e componentes devido às restrições de borrowing. Handlers de eventos devem receber \texttt{\&mut App} inteiro mesmo quando precisam acessar apenas um subconjunto específico de dados. Isso cria uma situação onde:
+
+\begin{itemize}
+    \item Handlers não podem ser decompostos em funções auxiliares menores
+    \item Não é possível passar \texttt{\&mut DetailsActions} porque \texttt{App} já possui a referência
+    \item Funções auxiliares que precisam de múltiplos campos de \texttt{App} enfrentam conflitos de borrowing
+\end{itemize}
+
+Esta limitação força a criação de métodos monolíticos em \texttt{App} que conhecem detalhes de implementação de múltiplos componentes, aumentando a complexidade ciclomática e reduzindo a testabilidade.
+
+\subsection{Atualizações de Estado Intercomponentes Problemáticas}
+
+A arquitetura torna impossível a atualização direta de estado entre componentes, forçando todas as interações através da estrutura central \texttt{App}. Quando um componente precisa modificar o estado de outro componente irmão, ele deve passar pela estrutura \texttt{App} como intermediário, criando acoplamento forte entre componentes que deveriam ser independentes.
+
+Por exemplo, quando \texttt{DetailsActions} precisa atualizar \texttt{BookmarkedPatchsets}, não pode manter uma referência direta a ele. Deve acessar através de \texttt{App}, tornando os componentes intimamente acoplados através do hub central.
+
+\subsection{Concorrência e Responsividade Limitadas}
+
+A natureza single-threaded da aplicação cria gargalos significativos durante operações de I/O, resultando em:
+
+\begin{itemize}
+    \item Interfaces não responsivas durante requisições de rede
+    \item Bloqueio da UI durante operações de sistema de arquivos
+    \item Lógica complexa para implementar telas de carregamento
+    \item Impossibilidade de realizar operações paralelas independentes
+\end{itemize}
+
+Este design impede que a aplicação aproveite eficientemente recursos do sistema e pode levar a experiências de usuário degradadas durante operações que requerem comunicação de rede ou acesso a arquivos.
+
+\subsection{Dificuldades de Testabilidade}
+
+A arquitetura monolítica torna extremamente difícil a criação de testes unitários eficazes. Testes de handlers individuais requerem a construção de toda a estrutura \texttt{App}, incluindo dependências que podem não ser relevantes para o teste específico. Isso resulta em:
+
+\begin{itemize}
+    \item Testes lentos devido à necessidade de inicialização completa
+    \item Testes frágeis que quebram quando componentes não relacionados são modificados
+    \item Impossibilidade de isolar comportamento específico para teste
+    \item Dificuldade em criar mocks e stubs para dependências externas
+\end{itemize}
+
+Esta limitação compromete significativamente a capacidade de garantir qualidade através de testes automatizados, aumentando o risco de regressões em mudanças futuras.
