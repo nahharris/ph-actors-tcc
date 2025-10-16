@@ -4,22 +4,102 @@ Uma vez apresentadas as propostas de adaptação do Modelo de Atores para experi
 
 \section{Contexto}
 
-Patch-Hub é uma interface baseada em terminal para navegar e interagir com patches em lore.kernel.org, suportando o kernel Linux e projetos relacionados. Ele agiliza o fluxo de trabalho tradicional centrado em listas de discussão usado no desenvolvimento do kernel.
+Para compreender adequadamente o projeto Patch-Hub e sua importância, é necessário entender o ecossistema de desenvolvimento do kernel Linux e os desafios enfrentados pelos desenvolvedores. O Linux é um sistema operacional de código aberto baseado no kernel Unix-like desenvolvido por Linus Torvalds em 1991~\cite{linux_wikipedia}. O kernel Linux é o núcleo do sistema operacional, responsável por gerenciar recursos de hardware, processos e comunicação entre componentes do sistema~\cite{kernel_wikipedia}.
 
-O Patch-Hub pertence ao projeto mais amplo KWorkflow, um Sistema de Fluxo de Trabalho de Automação de Desenvolvedor que reduz a sobrecarga de configuração do kernel e fornece ferramentas para tarefas do dia a dia. Reescrever o Patch-Hub usando o Modelo de Atores visa tanto melhorar a ferramenta quanto demonstrar os benefícios de arquiteturas baseadas em atores para aplicações centralizadas em Rust.
+\subsection{O Processo de Contribuição para o Kernel Linux}
 
-Este projeto é um caso de estudo adequado porque:
+O desenvolvimento do kernel Linux é um processo colaborativo que envolve milhares de desenvolvedores ao redor do mundo. Devido à sua complexidade e tamanho, o kernel é organizado em subsistemas especializados, cada um com responsabilidades específicas~\cite{kernel_subsystems}. Contribuições para o kernel, conhecidas como \textit{patches}, são tradicionalmente enviadas através de listas de discussão públicas por email e revisadas por mantenedores especializados~\cite{kernel_patches}.
+
+Este processo tradicional de contribuição apresenta diversos desafios. Os desenvolvedores precisam se inscrever em múltiplas listas de email e gerenciar um volume considerável de mensagens. Isso dificulta muito acompanhar o status de suas contribuições.
+
+\subsection{O Projeto lore.kernel.org}
+
+Para mitigar essas dificuldades, foi criado o projeto lore.kernel.org, um arquivo público que fornece uma interface web para visualizar e pesquisar mensagens das listas de discussão do kernel~\cite{lore_api}. O lore.kernel.org oferece uma API que permite acesso programático aos patches arquivados, incluindo funcionalidades de busca, paginação e filtros avançados.
+
+A API do lore suporta consultas complexas através de parâmetros de query string, permitindo filtrar patches por critérios como assunto, autor, data e conteúdo. Esta funcionalidade é fundamental para ferramentas que buscam automatizar ou simplificar a interação com o ecossistema de patches do kernel.
+
+\subsection{O Projeto KWorkflow}
+
+O projeto KWorkflow (kw) surgiu como uma resposta aos desafios de configuração e complexidade do ambiente de desenvolvimento para o kernel Linux~\cite{kworkflow_org}. O kw é descrito como uma "ferramenta de fluxo de trabalho de desenvolvedor de kernel" que visa reduzir a sobrecarga de configuração e fornecer ferramentas para tarefas comuns do desenvolvimento de kernel.
+
+O projeto oferece uma interface unificada para diversas operações como compilação, deploy, debug e gerenciamento de configurações, consolidando ferramentas anteriormente dispersas em um único comando de terminal.
+
+\subsection{O Patch-Hub}
+
+O Patch-Hub é uma ferramenta de interface terminal desenvolvida como parte do ecossistema KWorkflow, especificamente projetada para interagir com a API do lore.kernel.org~\cite{patch_hub_github}. Sua missão é agilizar a navegação e revisão de contribuições para o kernel Linux, fornecendo uma interface de usuário baseada em terminal (TUI) que simplifica o processo de descoberta, análise e acompanhamento de patches.
+
+A ferramenta permite aos desenvolvedores navegar por listas de patches, aplicar filtros de busca, visualizar conteúdo de patches e gerenciar seu fluxo de trabalho de revisão diretamente do terminal, eliminando a necessidade de alternar entre interfaces web e ferramentas de linha de comando.
+
+\section{Arquitetura Atual}
+
+A implementação atual do Patch-Hub segue uma arquitetura majoritariamente single-threaded e monolítica com inspirações no padrão arquitetural MVC. A organização do código foi dada em termos dos seguintes módulos:
 
 \begin{itemize}
-    \item Tem um escopo e conjunto de funcionalidades claros
-    \item Apresenta desafios arquiteturais bem adequados ao Modelo de Atores
-    \item É mantido ativamente e usado pela comunidade do kernel
-    \item Permite medição concreta do impacto arquitetural
+    \item \textbf{\texttt{lore}}: Interface para interagir com a API do lore para buscar dados de patches
+    \item \textbf{\texttt{ui}}: Renderização de terminal e lógica de exibição
+    \item \textbf{\texttt{cli}}: Parsing de argumentos de linha de comando
+    \item \textbf{\texttt{app}}: Estado central da aplicação e gerenciamento de dados
+    \begin{itemize}
+        \item \texttt{logger}: Gerencia funcionalidade de logging
+        \item \texttt{popup}: Cria e gerencia diálogos popup
+        \item \texttt{config}: Gerencia configurações da aplicação
+    \end{itemize}
+    \item \textbf{\texttt{handler}}: Manipulação de entrada do usuário e processamento de eventos
 \end{itemize}
 
-\input{conteudo/05-estudo-caso/01-arquitetura-atual}
-\input{conteudo/05-estudo-caso/02-funcionalidades}
-\input{conteudo/05-estudo-caso/03-limitacoes}
+\section{Funcionalidades Principais}
+
+A implementação atual do Patch-Hub fornece um conjunto de funcionalidades para interagir com o arquivo de patches do kernel Linux. O sistema permite a seleção e navegação de listas de discussão arquivadas no \textit{lore.kernel.org}, apresentando os conjuntos de patches associados. Ao examinar uma série específica, a interface disponibiliza o conteúdo individual dos patches juntamente com metadados relevantes, incluindo título, autor, versão, quantidade de patches e timestamp da última atualização.
+
+-- imagem --
+
+O sistema implementa operações fundamentais para o workflow de revisão de patches: aplicação de patches em repositórios locais do kernel, organização de séries em um sistema de favoritos, e composição de respostas com tags de revisão padrão, como \texttt{Reviewed-by}.
+
+A renderização do conteúdo dos patches é implementada com suporte a múltiplos backends, incluindo ferramentas externas, além de um renderizador padrão. Esta arquitetura permite variação na apresentação visual dos patches sem comprometer a portabilidade da aplicação.
+
+\section{Limitações Arquiteturais}
+
+Apesar de sua funcionalidade, a implementação atual do Patch-Hub enfrenta desafios arquiteturais significativos que limitam sua flexibilidade e manutenibilidade:
+
+\subsection{Restrições do Sistema de Ownership do Rust}
+
+A limitação mais crítica vem do sistema rigoroso de gerenciamento de memória do Rust que exige certos malabarismos para permitir a flexibilidade do sistema. A aplicação usa uma variável central \texttt{app} que mantém por exemplo: configurações, conteúdo em exibição, popups e estado da aplicação. Isso cria um problema arquitetural fundamental.
+
+Todos os métodos que lidam com entrada do usuário acabam recebendo uma referência mutável a \texttt{app}. Pelas regras do compilador da linguagem Rust, não se pode haver mais nenhum tipo de referência
+
+\begin{itemize}
+    \item 
+    \item Para modificar o app, uma referência mutável (\texttt{\&mut}) é necessária
+    \item Popups precisam modificar dados no app, requerendo uma segunda referência \texttt{\&mut} ao app
+    \item Rust proíbe ter duas referências \texttt{\&mut} simultâneas aos mesmos dados
+\end{itemize}
+
+Esta restrição impede que popups modifiquem dados da aplicação, limitando-os à funcionalidade apenas de exibição. A solução atual envolve refatoração extensiva sempre que novas funcionalidades precisam ser adicionadas.
+
+\subsection{Limitações Single-Threaded}
+
+A aplicação é principalmente single-threaded, o que cria gargalos ao realizar operações de I/O, tais como:
+
+\begin{itemize}
+    \item Requisições de rede para a API do lore
+    \item Operações do sistema de arquivos
+    \item Atualizações de renderização do terminal
+    \item Lógica complicada para mostrar telas de carregamento
+\end{itemize}
+
+Este design impede que a aplicação lide eficientemente com operações concorrentes e pode levar a interfaces de usuário não responsivas durante operações de rede ou arquivo.
+
+\subsection{Acoplamento Forte}
+
+A arquitetura atual exibe acoplamento forte entre diferentes componentes:
+
+\begin{itemize}
+    \item Lógica de UI está entrelaçada com lógica de negócio
+    \item Gerenciamento de configuração está profundamente embarcado no estado da aplicação
+    \item Tratamento de erro está espalhado por todo o código
+    \item Testes se tornam difíceis devido à estrutura monolítica e código com efeitos colaterais usado em todos os lugares
+\end{itemize}
+
 \input{conteudo/05-estudo-caso/04-motivacao}
 \input{conteudo/05-estudo-caso/05-objetivos}
 \input{conteudo/05-estudo-caso/06-atores-primitivos}

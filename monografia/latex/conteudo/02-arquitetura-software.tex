@@ -22,6 +22,46 @@ Todavia, como explorado pelo artigo \emph{Software Patterns in Practice: an Empi
 
 Por isso, é necessário estudar e entender os padrões existentes e como isso traz consequências de longo prazo para confiabilidade, manutenibilidade, testabilidade, entre outras complicações para um sistema.
 
+A seguir, apresentam-se alguns padrões arquiteturais fundamentais que servirão como base conceitual para as discussões subsequentes neste trabalho.
+
+\subsection{Princípios SOLID}
+
+Os princípios SOLID são um conjunto de diretrizes para o design de software introduzidos por Robert Martin no ano 2000. Originalmente, os princípios tinham como alvo principal sistemas orientados a objetos, todavia suas lições podem se extender muito além e ser aplicados a diversos domínios. Seus principais objetivos são criar sistemas mais flexíveis, manuteníveis e extensíveis. Seu nome, é uma sigla com as iniciais de cada um dos 5 princípios, que são:
+
+\begin{itemize}
+    \item \textbf{Single Responsibility}: Uma classe deve ter apenas uma razão para mudar, ou seja, deve ter apenas uma responsabilidade.
+    
+    \item \textbf{Open/Closed}: Entidades de software devem estar abertas para extensão, mas fechadas para modificação.
+    
+    \item \textbf{Liskov Substitution}: Objetos de uma superclasse devem ser substituíveis por objetos de suas subclasses sem alterar a funcionalidade do programa.
+    
+    \item \textbf{Interface Segregation}: Clientes não devem ser forçados a depender de interfaces que não utilizam.
+    
+    \item \textbf{Dependency Inversion}: Módulos de alto nível não devem depender de módulos de baixo nível. Ambos devem depender de abstrações.
+\end{itemize}
+
+Estes princípios são especialmente relevantes para o Modelo de Atores, pois cada ator pode ser visto como uma unidade que segue o princípio de responsabilidade única, enquanto a comunicação baseada em mensagens facilita a inversão de dependências e a segregação de interfaces.
+
+
+\subsection{Padrão MVC}
+
+O padrão Model-View-Controller (MVC) é um padrão arquitetural que divide uma aplicação em três componentes interconectados, cada um com responsabilidades bem definidas. Esse padrão surgiu para resolver problemas de acoplamento entre a lógica de negócio e a apresentação, permitindo que essas camadas evoluam de forma independente.
+
+Os três componentes do padrão MVC são:
+
+\begin{itemize}
+    \item \textbf{Model}: Representa os dados e a lógica de negócio da aplicação. É responsável por manter o estado do sistema e realizar operações sobre os dados. O Model não possui conhecimento sobre como os dados são exibidos.
+    
+    \item \textbf{View}: É responsável pela apresentação dos dados ao usuário. A View consome dados do Model e os exibe de forma adequada à interface (web, desktop, terminal, etc.). A View não deve conter lógica de negócio complexa.
+    
+    \item \textbf{Controller}: Funciona como intermediário entre a View e o Model. Recebe entradas do usuário através da View, processa essas entradas (frequentemente chamando operações no Model) e atualiza o estado da aplicação. O Controller orquestra a comunicação entre os outros dois componentes.
+\end{itemize}
+
+O MVC oferece benefícios significativos para a manutenibilidade e testabilidade de sistemas. A separação de responsabilidades permite que a lógica de negócio seja testada independentemente da interface, facilitando testes unitários. Além disso, múltiplas Views podem ser criadas para consumir o mesmo Model, permitindo reutilização de código e adaptação a diferentes contextos.
+
+No entanto, o padrão MVC tradicional apresenta algumas limitações em contextos específicos. Em aplicações com requisitos complexos de concorrência ou que precisam lidar com múltiplas operações assíncronas, o Controller pode se tornar um ponto de gargalo. Além disso, em aplicações distribuídas, a comunicação síncrona típica do MVC pode não ser suficiente para atender aos requisitos de resiliência e escalabilidade.
+
+
 \section{Avaliação de Adequação de Padrões}
 
 O primeiro e mais importante fator a ser analisado para se identificar a adequação de um padrão para um projeto é, evidentemente, o casamento entre os requisitos de qualidade que o padrão aborda e o requisitos de qualidade do sistema.
@@ -29,24 +69,6 @@ O primeiro e mais importante fator a ser analisado para se identificar a adequa�
 Uma outra caracteristica a ser considerada é o contexto da aplicação. Existem padrões que abordam desafios comuns para aplicações de nuvem, outros para aplicações de interface gráfica. Escolher um padrão de um domínio distinto irá fornecer poucas ferramentas úteis para a resolução do problema.
 
 Por fim, é necessário entender os custos que aquele padrão trás. Qual impacto esperado na performance do sistema? O quanto ele enrijece a estrutura pro projeto? O quão mais complicado fica a organização do código? Todas essas perguntas precisam ser feitas.
-
-\section{Princípios SOLID}
-
-Os princípios SOLID são um conjunto de diretrizes para o design de software orientado a objetos que visam criar sistemas mais flexíveis, manuteníveis e extensíveis. Estes princípios são:
-
-\begin{itemize}
-    \item \textbf{Single Responsibility Principle (SRP)}: Uma classe deve ter apenas uma razão para mudar, ou seja, deve ter apenas uma responsabilidade.
-    
-    \item \textbf{Open/Closed Principle (OCP)}: Entidades de software devem estar abertas para extensão, mas fechadas para modificação.
-    
-    \item \textbf{Liskov Substitution Principle (LSP)}: Objetos de uma superclasse devem ser substituíveis por objetos de suas subclasses sem alterar a funcionalidade do programa.
-    
-    \item \textbf{Interface Segregation Principle (ISP)}: Clientes não devem ser forçados a depender de interfaces que não utilizam.
-    
-    \item \textbf{Dependency Inversion Principle (DIP)}: Módulos de alto nível não devem depender de módulos de baixo nível. Ambos devem depender de abstrações.
-\end{itemize}
-
-Estes princípios são especialmente relevantes para o Modelo de Atores, pois cada ator pode ser visto como uma unidade que segue o princípio de responsabilidade única, enquanto a comunicação baseada em mensagens facilita a inversão de dependências e a segregação de interfaces.
 
 \section{Justificativa para o Modelo de Atores}
 
