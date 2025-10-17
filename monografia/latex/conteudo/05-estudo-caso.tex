@@ -112,17 +112,108 @@ A arquitetura monolítica torna extremamente difícil a criação de testes unit
 
 Esta limitação compromete significativamente a capacidade de garantir qualidade através de testes automatizados, aumentando o risco de regressões em mudanças futuras.
 
-\section{Motivação para o Trabalho}
+\section{Objetivos}
 
-Fica evidente que o Patch-Hub necessita de grandes refatorações para tentar resolver os problemas supracitados. 
+Fica evidente que o Patch-Hub necessita de refatorações para tentar resolver os problemas supracitados. Em especial, fica notável uma grande necessidade de melhorias do ponto de vista da flexibilidade do sistema. Tendo em vista que o Modelo de Atores proporciona alta modularidade e baixo acoplamento aos sistemas, isso torna o Patch-Hub  um candidato interessante para experimentação. Além disso, o Patch-Hub toca em domínios o suficiente para que o experimento seja bastante completo.
 
-\input{conteudo/05-estudo-caso/05-objetivos}
-\input{conteudo/05-estudo-caso/06-atores-primitivos}
-\input{conteudo/05-estudo-caso/07-atores-filesystem}
-\input{conteudo/05-estudo-caso/08-atores-rede}
-\input{conteudo/05-estudo-caso/09-atores-ambiente}
-\input{conteudo/05-estudo-caso/10-atores-terminal}
-\input{conteudo/05-estudo-caso/11-atores-shell}
+Este trabalho não criará uma reescrita completa com 100\% de compatibilidade de funcionalidades. Ao invés disso, um subconjunto das funcionalidades foi escolhido para implementação, suficiente para ter as funcionalidades principais do Patch-Hub, que são:
+
+\begin{itemize}
+    \item Uma interface de usuário de texto interativa
+    \item Integração com API do Lore com suporte a cache
+    \item Navegar através das listas de discussão catalogadas
+    \item Acesso a um feed de patches enviados para uma lista de discussão
+    \item Fornecer uma visualização do conteúdo e metadados de um patch
+    \item Configurações personalizáveis
+    \item Um sistema de log
+\end{itemize}
+
+\section{Modelagem com Atores}
+
+Com objetivos estabelecidos, resta apenas modelar a arquitetura do Patch-Hub com o uso de atores. A modelagem é feita adotando os princípios SOLID como guias. Os atores serão aqui categorizados em 2 grupos considerando o tipo de interação que eles são responsáveis: externas ou internas.
+
+Os atores responsáveis por interações com componentes externos ao sistema, como por exemplo o sistema de arquivos, a internet ou o terminal. Este grupo será chamado de primitivo pois servem como a base que permitira o sistema executar ações que geram algum efeito colateral interagindo com o mundo real.
+
+O segundo grupo é formado pelos demais atores que irão interagir apenas com com demais atores, ou seja, componentes internos ao sistema. Este grupo tem uma diferença fundamental no que diz respeito a sua testabilidade. Por dependerem apenas de outros atores, testes unitários se tornam triviais uma vez que se criem dublês. Uma vez que testando um ator contra dublês dá a garantia que apenas o código do próprio ator é o que influencia no resultado dos testes. Este grupo será chamado de atores de negócio pois conterá, majoritariamente, atores modelados pela lógica de negócio da aplicação.
+
+
+\subsection{Atores Primitivos}
+
+Primeiramente é necessário identificar quais são as capacidades do Patch-Hub que dependem unicamente de interação com sistemas externos ao programa, elas serão:
+
+\begin{itemize}
+    \item Operações do sistema de arquivos
+    \item Requisições HTTP
+    \item Manipulação de variáveis de ambiente
+    \item Controle de terminal
+    \item Integração com shell
+\end{itemize}
+
+Essas capacidades não fazem parte da lógica de negócio do Patch-Hub, mas servem de bases para permitir a implementação de tal. Cada uma dessas capacidades pode ser traduzida para um ator em nossa aplicação seguindo os princípios SOLID, especialmente a responsabilidade única e a segregação de interfaces.
+
+\subsubsection{Sistema de Arquivos}
+
+O ator de Sistema de Arquivos fornece acesso thread-safe a operações do sistema de arquivos através do padrão Modelo de Atores. Ele encapsula todas as operações de arquivo e diretório, fornecendo uma interface unificada tanto para acesso real ao sistema de arquivos quanto para implementações mock para testes.
+
+\textbf{Mensagens:}
+
+\begin{itemize}
+    \item \texttt{ReadFile}: Abre um arquivo apenas para leitura (não cria se não existir)
+    \item \texttt{WriteFile}: Abre um arquivo para escrita (trunca conteúdo, cria se necessário)
+    \item \texttt{AppendFile}: Abre um arquivo para anexar (cria se necessário)
+    \item \texttt{RemoveFile}: Remove um arquivo do sistema de arquivos
+    \item \texttt{ReadDir}: Lê o conteúdo de um diretório
+    \item \texttt{MkDir}: Cria um diretório e seus pais
+    \item \texttt{RmDir}: Remove um diretório e seu conteúdo
+\end{itemize}
+
+\subsubsection{Rede}
+
+O ator de Rede fornece acesso thread-safe a operações HTTP através do padrão Modelo de Atores. Ele gerencia todas as requisições HTTP usando a biblioteca reqwest, fornecendo uma interface unificada tanto para operações reais de rede quanto para implementações mock para testes.
+
+\textbf{Mensagens:}
+
+\begin{itemize}
+    \item \textbf{Get}: Executa uma requisição HTTP GET para a URL especificada com headers opcionais
+    \item \textbf{Post}: Executa uma requisição HTTP POST para a URL especificada com headers opcionais e corpo
+    \item \textbf{Put}: Executa uma requisição HTTP PUT para a URL especificada com headers opcionais e corpo
+    \item \textbf{Delete}: Executa uma requisição HTTP DELETE para a URL especificada com headers opcionais
+    \item \textbf{Patch}: Executa uma requisição HTTP PATCH para a URL especificada com headers opcionais e corpo
+\end{itemize}
+
+\subsubsection{Variáveis de Ambiente}
+
+O ator de Ambiente fornece acesso thread-safe a operações de variáveis de ambiente através do padrão Modelo de Atores. Ele encapsula todo o acesso a variáveis de ambiente, fornecendo uma interface unificada tanto para acesso real ao ambiente do sistema quanto para implementações mock para testes.
+
+\textbf{Mensagens:}
+
+\begin{itemize}
+    \item \textbf{Set}: Define uma variável de ambiente para um valor especificado
+    \item \textbf{Unset}: Remove uma variável de ambiente
+    \item \textbf{Get}: Recupera o valor de uma variável de ambiente (retorna VarError se não encontrada)
+\end{itemize}
+
+\subsection{Terminal}
+
+O ator de Terminal fornece acesso thread-safe a operações de UI de terminal através do padrão Modelo de Atores. Ele gerencia o loop de eventos TUI (Terminal User Interface) Cursive e fornece uma interface baseada em mensagens para atualizar a UI de outros atores.
+
+\textbf{Mensagens:}
+
+\begin{itemize}
+    \item \textbf{Show}: Atualiza a tela exibida com um novo tipo de tela
+    \item \textbf{Quit}: Termina a UI e sai da aplicação
+\end{itemize}
+
+\subsection{Shell}
+
+O ator de Shell fornece acesso thread-safe à execução de programas externos através do padrão Modelo de Atores. Ele encapsula toda a execução de comandos shell, fornecendo uma interface unificada tanto para execução real de processos quanto para implementações mock para testes.
+
+\textbf{Mensagens:}
+
+\begin{itemize}
+    \item \textbf{Execute}: Executa um programa externo com comando, argumentos e entrada stdin opcionais retornando a saída padrão do programa 
+\end{itemize}
+
 \input{conteudo/05-estudo-caso/12-atores-log}
 \input{conteudo/05-estudo-caso/13-atores-config}
 \input{conteudo/05-estudo-caso/14-atores-lore}
