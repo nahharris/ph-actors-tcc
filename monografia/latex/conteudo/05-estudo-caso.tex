@@ -132,12 +132,12 @@ Este trabalho não criará uma reescrita completa com 100\% de compatibilidade d
 
 Com objetivos estabelecidos, resta apenas modelar a arquitetura do Patch-Hub com o uso de atores. A modelagem é feita adotando os princípios SOLID como guias. Os atores serão aqui categorizados em 2 grupos considerando o tipo de interação que eles são responsáveis: externas ou internas.
 
-Os atores responsáveis por interações com componentes externos ao sistema, como por exemplo o sistema de arquivos, a internet ou o terminal. Este grupo será chamado de primitivo pois servem como a base que permitira o sistema executar ações que geram algum efeito colateral interagindo com o mundo real.
+Os atores responsáveis por interações com componentes externos ao sistema, como por exemplo o sistema de arquivos, a internet ou o terminal. Este grupo será chamado de atores de integração pois permitem a integração do programa com outros sistemas, geral assim efeitos no mundo real.
 
-O segundo grupo é formado pelos demais atores que irão interagir apenas com com demais atores, ou seja, componentes internos ao sistema. Este grupo tem uma diferença fundamental no que diz respeito a sua testabilidade. Por dependerem apenas de outros atores, testes unitários se tornam triviais uma vez que se criem dublês. Uma vez que testando um ator contra dublês dá a garantia que apenas o código do próprio ator é o que influencia no resultado dos testes. Este grupo será chamado de atores de negócio pois conterá, majoritariamente, atores modelados pela lógica de negócio da aplicação.
+O segundo grupo é formado pelos demais atores que irão interagir apenas com demais atores, ou seja, componentes internos ao sistema. Este grupo tem uma diferença fundamental no que diz respeito a sua testabilidade. Por dependerem apenas de outros atores, testes unitários se tornam triviais uma vez que se criem dublês. Uma vez que, testando um ator contra dublês, dá a garantia que apenas o código do próprio ator é o que influencia no resultado dos testes. Este grupo será chamado de atores de lógica pois conterá, majoritariamente, atores modelados pela lógica de negócio da aplicação.
 
 
-\subsection{Atores Primitivos}
+\subsection{Atores de Integração}
 
 Primeiramente é necessário identificar quais são as capacidades do Patch-Hub que dependem unicamente de interação com sistemas externos ao programa, elas serão:
 
@@ -153,8 +153,6 @@ Essas capacidades não fazem parte da lógica de negócio do Patch-Hub, mas serv
 
 \subsubsection{Sistema de Arquivos}
 
-O ator de Sistema de Arquivos fornece acesso thread-safe a operações do sistema de arquivos através do padrão Modelo de Atores. Ele encapsula todas as operações de arquivo e diretório, fornecendo uma interface unificada tanto para acesso real ao sistema de arquivos quanto para implementações mock para testes.
-
 \textbf{Mensagens:}
 
 \begin{itemize}
@@ -169,8 +167,6 @@ O ator de Sistema de Arquivos fornece acesso thread-safe a operações do sistem
 
 \subsubsection{Rede}
 
-O ator de Rede fornece acesso thread-safe a operações HTTP através do padrão Modelo de Atores. Ele gerencia todas as requisições HTTP usando a biblioteca reqwest, fornecendo uma interface unificada tanto para operações reais de rede quanto para implementações mock para testes.
-
 \textbf{Mensagens:}
 
 \begin{itemize}
@@ -183,8 +179,6 @@ O ator de Rede fornece acesso thread-safe a operações HTTP através do padrão
 
 \subsubsection{Variáveis de Ambiente}
 
-O ator de Ambiente fornece acesso thread-safe a operações de variáveis de ambiente através do padrão Modelo de Atores. Ele encapsula todo o acesso a variáveis de ambiente, fornecendo uma interface unificada tanto para acesso real ao ambiente do sistema quanto para implementações mock para testes.
-
 \textbf{Mensagens:}
 
 \begin{itemize}
@@ -195,8 +189,6 @@ O ator de Ambiente fornece acesso thread-safe a operações de variáveis de amb
 
 \subsection{Terminal}
 
-O ator de Terminal fornece acesso thread-safe a operações de UI de terminal através do padrão Modelo de Atores. Ele gerencia o loop de eventos TUI (Terminal User Interface) Cursive e fornece uma interface baseada em mensagens para atualizar a UI de outros atores.
-
 \textbf{Mensagens:}
 
 \begin{itemize}
@@ -206,12 +198,22 @@ O ator de Terminal fornece acesso thread-safe a operações de UI de terminal at
 
 \subsection{Shell}
 
-O ator de Shell fornece acesso thread-safe à execução de programas externos através do padrão Modelo de Atores. Ele encapsula toda a execução de comandos shell, fornecendo uma interface unificada tanto para execução real de processos quanto para implementações mock para testes.
-
 \textbf{Mensagens:}
 
 \begin{itemize}
     \item \textbf{Execute}: Executa um programa externo com comando, argumentos e entrada stdin opcionais retornando a saída padrão do programa 
+\end{itemize}
+
+\section{Atores de Lógica}
+
+Agora é momento de se identificar as demais capacidades relacionadas à lógica da aplicação que não foram cobertas pelos atores de integração. São elas:
+
+\begin{itemize}
+	\item Registrar eventos com um sistema de logs
+	\item Gerenciar configurações
+	\item Acessar a Lore API
+	\item Suporte a caching das requests feitas
+	\item Desenhar a interface do usuário
 \end{itemize}
 
 \input{conteudo/05-estudo-caso/12-atores-log}
