@@ -204,7 +204,7 @@ Essas capacidades não fazem parte da lógica de negócio do Patch-Hub, mas serv
     \item \textbf{Execute}: Executa um programa externo com comando, argumentos e entrada stdin opcionais retornando a saída padrão do programa 
 \end{itemize}
 
-\section{Atores de Lógica}
+\subsection{Atores de Lógica}
 
 Agora é momento de se identificar as demais capacidades relacionadas à lógica da aplicação que não foram cobertas pelos atores de integração. São elas:
 
@@ -216,10 +216,128 @@ Agora é momento de se identificar as demais capacidades relacionadas à lógica
 	\item Desenhar a interface do usuário
 \end{itemize}
 
-\input{conteudo/05-estudo-caso/12-atores-log}
-\input{conteudo/05-estudo-caso/13-atores-config}
-\input{conteudo/05-estudo-caso/14-atores-lore}
-\input{conteudo/05-estudo-caso/15-atores-cache}
-\input{conteudo/05-estudo-caso/16-cache-lista}
-\input{conteudo/05-estudo-caso/17-cache-feed}
-\input{conteudo/05-estudo-caso/18-cache-patch}
+\subsubsection{Logs}
+
+Fornece um serviço de logging centralizado e thread-safe. Ele recebe mensagens de log de outros atores e as escreve em um arquivo de log designado, fornecendo diferentes níveis de log para debugging e monitoramento.
+
+\textbf{Depende:}
+
+\begin{itemize}
+    \item \textbf{Sistema de Arquivos}: Para persistir logs em um arquivo
+\end{itemize}
+
+\textbf{Mensagens:}
+
+\begin{itemize}
+    \item \textbf{Log}: Registra uma mensagem com um nível de log específico (ex: Info, Warn, Error, Debug)
+    \item \textbf{GetLastLogs}: Recupera as últimas N entradas de log
+\end{itemize}
+
+\subsubsection{Configurações}
+
+Responsável por carregar configurações de um arquivo de configuração, fornecê-las a outros atores sob demanda e persistir mudanças.
+
+\textbf{Depende:}
+
+\begin{itemize}
+    \item \textbf{Sistema de Arquivos}: Para salvar e carregar o arquivo de configuração
+\end{itemize}
+
+\textbf{Mensagens:}
+
+\begin{itemize}
+    \item \textbf{Get}: Recupera o valor de uma chave de configuração específica
+    \item \textbf{Set}: Atualiza o valor de uma chave de configuração específica
+    \item \textbf{Load}: Recarrega a configuração do arquivo fonte
+    \item \textbf{Persist}: Salva a configuração atual no arquivo fonte
+\end{itemize}
+
+\subsubsection{Lore API}
+
+Gerencia toda a comunicação com a API externa do Lore patchwork. Ele abstrai os detalhes das requisições HTTP e parsing de dados, fornecendo uma interface limpa e tipada para buscar dados como listas de discussão, séries de patches e patches individuais. Ele atua como um tradutor entre as estruturas de dados internas da aplicação e as respostas brutas da API. Ele não realiza nenhum cache por si só.
+
+\textbf{Depende:}
+
+\begin{itemize}
+    \item \textbf{Rede}: Para executar as requisições HTTP subjacentes
+\end{itemize}
+
+\textbf{Mensagens:}
+
+\begin{itemize}
+    \item \textbf{GetAvailableListsPage}: Busca uma lista paginada de listas de discussão disponíveis
+    \item \textbf{GetPatchFeedPage}: Busca um feed paginado de patches para uma lista de discussão específica
+    \item \textbf{GetRawPatch}: Busca o conteúdo bruto de um único patch
+\end{itemize}
+
+\subsubsection{Cache}
+
+A fim de agilizar o acesso a dados diminuindo a quantidade de operações que dependam de chamadas de API ou do sistema de arquivos, será feito o uso de técnicas de \emph{caching}.
+
+Para cada domínio de dados, será criado um ator específico que se encarregará de gerenciar o cache para esse domínio. Sendo responsavel por lidar com \emph{cache misses} e \emph{cache hits}, assim como com a validação de cache, garantindo consistência dos dados realizando o mínimo de acessos necessários a sistemas externos.
+
+\textbf{Listas de Discussão}
+
+Armazena em cache a lista de todas as listas de discussão disponíveis da API do Lore. Ele busca a lista completa, ordena alfabeticamente e a persiste no sistema de arquivos para acelerar inicializações subsequentes da aplicação. Ele gerencia validação de cache para atualizar periodicamente a lista.
+
+\textbf{Depende:}
+
+\begin{itemize}
+    \item \textbf{Lore API}: Para buscar os dados da lista de discussão
+    \item \textbf{Sistema de Arquivos}: Para persistir o cache em disco
+    \item \textbf{Configurações}: Para obter o caminho do arquivo de cache
+\end{itemize}
+
+\textbf{Mensagens:}
+
+\begin{itemize}
+    \item \textbf{Get}: Recupera uma única lista de discussão por seu índice na lista ordenada
+    \item \textbf{GetSlice}: Recupera um intervalo de listas de discussão para paginação
+    \item \textbf{Refresh}: Força uma atualização completa do cache da API
+    \item \textbf{Invalidate}: Limpa o cache em memória e em disco
+    \item \textbf{Len}: Retorna o número total de listas de discussão em cache
+\end{itemize}
+
+\textbf{Feed}
+
+Fornece cache por lista de discussão de metadados de patches (como autor, assunto e data). Ele busca feeds de patches sob demanda, suporta paginação e persiste os metadados no sistema de arquivos. Ele usa uma estratégia de validação inteligente para buscar apenas patches novos quando um feed foi atualizado no servidor.
+
+\textbf{Depende:}
+
+\begin{itemize}
+    \item \textbf{Lore API}: Para buscar metadados de patches
+    \item \textbf{Sistema de Arquivos}: Para persistir o cache em disco
+    \item \textbf{Configurações}: Para obter o caminho do diretório de cache
+    \item \textbf{Log}: Para registrar operações de cache
+\end{itemize}
+
+\textbf{Mensagens:}
+
+\begin{itemize}
+    \item \textbf{Get}: Recupera metadados de um único patch por seu índice dentro de um feed de lista de discussão
+    \item \textbf{GetSlice}: Recupera um intervalo de metadados de patches para paginação
+    \item \textbf{Refresh}: Atualiza inteligentemente o cache para uma lista de discussão específica, buscando apenas itens novos
+    \item \textbf{Invalidate}: Limpa o cache para uma lista de discussão específica
+    \item \textbf{Len}: Retorna o número de entradas de metadados em cache para uma lista
+\end{itemize}
+
+\textbf{Patches}
+
+Armazena em cache o conteúdo bruto de patches individuais (formato \texttt{.mbox}). Como o conteúdo do patch é imutável, uma vez que um patch é buscado e armazenado em cache, ele é considerado válido para sempre. Este ator armazena cada patch em um arquivo separado no disco e usa um buffer LRU (Least Recently Used) em memória para fornecer acesso rápido a patches visualizados recentemente.
+
+\textbf{Depende:}
+
+\begin{itemize}
+    \item \textbf{Lore API}: Para buscar o conteúdo bruto do patch
+    \item \textbf{Sistema de Arquivos}: Para armazenar arquivos de patch permanentemente
+    \item \textbf{Configurações}: Para obter o caminho do diretório de cache
+    \item \textbf{Log}: Para registrar operações de cache
+\end{itemize}
+
+\textbf{Mensagens:}
+
+\begin{itemize}
+    \item \textbf{Get}: Recupera o conteúdo bruto de um patch dado sua lista de discussão e ID de mensagem
+    \item \textbf{Invalidate}: Remove um patch específico do cache em disco e buffer em memória
+    \item \textbf{IsAvailable}: Verifica se um patch está em cache sem buscá-lo
+\end{itemize}
