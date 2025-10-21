@@ -1,16 +1,14 @@
-\chapter{Proposta para Rust}
+\chapter{Proposta de Modelos de Atores em Rust}
 
 Uma das principais contribuições deste trabalho é a proposta de um \emph{framework} para aplicações centralizadas escritas em Rust usando o Modelo de Atores. Uma vez que a teoria sobre o Modelo de Atores e as implementações conhecidas foram discutidas, é hora de adaptar suas abstrações para as necessidades e características específicas de aplicações centralizadas em Rust.
 
-\section{Por que Rust?}
+\section{Rust}
 
 O Modelo de Atores é amplamente conhecido por sua dinamicidade e flexibilidade, com a maioria de suas implementações famosas sendo em runtimes flexíveis como BEAM ou JVM. Rust é bem o oposto disso, uma linguagem moderna com um sistema de tipos forte e um compilador poderoso o suficiente para validar quase tudo em tempo de compilação.
 
 Pode soar contraditório usar uma linguagem rígida com um padrão flexível, mas é exatamente o propósito deste trabalho: experimentar com o Modelo de Atores fora do seu domínio específico. Isso permitirá a experimentação dos limites tanto do Modelo de Atores quanto da linguagem de programação Rust.
 
 Apesar desta distância, Rust ainda possui diversos recursos de linguagem análogos a mecanismos fornecidos por Elixir, fazendo essa adaptação ser possível. Além disso, se Elixir foi eleita a segunda linguagem mais amadas nos últimos 3 anos. A mesma pesquisa aponta Rust como sendo a linguagem mais amada desde 2016. Vale ressaltar que Rust 1.0 foi lançado em 2015.
-
-\section{Introdução Rápida ao Rust}
 
 Rust é conhecido por seus mecanismos de segurança que forçam verificação em tempo de compilação, tornando diversos estados inválidos impossíveis de serem representados como código.
 
