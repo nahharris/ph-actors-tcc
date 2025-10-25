@@ -16,4 +16,3 @@ pub enum Message {
     /// Runs the log garbage collector to delete old log files
     CollectGarbage,
 }
-

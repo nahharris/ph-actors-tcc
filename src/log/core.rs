@@ -6,7 +6,7 @@ use crate::ArcPath;
 #[cfg(not(test))]
 use crate::{app::config::Config, fs::Fs};
 #[cfg(test)]
-use crate::{app::config::mock::Mock as Config, fs::mock::MockFs as Fs};
+use crate::{app::config::mock::MockConfig as Config, fs::mock::MockFs as Fs};
 
 const SCOPE: &str = "log";
 

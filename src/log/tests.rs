@@ -8,7 +8,7 @@ async fn test_log_message_creation() {
         scope: "test",
         message: "test message".to_string(),
     };
-    
+
     assert_eq!(msg.level, LogLevel::Info);
     assert_eq!(msg.scope, "test");
     assert_eq!(msg.message, "test message");

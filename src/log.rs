@@ -1,7 +1,8 @@
 mod core;
 mod data;
 mod message;
-mod mock;
+#[cfg(test)]
+pub mod mock;
 #[cfg(test)]
 mod tests;
 
@@ -12,7 +13,7 @@ use data::LogMessage;
 #[cfg(not(test))]
 use crate::{app::config::Config, fs::Fs};
 #[cfg(test)]
-use crate::{app::config::mock::Mock as Config, fs::mock::MockFs as Fs};
+use crate::{app::config::mock::MockConfig as Config, fs::mock::MockFs as Fs};
 
 use anyhow::Context;
 use std::fmt::Display;

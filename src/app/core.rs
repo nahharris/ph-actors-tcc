@@ -95,7 +95,7 @@ impl Core {
         let log = Log::spawn(fs.clone(), config.clone()).await?;
 
         // Initialize network and API actors
-        let net = Net::spawn(config.clone(), log.clone()).await;
+        let net = Net::spawn(config.clone(), log.clone());
         let lore = LoreApi::spawn(net.clone());
 
         // Initialize shell and render actors
