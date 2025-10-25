@@ -279,17 +279,15 @@ No exemplo acima, o loop \texttt{while let Some(message) = rx.recv().await} cont
 Em Elixir, o equivalente seria:
 
 \begin{lstlisting}[language=ruby, caption=Exemplo equivalente em Elixir]
-defmodule Actor do
-  def loop do
+def loop do
     receive do
-      {:set_thing, value} ->
+        {:set_thing, value} ->
         IO.puts("Definindo valor: #{value}")
         loop()
-      {:get_thing, sender} ->
+        {:get_thing, sender} ->
         send(sender, {:ok, 42})
         loop()
     end
-  end
 end
 \end{lstlisting}
 
@@ -306,7 +304,7 @@ Também vale ressaltar que o "uso após liberação" de um canal oneshot é veri
 
 \section{Representação do Ator}
 
-Uma vez definida as abstrações a serem usadas, é hora de definir como um ator será em termos de código Rust. 
+Uma vez definidas quais abstrações a serem usadas, é hora de definir como um ator será em termos de código Rust. 
 
 Primeiramente, haverá um módulo para cada ator, e se um ator é subordinado à existência de outro ator pela lógica de negócio, ele pode ser criado como um submódulo.
 
@@ -389,32 +387,23 @@ impl Core {
 }
 \end{lstlisting}
 
-Deverá ser fornecido um método de instância \texttt{spawn} responsável por conter a lógica por trás da criação da \emph{task} e da comunicação com ela. Além disso, dentro dessa função ficará definida a lógica de processamento das mensagens recebidas, delegando elas para os métodos responsáveis.
+Deverá ser fornecido um método de instância \texttt{init} responsável por conter a lógica de processamento das mensagens recebidas, delegando elas para os métodos responsáveis.
 
 \begin{lstlisting}[language=Rust, caption=Exemplo de construtor]
     impl Core {
         // ...
-        pub fn spawn(self) -> App {
-            // Cria um canal com um buffer de tamanho 32
-            let (tx, mut rx) = mpsc::channel(32);
-            let app = App { tx };
-            
-            // Cria a task especificando a callback a ser usada
-            tokio::spawn(async move {
-                while let Some(message) = rx.recv().await {
-                    match message {
-                        Message::SetThing { value } => {
-                            self.handle_set_thing(value);
-                        }
-                        Message::GetThing { tx } => {
-                            let result = self.handle_get_thing();
-                            let _ = tx.send(result);
-                        }
+        pub fn init(self, mut rx: mspc::Receiver<Message>) {
+            while let Some(message) = rx.recv().await {
+                match message {
+                    Message::SetThing { value } => {
+                        self.handle_set_thing(value);
+                    }
+                    Message::GetThing { tx } => {
+                        let result = self.handle_get_thing();
+                        let _ = tx.send(result);
                     }
                 }
-            });
-            
-            return app;
+            }
         }
         
         fn handle_set_thing(&mut self, value: i32) {
@@ -427,11 +416,9 @@ Deverá ser fornecido um método de instância \texttt{spawn} responsável por c
     }
 \end{lstlisting}
 
-Note que o método spawn recebe \texttt{self} como primeiro argumento, isso significa que ele consome a instância. Em outras palavras, aquele que tiver posse de uma instância do \texttt{Core} do App a perderá assim que \texttt{spawn} for invocada, impedindo que um mesmo objeto seja instanciado como 2 atores compartilhando o mesmo espaço de memória.
+Note que o método \texttt{init} recebe \texttt{self} como primeiro argumento, isso significa que ele consome a instância. Em outras palavras, aquele que tiver posse de uma instância do \texttt{Core} do App a perderá assim que \texttt{init} for invocada, impedindo que um mesmo objeto seja instanciado como 2 atores compartilhando o mesmo espaço de memória. O segundo parâmetro é a ponta de recebimento de mensagens do canal para se comunicar com o ator.
 
 Adicionalmente, cada ramo do bloco \texttt{match} apenas obtém os valores da mensagem e delega a execução para um método privado \texttt{handle\_}. Em caso de necessidade de enviar resposta, isso não deve ser feito dentro método \texttt{handle}, assegurando assim o princípio de responsabilidade única.
-
-Por fim, o método \texttt{spawn} já cuida de retornar diretamente a interface pública envelopando a ponta de envio do canal \emph{mpsc}.
 
 \subsection{Endereço}
 
@@ -445,6 +432,16 @@ pub struct App {
 }
 
 impl App {
+    pub fn spawn(value: i32) -> Self {
+        let (tx, rx) = mpsc::channel(crate::CHANNEL_SIZE);
+        let core = Core::new(value);
+        let _ = tokio::spawn(async move {
+            core.init(rx).await;
+        });
+
+        return Self { tx };
+    }
+
     pub async fn thing(&self) -> i32 {
         let (tx, rx) = oneshot::channel();
         let message = Message::GetThing { tx };

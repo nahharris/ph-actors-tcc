@@ -170,11 +170,11 @@ Essas capacidades não fazem parte da lógica de negócio do Patch-Hub, mas serv
 \textbf{Mensagens:}
 
 \begin{itemize}
-    \item \textbf{Get}: Executa uma requisição HTTP GET para a URL especificada com headers opcionais
-    \item \textbf{Post}: Executa uma requisição HTTP POST para a URL especificada com headers opcionais e corpo
-    \item \textbf{Put}: Executa uma requisição HTTP PUT para a URL especificada com headers opcionais e corpo
-    \item \textbf{Delete}: Executa uma requisição HTTP DELETE para a URL especificada com headers opcionais
-    \item \textbf{Patch}: Executa uma requisição HTTP PATCH para a URL especificada com headers opcionais e corpo
+    \item \texttt{Get}: Executa uma requisição HTTP GET para a URL especificada com headers opcionais
+    \item \texttt{Post}: Executa uma requisição HTTP POST para a URL especificada com headers opcionais e corpo
+    \item \texttt{Put}: Executa uma requisição HTTP PUT para a URL especificada com headers opcionais e corpo
+    \item \texttt{Delete}: Executa uma requisição HTTP DELETE para a URL especificada com headers opcionais e corpo
+    \item \texttt{Patch}: Executa uma requisição HTTP PATCH para a URL especificada com headers opcionais e corpo
 \end{itemize}
 
 \subsubsection{Variáveis de Ambiente}
@@ -182,9 +182,9 @@ Essas capacidades não fazem parte da lógica de negócio do Patch-Hub, mas serv
 \textbf{Mensagens:}
 
 \begin{itemize}
-    \item \textbf{Set}: Define uma variável de ambiente para um valor especificado
-    \item \textbf{Unset}: Remove uma variável de ambiente
-    \item \textbf{Get}: Recupera o valor de uma variável de ambiente (retorna VarError se não encontrada)
+    \item \texttt{Set}: Define uma variável de ambiente para um valor especificado
+    \item \texttt{Unset}: Remove uma variável de ambiente
+    \item \texttt{Get}: Recupera o valor de uma variável de ambiente (retorna VarError se não encontrada)
 \end{itemize}
 
 \subsection{Terminal}
@@ -192,8 +192,8 @@ Essas capacidades não fazem parte da lógica de negócio do Patch-Hub, mas serv
 \textbf{Mensagens:}
 
 \begin{itemize}
-    \item \textbf{Show}: Atualiza a tela exibida com um novo tipo de tela
-    \item \textbf{Quit}: Termina a UI e sai da aplicação
+    \item \texttt{Show}: Atualiza a tela exibida com um novo tipo de tela
+    \item \texttt{Quit}: Termina a UI e sai da aplicação
 \end{itemize}
 
 \subsection{Shell}
@@ -201,7 +201,7 @@ Essas capacidades não fazem parte da lógica de negócio do Patch-Hub, mas serv
 \textbf{Mensagens:}
 
 \begin{itemize}
-    \item \textbf{Execute}: Executa um programa externo com comando, argumentos e entrada stdin opcionais retornando a saída padrão do programa 
+    \item \texttt{Execute}: Executa um programa externo com comando, argumentos e entrada stdin opcionais retornando a saída padrão do programa 
 \end{itemize}
 
 \subsection{Atores de Lógica}
@@ -229,8 +229,8 @@ Fornece um serviço de logging centralizado e thread-safe. Ele recebe mensagens 
 \textbf{Mensagens:}
 
 \begin{itemize}
-    \item \textbf{Log}: Registra uma mensagem com um nível de log específico (ex: Info, Warn, Error, Debug)
-    \item \textbf{GetLastLogs}: Recupera as últimas N entradas de log
+    \item \texttt{Log}: Registra uma mensagem com um nível de log específico (ex: Info, Warn, Error, Debug)
+    \item \texttt{GetLastLogs}: Recupera as últimas N entradas de log
 \end{itemize}
 
 \subsubsection{Configurações}
@@ -246,10 +246,10 @@ Responsável por carregar configurações de um arquivo de configuração, forne
 \textbf{Mensagens:}
 
 \begin{itemize}
-    \item \textbf{Get}: Recupera o valor de uma chave de configuração específica
-    \item \textbf{Set}: Atualiza o valor de uma chave de configuração específica
-    \item \textbf{Load}: Recarrega a configuração do arquivo fonte
-    \item \textbf{Persist}: Salva a configuração atual no arquivo fonte
+    \item \texttt{Get}: Recupera o valor de uma chave de configuração específica
+    \item \texttt{Set}: Atualiza o valor de uma chave de configuração específica
+    \item \texttt{Load}: Recarrega a configuração do arquivo fonte
+    \item \texttt{Persist}: Salva a configuração atual no arquivo fonte
 \end{itemize}
 
 \subsubsection{Lore API}
@@ -265,9 +265,9 @@ Gerencia toda a comunicação com a API externa do Lore patchwork. Ele abstrai o
 \textbf{Mensagens:}
 
 \begin{itemize}
-    \item \textbf{GetAvailableListsPage}: Busca uma lista paginada de listas de discussão disponíveis
-    \item \textbf{GetPatchFeedPage}: Busca um feed paginado de patches para uma lista de discussão específica
-    \item \textbf{GetRawPatch}: Busca o conteúdo bruto de um único patch
+    \item \texttt{GetAvailableListsPage}: Busca uma lista paginada de listas de discussão disponíveis
+    \item \texttt{GetPatchFeedPage}: Busca um feed paginado de patches para uma lista de discussão específica
+    \item \texttt{GetRawPatch}: Busca o conteúdo bruto de um único patch
 \end{itemize}
 
 \subsubsection{Cache}
@@ -291,11 +291,11 @@ Armazena em cache a lista de todas as listas de discussão disponíveis da API d
 \textbf{Mensagens:}
 
 \begin{itemize}
-    \item \textbf{Get}: Recupera uma única lista de discussão por seu índice na lista ordenada
-    \item \textbf{GetSlice}: Recupera um intervalo de listas de discussão para paginação
-    \item \textbf{Refresh}: Força uma atualização completa do cache da API
-    \item \textbf{Invalidate}: Limpa o cache em memória e em disco
-    \item \textbf{Len}: Retorna o número total de listas de discussão em cache
+    \item \texttt{Get}: Recupera uma única lista de discussão por seu índice na lista ordenada
+    \item \texttt{GetSlice}: Recupera um intervalo de listas de discussão para paginação
+    \item \texttt{Refresh}: Força uma atualização completa do cache da API
+    \item \texttt{Invalidate}: Limpa o cache em memória e em disco
+    \item \texttt{Len}: Retorna o número total de listas de discussão em cache
 \end{itemize}
 
 \textbf{Feed}
@@ -314,11 +314,11 @@ Fornece cache por lista de discussão de metadados de patches (como autor, assun
 \textbf{Mensagens:}
 
 \begin{itemize}
-    \item \textbf{Get}: Recupera metadados de um único patch por seu índice dentro de um feed de lista de discussão
-    \item \textbf{GetSlice}: Recupera um intervalo de metadados de patches para paginação
-    \item \textbf{Refresh}: Atualiza inteligentemente o cache para uma lista de discussão específica, buscando apenas itens novos
-    \item \textbf{Invalidate}: Limpa o cache para uma lista de discussão específica
-    \item \textbf{Len}: Retorna o número de entradas de metadados em cache para uma lista
+    \item \texttt{Get}: Recupera metadados de um único patch por seu índice dentro de um feed de lista de discussão
+    \item \texttt{GetSlice}: Recupera um intervalo de metadados de patches para paginação
+    \item \texttt{Refresh}: Atualiza inteligentemente o cache para uma lista de discussão específica, buscando apenas itens novos
+    \item \texttt{Invalidate}: Limpa o cache para uma lista de discussão específica
+    \item \texttt{Len}: Retorna o número de entradas de metadados em cache para uma lista
 \end{itemize}
 
 \textbf{Patches}
@@ -337,7 +337,7 @@ Armazena em cache o conteúdo bruto de patches individuais (formato \texttt{.mbo
 \textbf{Mensagens:}
 
 \begin{itemize}
-    \item \textbf{Get}: Recupera o conteúdo bruto de um patch dado sua lista de discussão e ID de mensagem
-    \item \textbf{Invalidate}: Remove um patch específico do cache em disco e buffer em memória
-    \item \textbf{IsAvailable}: Verifica se um patch está em cache sem buscá-lo
+    \item \texttt{Get}: Recupera o conteúdo bruto de um patch dado sua lista de discussão e ID de mensagem
+    \item \texttt{Invalidate}: Remove um patch específico do cache em disco e buffer em memória
+    \item \texttt{IsAvailable}: Verifica se um patch está em cache sem buscá-lo
 \end{itemize}
