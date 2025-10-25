@@ -16,7 +16,6 @@ use crate::{app::config::Config, fs::Fs};
 use crate::{app::config::mock::MockConfig as Config, fs::mock::MockFs as Fs};
 
 use anyhow::Context;
-use std::fmt::Display;
 use tokio::sync::mpsc::{self, Sender};
 
 /// The logging actor that provides a thread-safe interface for logging operations.
@@ -71,18 +70,18 @@ impl Log {
     }
 
     /// Log a message with the `INFO` level
-    pub fn info<M: Display>(&self, scope: &'static str, message: M) {
-        self.log(scope, message.to_string(), LogLevel::Info);
+    pub fn info(&self, scope: &'static str, message: String) {
+        self.log(scope, message, LogLevel::Info);
     }
 
     /// Log a message with the `WARNING` level
-    pub fn warn<M: Display>(&self, scope: &'static str, message: M) {
-        self.log(scope, message.to_string(), LogLevel::Warning);
+    pub fn warn(&self, scope: &'static str, message: String) {
+        self.log(scope, message, LogLevel::Warning);
     }
 
     /// Log a message with the `ERROR` level
-    pub fn error<M: Display>(&self, scope: &'static str, message: M) {
-        self.log(scope, message.to_string(), LogLevel::Error);
+    pub fn error(&self, scope: &'static str, message: String) {
+        self.log(scope, message, LogLevel::Error);
     }
 
     /// Flushes the logger by printing its messages to [`stderr`] and closing

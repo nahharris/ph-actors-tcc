@@ -2,7 +2,7 @@ use anyhow::Context;
 use std::collections::HashMap;
 use tokio::sync::mpsc::Sender;
 
-use crate::ArcStr;
+use crate::{ArcStr, net::core::Core};
 #[cfg(not(test))]
 use crate::{app::config::Config, log::Log};
 #[cfg(test)]
@@ -43,7 +43,7 @@ impl Net {
     /// A new networking instance with a spawned actor.
     pub fn spawn(config: Config, log: Log) -> Self {
         let (tx, rx) = tokio::sync::mpsc::channel(crate::BUFFER_SIZE);
-        let core = core::Core::new(config, log);
+        let core = Core::new(config, log);
         let _ = tokio::spawn(async move {
             core.init(rx).await;
         });

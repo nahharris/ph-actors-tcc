@@ -1,6 +1,3 @@
-use std::collections::HashMap;
-
-use super::Render;
 use crate::{ArcStr, app::config::Renderer};
 
 #[tokio::test]
@@ -23,12 +20,15 @@ async fn test_renderer_default_args() {
 
 #[tokio::test]
 async fn test_mock_render() {
-    let render = Render::mock(HashMap::from([(
-        ArcStr::from("test patch content"),
-        ArcStr::from("rendered content"),
-    )]));
+    use super::mock::MockRender;
 
-    let result = render
+    let mut mock_render = MockRender::new();
+    mock_render
+        .expect_render_patch()
+        .times(1)
+        .returning(|_| Ok(ArcStr::from("rendered content")));
+
+    let result = mock_render
         .render_patch(ArcStr::from("test patch content"))
         .await
         .unwrap();

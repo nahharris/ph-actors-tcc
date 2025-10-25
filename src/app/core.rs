@@ -8,20 +8,16 @@ use crate::api::lore::LoreApi;
 use crate::app::cache::{FeedCache, MailingListCache, PatchCache};
 use crate::app::config::Config;
 use crate::app::ui::{NavigationAction, Ui};
-#[cfg(not(test))]
-use crate::env::Env;
 #[cfg(test)]
-use crate::env::mock::MockEnv as Env;
-#[cfg(not(test))]
-use crate::fs::Fs;
-#[cfg(test)]
-use crate::fs::mock::MockFs as Fs;
-use crate::log::Log;
-use crate::net::Net;
-use crate::render::Render;
-use crate::shell::Shell;
 use crate::terminal::{Terminal, UiEvent};
 use crate::{ArcOsStr, ArcPath, ArcStr};
+#[cfg(not(test))]
+use crate::{env::Env, fs::Fs, log::Log, net::Net, render::Render, shell::Shell};
+#[cfg(test)]
+use crate::{
+    env::mock::MockEnv as Env, fs::mock::MockFs as Fs, log::mock::MockLog as Log,
+    net::mock::MockNet as Net, render::mock::MockRender as Render, shell::mock::Mock as Shell,
+};
 
 use super::data::{AppState, Command};
 use super::message::Message;
@@ -60,7 +56,7 @@ pub struct Core {
 
 impl Core {
     /// Build a new App actor core with full initialization
-    pub async fn build(env: Env, fs: Fs) -> Result<Self> {
+    pub async fn build(env: Env, fs: Fs, config: Config, log: Log) -> Result<Self> {
         // Set up configuration
         let home = env.env(ArcOsStr::from("HOME")).await;
         let config_base = match home {
@@ -84,23 +80,15 @@ impl Core {
             eprintln!("Warning: Failed to create config directory: {}", e);
         }
 
-        let config = Config::spawn(env.clone(), fs.clone(), config_path);
-        let res = config.load().await;
-
-        if res.is_err() {
-            config.save().await?;
-        }
-
         // Initialize logging actor
         let log = Log::spawn(fs.clone(), config.clone()).await?;
-
         // Initialize network and API actors
         let net = Net::spawn(config.clone(), log.clone());
         let lore = LoreApi::spawn(net.clone());
 
         // Initialize shell and render actors
         let shell = Shell::spawn(log.clone()).await?;
-        let render = Render::spawn(shell.clone(), config.clone()).await?;
+        let render = Render::spawn(shell.clone(), config.clone());
 
         // Initialize cache actors
         let mailing_list_cache =

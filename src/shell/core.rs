@@ -4,6 +4,10 @@ use tokio::sync::mpsc;
 use super::data::{Command as ShellCommand, Result, Status};
 use super::message::Message;
 use crate::ArcStr;
+#[cfg(not(test))]
+use crate::log::Log;
+#[cfg(test)]
+use crate::log::mock::MockLog as Log;
 
 const SCOPE: &str = "shell";
 
@@ -15,7 +19,7 @@ const SCOPE: &str = "shell";
 #[derive(Debug)]
 pub struct Core {
     /// The logging actor for logging shell operations
-    log: crate::log::Log,
+    log: Log,
 }
 
 impl Core {
@@ -26,7 +30,7 @@ impl Core {
     ///
     /// # Returns
     /// A new instance of `Core`.
-    pub fn new(log: crate::log::Log) -> Self {
+    pub fn new(log: Log) -> Self {
         Self { log }
     }
 

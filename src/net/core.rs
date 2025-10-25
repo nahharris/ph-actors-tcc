@@ -2,7 +2,12 @@ use anyhow::Context;
 use reqwest::Client;
 use std::collections::HashMap;
 
-use crate::{ArcStr, app::config::Config, log::Log, net::message::Message};
+#[cfg(not(test))]
+use crate::{app::config::Config, log::Log};
+#[cfg(test)]
+use crate::{app::config::mock::MockConfig as Config, log::mock::MockLog as Log};
+
+use crate::{ArcStr, net::message::Message};
 
 /// The core of the networking system that handles HTTP requests.
 ///

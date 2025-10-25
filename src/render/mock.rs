@@ -1,9 +1,21 @@
 use anyhow::Context;
+use mockall::mock;
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::Mutex;
 
 use crate::ArcStr;
+
+mock! {
+    #[derive(Debug)]
+    pub Render {
+        pub async fn render_patch(&self, content: ArcStr) -> anyhow::Result<ArcStr>;
+    }
+
+    impl Clone for Render {
+        fn clone(&self) -> Self;
+    }
+}
 
 /// Mock implementation of the Render actor for testing purposes.
 ///
