@@ -1,27 +1,31 @@
-use super::mock::MockLog;
+use super::*;
 
 #[tokio::test]
-async fn test_mock_log_operations() {
-    let mut mock_log = MockLog::new();
+async fn test_log_message_creation() {
+    // Test that we can create log messages
+    let msg = LogMessage {
+        level: LogLevel::Info,
+        scope: "test",
+        message: "test message".to_string(),
+    };
+    
+    assert_eq!(msg.level, LogLevel::Info);
+    assert_eq!(msg.scope, "test");
+    assert_eq!(msg.message, "test message");
+}
 
-    // Set up expectations for the methods that are actually mocked
-    mock_log.expect_collect_garbage().times(1).returning(|| ());
+#[tokio::test]
+async fn test_log_level_ordering() {
+    // Test that log levels are ordered correctly
+    assert!(LogLevel::Info < LogLevel::Warning);
+    assert!(LogLevel::Warning < LogLevel::Error);
+    assert!(LogLevel::Info < LogLevel::Error);
+}
 
-    mock_log
-        .expect_get_messages()
-        .times(1)
-        .returning(|| Some(vec![]));
-
-    mock_log
-        .expect_flush()
-        .times(1)
-        .returning(|| tokio::spawn(async {}));
-
-    // Test the mock
-    mock_log.collect_garbage().await;
-    let messages = mock_log.get_messages().await;
-    assert!(messages.is_some());
-
-    let handle = mock_log.flush();
-    handle.await.unwrap();
+#[tokio::test]
+async fn test_log_level_display() {
+    // Test that log levels display correctly
+    assert_eq!(LogLevel::Info.to_string(), "INFO");
+    assert_eq!(LogLevel::Warning.to_string(), "WARN");
+    assert_eq!(LogLevel::Error.to_string(), "ERROR");
 }

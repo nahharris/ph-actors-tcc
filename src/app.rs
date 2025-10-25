@@ -10,7 +10,6 @@ mod core;
 mod data;
 mod message;
 
-pub use data::{AppState, Command, MockData};
 #[cfg(not(test))]
 use crate::env::Env;
 #[cfg(test)]
@@ -19,6 +18,7 @@ use crate::env::mock::MockEnv as Env;
 use crate::fs::Fs;
 #[cfg(test)]
 use crate::fs::mock::MockFs as Fs;
+pub use data::{AppState, Command, MockData};
 use message::Message;
 
 /// App actor - Central coordinator for the entire application

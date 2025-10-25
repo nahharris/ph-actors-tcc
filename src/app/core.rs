@@ -6,7 +6,7 @@ use tokio::task::JoinHandle;
 
 use crate::api::lore::LoreApi;
 use crate::app::cache::{FeedCache, MailingListCache, PatchCache};
-use crate::app::config::{Config, PathOpt, USizeOpt};
+use crate::app::config::Config;
 use crate::app::ui::{NavigationAction, Ui};
 #[cfg(not(test))]
 use crate::env::Env;
@@ -92,13 +92,7 @@ impl Core {
         }
 
         // Initialize logging actor
-        let log = Log::spawn(
-            fs.clone(),
-            config.log_level().await,
-            config.usize(USizeOpt::MaxAge).await,
-            config.path(PathOpt::LogDir).await,
-        )
-        .await?;
+        let log = Log::spawn(fs.clone(), config.clone()).await?;
 
         // Initialize network and API actors
         let net = Net::spawn(config.clone(), log.clone()).await;

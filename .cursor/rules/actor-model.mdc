@@ -113,9 +113,9 @@ pub struct Actor {
 }
 
 impl Actor {
-    pub fn spawn() -> Self {
+    pub fn spawn(...dependencies...) -> Self {
         let (tx, rx) = mpsc::channel(crate::BUFFER_SIZE);
-        let core = Core::new();
+        let core = Core::new(...dependencies...);
         let _ = tokio::spawn(async move {
             core.init(rx).await;
         });
@@ -175,7 +175,7 @@ src/
 │   ├── core.rs          # Core actor implementation
 │   ├── message.rs       # Message types
 │   ├── mock.rs          # Mock implementation
-│   └── tests.rs         # Unit tests (optional)
+│   └── tests.rs         # Unit tests (no tests)
 ```
 
 ### Required Imports
