@@ -49,8 +49,12 @@ impl Render {
         shell: crate::shell::Shell,
         config: crate::app::config::Config,
     ) -> anyhow::Result<Self> {
-        let (render, _) = core::Core::new(shell, config).spawn();
-        Ok(render)
+        let (tx, rx) = tokio::sync::mpsc::channel(crate::BUFFER_SIZE);
+        let core = core::Core::new(shell, config);
+        let _ = tokio::spawn(async move {
+            core.init(rx).await;
+        });
+        Ok(Self::Actual(tx))
     }
 
     /// Creates a new mock render instance for testing.

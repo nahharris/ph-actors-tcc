@@ -42,8 +42,12 @@ impl Shell {
     /// # Returns
     /// A new shell instance with a spawned actor.
     pub async fn spawn(log: crate::log::Log) -> anyhow::Result<Self> {
-        let (shell, _) = core::Core::new(log).spawn();
-        Ok(shell)
+        let (tx, rx) = tokio::sync::mpsc::channel(crate::BUFFER_SIZE);
+        let core = core::Core::new(log);
+        let _ = tokio::spawn(async move {
+            core.init(rx).await;
+        });
+        Ok(Self::Actual(tx))
     }
 
     /// Creates a new mock shell instance for testing.

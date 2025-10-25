@@ -1,7 +1,7 @@
 use std::{collections::LinkedList, io};
 
 use anyhow::Context;
-use tokio::sync::mpsc::Sender;
+use tokio::sync::mpsc::{self, Sender};
 
 use crate::ArcPath;
 
@@ -41,8 +41,11 @@ impl Fs {
     /// # Returns
     /// A new filesystem instance with a spawned actor.
     pub fn spawn() -> Self {
-        let (fs, _) = core::Core::new().spawn();
-        fs
+        let (tx, rx) = mpsc::channel(crate::BUFFER_SIZE);
+        let _ = tokio::spawn(async move {
+            core::Core::new().init(rx).await;
+        });
+        Self::Actual(tx)
     }
 
     /// Creates a new mock filesystem instance for testing.

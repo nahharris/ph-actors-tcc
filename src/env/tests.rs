@@ -2,7 +2,7 @@ use std::ops::Deref;
 
 use crate::ArcOsStr;
 
-use super::{Env, core::Core};
+use super::Env;
 
 #[tokio::test]
 async fn test_mock_env_creation() {
@@ -119,29 +119,6 @@ async fn test_core_get_env() {
 
     // Cleanup
     unsafe { std::env::remove_var(key.as_ref()) };
-}
-
-#[tokio::test]
-async fn test_core_spawn() {
-    let core = Core::new();
-    let (env, handle) = core.spawn();
-    assert!(matches!(env, Env::Actual(_)));
-
-    // Test the spawned actor
-    let key = ArcOsStr::from("TEST_CORE_SPAWN");
-    let value = "test_value";
-
-    // Remove env var if it exists
-    unsafe { std::env::remove_var(key.as_ref()) };
-
-    // Test set and get through the actor
-    env.set_env(key.clone(), value).await;
-    let result = env.env(key.clone()).await.unwrap();
-    assert_eq!(result.deref(), value);
-
-    // Cleanup
-    env.unset_env(key).await;
-    handle.abort();
 }
 
 #[tokio::test]

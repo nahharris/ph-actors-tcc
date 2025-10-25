@@ -1,7 +1,7 @@
 use std::{env::VarError, fmt::Display};
 
 use anyhow::Context;
-use tokio::sync::mpsc::Sender;
+use tokio::sync::mpsc::{self, Sender};
 
 use crate::{ArcOsStr, ArcStr};
 
@@ -41,7 +41,11 @@ impl Env {
     /// # Returns
     /// A new environment instance with a spawned actor.
     pub fn spawn() -> Self {
-        let (env, _) = core::Core::new().spawn();
+        let (tx, rx) = mpsc::channel(crate::BUFFER_SIZE);
+        let _ = tokio::spawn(async move {
+            core::Core::new().init(rx).await;
+        });
+        let env = Self::Actual(tx);
         env
     }
 

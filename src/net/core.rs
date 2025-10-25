@@ -1,13 +1,12 @@
 use anyhow::Context;
 use reqwest::Client;
 use std::collections::HashMap;
-use tokio::task::JoinHandle;
 
 use crate::{
     ArcStr,
     app::config::{Config, USizeOpt},
     log::Log,
-    net::{Net, message::Message},
+    net::message::Message,
 };
 
 /// The core of the networking system that handles HTTP requests.
@@ -73,80 +72,69 @@ impl Core {
         }
     }
 
-    /// Transforms the networking core instance into an actor.
+    /// Initializes the networking actor message receiver.
     ///
-    /// This method spawns a new task that will handle network operations
-    /// asynchronously through a message channel. All operations are processed
-    /// sequentially to ensure consistency.
+    /// This method processes messages from the receiver in a loop, handling each message
+    /// using pattern matching.
     ///
-    /// # Returns
-    /// A tuple containing:
-    /// - The `Net` interface
-    /// - A join handle for the spawned task
-    ///
-    /// # Panics
-    /// This function will panic if the underlying task fails to spawn.
-    pub fn spawn(self) -> (Net, JoinHandle<()>) {
-        let (tx, mut rx) = tokio::sync::mpsc::channel(100);
-
-        let handle = tokio::spawn(async move {
-            while let Some(message) = rx.recv().await {
-                match message {
-                    Message::Get { url, headers, tx } => {
-                        let response = self
-                            .handle_get_request(url.clone(), headers)
-                            .await
-                            .with_context(|| format!("GET request failed for URL: {url}"));
-                        let _ = tx.send(response);
-                    }
-                    Message::Post {
-                        url,
-                        headers,
-                        body,
-                        tx,
-                    } => {
-                        let response = self
-                            .handle_post_request(url.clone(), headers, body)
-                            .await
-                            .with_context(|| format!("POST request failed for URL: {url}"));
-                        let _ = tx.send(response);
-                    }
-                    Message::Put {
-                        url,
-                        headers,
-                        body,
-                        tx,
-                    } => {
-                        let response = self
-                            .handle_put_request(url.clone(), headers, body)
-                            .await
-                            .with_context(|| format!("PUT request failed for URL: {url}"));
-                        let _ = tx.send(response);
-                    }
-                    Message::Delete { url, headers, tx } => {
-                        let response = self
-                            .handle_delete_request(url.clone(), headers)
-                            .await
-                            .with_context(|| format!("DELETE request failed for URL: {url}"));
-                        let _ = tx.send(response);
-                    }
-                    Message::Patch {
-                        url,
-                        headers,
-                        body,
-                        tx,
-                    } => {
-                        let response = self
-                            .handle_patch_request(url.clone(), headers, body)
-                            .await
-                            .with_context(|| format!("PATCH request failed for URL: {url}"));
-                        let _ = tx.send(response);
-                    }
+    /// # Arguments
+    /// * `rx` - A receiver for messages to process
+    pub async fn init(self, mut rx: tokio::sync::mpsc::Receiver<Message>) {
+        while let Some(msg) = rx.recv().await {
+            use Message::*;
+            match msg {
+                Get { url, headers, tx } => {
+                    let response = self
+                        .handle_get_request(url.clone(), headers)
+                        .await
+                        .with_context(|| format!("GET request failed for URL: {url}"));
+                    let _ = tx.send(response);
+                }
+                Post {
+                    url,
+                    headers,
+                    body,
+                    tx,
+                } => {
+                    let response = self
+                        .handle_post_request(url.clone(), headers, body)
+                        .await
+                        .with_context(|| format!("POST request failed for URL: {url}"));
+                    let _ = tx.send(response);
+                }
+                Put {
+                    url,
+                    headers,
+                    body,
+                    tx,
+                } => {
+                    let response = self
+                        .handle_put_request(url.clone(), headers, body)
+                        .await
+                        .with_context(|| format!("PUT request failed for URL: {url}"));
+                    let _ = tx.send(response);
+                }
+                Delete { url, headers, tx } => {
+                    let response = self
+                        .handle_delete_request(url.clone(), headers)
+                        .await
+                        .with_context(|| format!("DELETE request failed for URL: {url}"));
+                    let _ = tx.send(response);
+                }
+                Patch {
+                    url,
+                    headers,
+                    body,
+                    tx,
+                } => {
+                    let response = self
+                        .handle_patch_request(url.clone(), headers, body)
+                        .await
+                        .with_context(|| format!("PATCH request failed for URL: {url}"));
+                    let _ = tx.send(response);
                 }
             }
-        });
-
-        (Net::Actual(tx), handle)
+        }
     }
 
     /// Handles GET requests with optional headers

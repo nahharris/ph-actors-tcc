@@ -1,5 +1,4 @@
-use tokio::sync::mpsc::{self, Receiver};
-use tokio::task::JoinHandle;
+use tokio::sync::mpsc::Receiver;
 
 use crate::{ArcSlice, ArcStr};
 
@@ -30,34 +29,23 @@ impl Core {
         Self { shell, config }
     }
 
-    /// Spawns the render actor and returns the handle and join handle.
+    /// Initializes the render actor message receiver.
     ///
-    /// # Returns
-    /// A tuple containing the render actor handle and the join handle for the spawned task.
-    pub fn spawn(self) -> (super::Render, JoinHandle<anyhow::Result<()>>) {
-        let (tx, rx) = mpsc::channel(32);
-        let handle = super::Render::Actual(tx);
-        let join_handle = tokio::spawn(self.run(rx));
-        (handle, join_handle)
-    }
-
-    /// Runs the render actor event loop.
+    /// This method processes messages from the receiver in a loop, handling each message
+    /// using pattern matching.
     ///
     /// # Arguments
-    /// * `mut rx` - The message receiver
-    ///
-    /// # Returns
-    /// Result indicating success or failure of the actor
-    async fn run(self, mut rx: Receiver<Message>) -> anyhow::Result<()> {
-        while let Some(message) = rx.recv().await {
-            match message {
-                Message::Render { tx, content } => {
+    /// * `rx` - A receiver for messages to process
+    pub async fn init(self, mut rx: Receiver<Message>) {
+        while let Some(msg) = rx.recv().await {
+            use Message::*;
+            match msg {
+                Render { tx, content } => {
                     let result = self.handle_render_request(content).await;
                     let _ = tx.send(result);
                 }
             }
         }
-        Ok(())
     }
 
     /// Handles a render request by executing the appropriate external program.

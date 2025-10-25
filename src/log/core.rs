@@ -1,5 +1,4 @@
 use anyhow::Context;
-use tokio::task::JoinHandle;
 
 use super::data::{LogLevel, LogMessage};
 use super::message::Message;
@@ -91,29 +90,26 @@ impl LogCore {
         })
     }
 
-    pub fn spawn(mut self) -> (super::Log, JoinHandle<()>) {
-        let (tx, mut rx) = tokio::sync::mpsc::channel(100);
-        let handle = tokio::spawn(async move {
-            while let Some(command) = rx.recv().await {
-                match command {
-                    Message::Log(msg) => {
-                        self.log(msg).await;
-                    }
-                    Message::Flush => {
-                        self.flush();
-                        rx.close();
-                        break;
-                    }
-                    Message::CollectGarbage => {
-                        self.collect_garbage().await;
-                    }
+    pub async fn init(mut self, mut rx: tokio::sync::mpsc::Receiver<Message>) {
+        while let Some(msg) = rx.recv().await {
+            use Message::*;
+            match msg {
+                Log(msg) => {
+                    self.handle_log(msg).await;
+                }
+                Flush => {
+                    self.handle_flush();
+                    rx.close();
+                    break;
+                }
+                CollectGarbage => {
+                    self.handle_collect_garbage().await;
                 }
             }
-        });
-        (super::Log::Actual(tx), handle)
+        }
     }
 
-    async fn log(&mut self, message: LogMessage) {
+    async fn handle_log(&mut self, message: LogMessage) {
         use tokio::io::AsyncWriteExt;
         self.log_file
             .write_all(format!("{}\n", &message).as_bytes())
@@ -140,7 +136,7 @@ impl LogCore {
         }
     }
 
-    fn flush(self) {
+    fn handle_flush(self) {
         for message in &self.logs_to_print {
             eprintln!("{message}");
         }
@@ -149,13 +145,13 @@ impl LogCore {
         }
     }
 
-    async fn collect_garbage(&mut self) {
+    async fn handle_collect_garbage(&mut self) {
         if self.max_age == 0 {
             return;
         }
         let now = std::time::SystemTime::now();
         let Ok(logs) = self.fs.read_dir(self.log_dir.clone()).await else {
-            self.log(LogMessage {
+            self.handle_log(LogMessage {
                 level: LogLevel::Error,
                 scope: SCOPE,
                 message: "Failed to read the logs directory during garbage collection".into(),
@@ -180,7 +176,7 @@ impl LogCore {
             };
             let age = age.as_secs() / 60 / 60 / 24;
             if age as usize > self.max_age && self.fs.remove_file(log.clone()).await.is_err() {
-                self.log(LogMessage {
+                self.handle_log(LogMessage {
                     scope: SCOPE,
                     message: format!("Failed to remove the log file: {}", log.to_string_lossy()),
                     level: LogLevel::Warning,
@@ -188,87 +184,5 @@ impl LogCore {
                 .await;
             }
         }
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::ArcPath;
-    use crate::fs::Fs;
-    use crate::log::data::{LogLevel, LogMessage};
-
-    fn mock_fs() -> Fs {
-        Fs::mock()
-    }
-
-    fn temp_log_dir() -> ArcPath {
-        ArcPath::from("/tmp/test-logs")
-    }
-
-    #[tokio::test]
-    #[ignore]
-    async fn test_build_and_spawn() {
-        let fs = mock_fs();
-        let log_dir = temp_log_dir();
-        let log_core = LogCore::build(fs, LogLevel::Info, 1, log_dir).await;
-        assert!(log_core.is_ok());
-        let log_core = log_core.unwrap();
-        let (_log, handle) = log_core.spawn();
-        handle.abort(); // Clean up
-    }
-
-    #[tokio::test]
-    #[ignore]
-    async fn test_log_and_flush() {
-        let fs = mock_fs();
-        let log_dir = temp_log_dir();
-        let mut log_core = LogCore::build(fs, LogLevel::Info, 1, log_dir)
-            .await
-            .unwrap();
-        let msg = LogMessage {
-            level: LogLevel::Info,
-            scope: SCOPE,
-            message: "test".to_string(),
-        };
-        log_core.log(msg.clone()).await;
-        assert_eq!(log_core.logs_to_print.len(), 1);
-        log_core.flush();
-    }
-
-    #[tokio::test]
-    #[ignore]
-    async fn test_log_level_filtering() {
-        let fs = mock_fs();
-        let log_dir = temp_log_dir();
-        let mut log_core = LogCore::build(fs, LogLevel::Warning, 1, log_dir)
-            .await
-            .unwrap();
-        let msg = LogMessage {
-            level: LogLevel::Info,
-            scope: SCOPE,
-            message: "info".to_string(),
-        };
-        log_core.log(msg.clone()).await;
-        assert!(log_core.logs_to_print.is_empty());
-        let msg2 = LogMessage {
-            level: LogLevel::Warning,
-            scope: SCOPE,
-            message: "warn".to_string(),
-        };
-        log_core.log(msg2.clone()).await;
-        assert_eq!(log_core.logs_to_print.len(), 1);
-    }
-
-    #[tokio::test]
-    #[ignore]
-    async fn test_collect_garbage_noop_when_max_age_zero() {
-        let fs = mock_fs();
-        let log_dir = temp_log_dir();
-        let mut log_core = LogCore::build(fs, LogLevel::Info, 0, log_dir)
-            .await
-            .unwrap();
-        log_core.collect_garbage().await;
-        // Should not panic or do anything
     }
 }

@@ -23,32 +23,22 @@ impl Core {
         Default::default()
     }
 
-    /// Transforms an instance of [`Core`] into an actor ready to receive messages.
+    /// Initializes the environment actor message receiver.
     ///
-    /// This method spawns a new task that will handle environment variable operations
-    /// asynchronously through a message channel.
+    /// This method processes messages from the receiver in a loop, handling each message
+    /// using pattern matching.
     ///
-    /// # Returns
-    /// A tuple containing:
-    /// - An [`Env`] instance that can be used to send messages to the actor
-    /// - A join handle for the spawned task
-    ///
-    /// # Panics
-    /// This function will panic if the underlying task fails to spawn.
-    pub fn spawn(self) -> (super::Env, tokio::task::JoinHandle<()>) {
-        let (tx, mut rx) = mpsc::channel(crate::BUFFER_SIZE);
-        let handle = tokio::spawn(async move {
-            while let Some(msg) = rx.recv().await {
-                use Message::*;
-                match msg {
-                    Set { key, value } => self.set_env(key, value),
-                    Unset { key } => self.unset_env(key),
-                    Get { tx, key } => self.get_env(tx, key),
-                }
+    /// # Arguments
+    /// * `sender` - A receiver for messages to process
+    pub async fn init(self, mut sender: mpsc::Receiver<Message>) {
+        while let Some(msg) = sender.recv().await {
+            use Message::*;
+            match msg {
+                Set { key, value } => self.set_env(key, value),
+                Unset { key } => self.unset_env(key),
+                Get { tx, key } => self.get_env(tx, key),
             }
-        });
-
-        (super::Env::Actual(tx), handle)
+        }
     }
 
     fn set_env(&self, key: ArcOsStr, value: OsString) {

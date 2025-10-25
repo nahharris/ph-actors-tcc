@@ -26,8 +26,12 @@ impl Terminal {
     /// The actor sends `UiEvent`s to `ui_events` and accepts `Message`s to update the UI.
     /// Returns the terminal interface and a JoinHandle that completes when the UI exits.
     pub fn spawn(log: Log, ui_events: mpsc::Sender<UiEvent>) -> (Self, JoinHandle<()>) {
+        let (tx, rx) = mpsc::channel(crate::BUFFER_SIZE);
         let core = core::Core::new(log, ui_events);
-        core.spawn()
+        let handle = tokio::spawn(async move {
+            core.init(rx).await;
+        });
+        (Self::Actual(tx), handle)
     }
 
     /// Creates a mock terminal for testing.

@@ -4,9 +4,7 @@ use cursive::traits::*;
 use cursive::views::{Dialog, SelectView, TextView};
 use std::thread;
 use tokio::sync::mpsc;
-use tokio::task::JoinHandle;
 
-use super::Terminal;
 use super::data::{Screen, UiEvent};
 use super::message::Message;
 use crate::log::Log;
@@ -29,66 +27,63 @@ impl Core {
         Self { log, ui_events }
     }
 
-    /// Spawns the terminal actor and returns the public interface and join handle.
+    /// Initializes the terminal actor message receiver.
     ///
-    /// This method takes ownership of the core and starts both the Cursive UI thread
-    /// and the async message handling task.
-    pub fn spawn(self) -> (Terminal, JoinHandle<()>) {
-        let (tx, mut rx) = mpsc::channel::<Message>(crate::BUFFER_SIZE);
+    /// This method processes messages from the receiver in a loop, handling each message
+    /// using pattern matching.
+    ///
+    /// # Arguments
+    /// * `rx` - A receiver for messages to process
+    pub async fn init(self, mut rx: mpsc::Receiver<Message>) {
+        // Spawn the Cursive loop in its own thread and obtain its callback sink
+        let (sink_tx, sink_rx) = std::sync::mpsc::channel();
+        let ui_events = self.ui_events.clone();
 
-        // The main actor task - this follows the tokio task requirement
-        let handle = tokio::spawn(async move {
-            // Spawn the Cursive loop in its own thread and obtain its callback sink
-            let (sink_tx, sink_rx) = std::sync::mpsc::channel();
-            let ui_events = self.ui_events.clone();
+        // We need to spawn Cursive in a thread because it requires blocking I/O
+        // But the actor itself is still a tokio task
+        thread::spawn(move || {
+            let mut siv = cursive::crossterm();
 
-            // We need to spawn Cursive in a thread because it requires blocking I/O
-            // But the actor itself is still a tokio task
-            thread::spawn(move || {
-                let mut siv = cursive::crossterm();
-
-                // Install global key callbacks to forward to app actor
-                let fwd = |ev: UiEvent| {
-                    let tx = ui_events.clone();
-                    move |_s: &mut Cursive| {
-                        let _ = tx.try_send(ev);
-                    }
-                };
-
-                siv.add_global_callback(Event::Key(Key::Left), fwd(UiEvent::Left));
-                siv.add_global_callback(Event::Key(Key::Right), fwd(UiEvent::Right));
-                siv.add_global_callback(Event::Key(Key::Esc), fwd(UiEvent::Esc));
-
-                let cb_sink = siv.cb_sink().clone();
-                let _ = sink_tx.send(cb_sink);
-
-                // Run the event loop
-                siv.add_layer(Dialog::around(TextView::new("Starting...")));
-                siv.run();
-            });
-
-            // Receive the Cursive callback sink from the UI thread
-            let cb_sink = sink_rx
-                .recv()
-                .expect("failed to initialize cursive callback sink");
-
-            self.log.info(SCOPE, "Terminal actor spawned");
-
-            // Message handling loop - this is the actual actor behavior
-            while let Some(msg) = rx.recv().await {
-                match msg {
-                    Message::Show(screen) => {
-                        Self::handle_show_screen(screen, &cb_sink, self.ui_events.clone());
-                    }
-                    Message::Quit => {
-                        let _ = cb_sink.send(Box::new(|s: &mut Cursive| s.quit()));
-                        break;
-                    }
+            // Install global key callbacks to forward to app actor
+            let fwd = |ev: UiEvent| {
+                let tx = ui_events.clone();
+                move |_s: &mut Cursive| {
+                    let _ = tx.try_send(ev);
                 }
-            }
+            };
+
+            siv.add_global_callback(Event::Key(Key::Left), fwd(UiEvent::Left));
+            siv.add_global_callback(Event::Key(Key::Right), fwd(UiEvent::Right));
+            siv.add_global_callback(Event::Key(Key::Esc), fwd(UiEvent::Esc));
+
+            let cb_sink = siv.cb_sink().clone();
+            let _ = sink_tx.send(cb_sink);
+
+            // Run the event loop
+            siv.add_layer(Dialog::around(TextView::new("Starting...")));
+            siv.run();
         });
 
-        (Terminal::Actual(tx), handle)
+        // Receive the Cursive callback sink from the UI thread
+        let cb_sink = sink_rx
+            .recv()
+            .expect("failed to initialize cursive callback sink");
+
+        self.log.info(SCOPE, "Terminal actor spawned");
+
+        // Message handling loop - this is the actual actor behavior
+        while let Some(msg) = rx.recv().await {
+            use Message::*;
+            match msg {
+                Show(screen) => {
+                    Self::handle_show_screen(screen, &cb_sink, self.ui_events.clone());
+                }
+                Quit => {
+                    let _ = cb_sink.send(Box::new(|s: &mut Cursive| s.quit()));
+                    break;
+                }
+            }
+        }
     }
 
     /// Handles the Show message by updating the UI with the given screen.

@@ -30,30 +30,20 @@ impl Core {
         Self { log }
     }
 
-    /// Transforms an instance of [`Core`] into an actor ready to receive messages.
+    /// Initializes the shell actor message receiver.
     ///
-    /// This method spawns a new task that will handle shell operations
-    /// asynchronously through a message channel.
+    /// This method processes messages from the receiver in a loop, handling each message
+    /// using pattern matching.
     ///
-    /// # Returns
-    /// A tuple containing:
-    /// - A [`Shell`] instance that can be used to send messages to the actor
-    /// - A join handle for the spawned task
-    ///
-    /// # Panics
-    /// This function will panic if the underlying task fails to spawn.
-    pub fn spawn(mut self) -> (super::Shell, tokio::task::JoinHandle<()>) {
-        let (tx, mut rx) = mpsc::channel(crate::BUFFER_SIZE);
-        let handle = tokio::spawn(async move {
-            while let Some(msg) = rx.recv().await {
-                use Message::*;
-                match msg {
-                    Execute { tx, command } => self.execute(tx, command).await,
-                }
+    /// # Arguments
+    /// * `rx` - A receiver for messages to process
+    pub async fn init(mut self, mut rx: mpsc::Receiver<Message>) {
+        while let Some(msg) = rx.recv().await {
+            use Message::*;
+            match msg {
+                Execute { tx, command } => self.handle_execute(tx, command).await,
             }
-        });
-
-        (super::Shell::Actual(tx), handle)
+        }
     }
 
     /// Executes an external program with the given command.
@@ -68,7 +58,7 @@ impl Core {
     /// # Errors
     /// The function will return an error if the command cannot be executed or if there
     /// are any issues with the channel communication.
-    async fn execute(
+    async fn handle_execute(
         &mut self,
         tx: tokio::sync::oneshot::Sender<anyhow::Result<Result>>,
         command: ShellCommand,

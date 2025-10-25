@@ -7,25 +7,25 @@ This rule defines the pattern for creating actors that provide thread-safe inter
 
 ## Architecture Components
 
-Each actor must consist of three main components:
+Each actor must consist of four main components:
 
 1. **Core** (`something/core.rs`) - Internal implementation and state management
 2. **Message** (`something/message.rs`) - Message types for actor communication  
 3. **Data** (`something/data.rs`) - Data structures associated with the actor
-4. **Public Interface** (main module `something.rs`) - Unified API with real and mock implementations
-5. **README.md** (`something/README.md`), beyond `///` documentation, you must write a README.md file for the actor
+4. **Mock** (`something/mock.rs`) - Mock implementation for testing
+5. **Public Interface** (main module `something.rs`) - Unified API with real and mock implementations
+6. **README.md** (`something/README.md`) - Documentation beyond `///` comments
 
 ## Core Component (`core.rs`)
 
 - Create a `Core` struct that holds the actor's internal state and dependencies
 - The creation function must be called `new` if creation always succeeds or `build` if it might fail (returning `Result`)
-- The `spawn` function must:
+- The `init` method must:
   - Take ownership of the core (`self`)
-  - Create an `mpsc` channel with appropriate buffer size
-  - Spawn a Tokio task with a message handling loop
-  - Return a tuple: `(PublicInterface::Actual(sender), JoinHandle<()>)`
-  - Handle all message variants in the loop using pattern matching
-- Private methods to handle messages and manage internal state
+  - Take a `mpsc::Receiver<Message>` parameter
+  - Process messages in a loop using pattern matching
+  - Handle all message variants with `use Message::*` for cleaner code
+- Private methods to handle individual message types and manage internal state
 
 ```rust
 pub struct Core {
@@ -37,15 +37,21 @@ impl Core {
     // or
     pub async fn build() -> Result<Self, Error> { /* ... */ }
     
-    pub fn init(self, mut rx: mpsc::Receiver<Message>) {
-        while let Some(message) = rx.recv().await {
-            match message {
+    pub async fn init(self, mut rx: mpsc::Receiver<Message>) {
+        while let Some(msg) = rx.recv().await {
+            use Message::*;
+            match msg {
                 // Handle all message variants
+                Operation { tx, params } => self.handle_operation(tx, params),
+                // ... other variants
             }
         }
     }
 
     // private message handling methods
+    fn handle_operation(&self, tx: oneshot::Sender<Result<Value, Error>>, params: Params) {
+        // Implementation
+    }
 }
 ```
 
@@ -71,46 +77,80 @@ pub enum Message {
 }
 ```
 
-## Public Interface (main module)
+## Mock Component (`mock.rs`)
 
-- Name it after the module in pascal case
-- Create a public struct with a tx field of type `mpsc::Sender<Message>` 
+- Create a `Mock` struct that implements the same interface as the real actor
+- Use `Arc<Mutex<T>>` for thread-safe in-memory state storage
 - Implement `Debug` and `Clone` traits
-- Use `mock!` to create a Mock struct for it with the Clone trait implemented
-- Provide `spawn()` method to take care of creating a new task with the actor `init` method
-- All public methods must be `async`
-- Whnt convinent, for long async tasks, return the `rx` directly so the caller can decide when to await for the response 
+- Provide constructor methods like `new()` and `with_initial_data()`
+- All methods should have the same signature as the real actor methods
+- Use `tokio::sync::Mutex` for async compatibility
 
 ```rust
 #[derive(Debug, Clone)]
-pub struct Actor {
-    tx: mpsc::Sender<Message>,
+pub struct Mock {
+    state: Arc<Mutex<HashMap<Key, Value>>>,
 }
 
-#[automock]
+impl Mock {
+    pub fn new() -> Self { /* ... */ }
+    pub fn with_initial_data(data: HashMap<Key, Value>) -> Self { /* ... */ }
+    
+    pub async fn operation(&self, params: Params) -> Result<Value, Error> {
+        // Mock implementation
+    }
+}
+```
+
+## Public Interface (main module)
+
+- Name it after the module in Pascal case
+- Create a public enum with `Actual` and `Mock` variants
+- The `Actual` variant contains `mpsc::Sender<Message>`
+- The `Mock` variant contains the mock implementation
+- Implement `Debug` and `Clone` traits
+- Provide `spawn()` method to create real actor and `mock()` method for testing
+- All public methods must be `async` and handle both variants
+- Use `.context().expect()` pattern for actor communication errors
+
+```rust
+#[derive(Debug, Clone)]
+pub enum Actor {
+    /// A real actor that interacts with the system
+    Actual(mpsc::Sender<Message>),
+    /// A mock implementation for testing
+    Mock(mock::Mock),
+}
+
 impl Actor {
     pub fn spawn() -> Self {
         let (tx, rx) = mpsc::channel(crate::BUFFER_SIZE);
-        let core = Core::new();
         let _ = tokio::spawn(async move {
-            core.init(rx);
+            core::Core::new().init(rx).await;
         });
+        Self::Actual(tx)
+    }
 
-        return Self { tx };
+    pub fn mock() -> Self {
+        Self::Mock(mock::Mock::new())
     }
     
     pub async fn operation(&self, params: Params) -> Result<Value, Error> {
-        let (tx, rx) = tokio::sync::oneshot::channel();
-        sender.send(Message::Operation { tx, params })
-            .await
-            .context("Doing operation with Foo")
-            .expect("Foo actor died");
-        rx.await
-            .context("Awaiting response for operation with Foo")
-            .expect("Foo actor died")
+        match self {
+            Self::Actual(sender) => {
+                let (tx, rx) = tokio::sync::oneshot::channel();
+                sender
+                    .send(Message::Operation { tx, params })
+                    .await
+                    .context("Doing operation with Actor")
+                    .expect("Actor died");
+                rx.await
+                    .context("Awaiting response for operation with Actor")
+                    .expect("Actor died")
+            }
+            Self::Mock(mock) => mock.operation(params).await,
+        }
     }
-
-    // ...
 }
 ```
 
@@ -138,18 +178,50 @@ The documentation for the actor should be in the format to help the AI Coding Ag
 
 ## Testing Support
 
-- Always provide a mock implementation
+- Always provide a separate mock implementation in `mock.rs`
 - Mock implementations should be deterministic and fast
 - Use in-memory storage for mock state (`Arc<Mutex<T>>`)
 - Mock methods should have the same signature as real methods
-- Consider providing a `Mock` variant that does nothing for simple cases
+- Provide both `new()` and `with_initial_data()` constructors for flexibility
+- Use `tokio::sync::Mutex` for async compatibility
+
+## Module Structure
+
+Each actor module should follow this structure:
+
+```text
+src/
+├── something.rs          # Main public interface
+├── something/
+│   ├── core.rs          # Core actor implementation
+│   ├── message.rs       # Message types
+│   ├── mock.rs          # Mock implementation
+│   └── tests.rs         # Unit tests (optional)
+```
+
+### Required Imports
+
+The main module (`something.rs`) should import:
+
+```rust
+use std::{/* system types */};
+use anyhow::Context;
+use tokio::sync::mpsc::{self, Sender};
+use crate::{ArcStr, ArcOsStr, ArcPath}; // as needed
+
+mod core;
+mod message;
+mod mock;
+#[cfg(test)]
+mod tests;
+```
 
 ## Dependencies
 
-The actors are designed for concurrency and parallelism, but we'll use `tokio` instead of `std`. 
+The actors are designed for concurrency and parallelism, but we'll use `tokio` instead of `std`.
 
 - Use `tokio::sync::mpsc` for main message channel
-- Use `tokio::sync::oneshot` for response channels  
+- Use `tokio::sync::oneshot` for response channels
 - Use `tokio::task` for spawning actor tasks (never use threads, unless it's impossible to do it differently)
 - Use `tokio::sync::Mutex` for mock shared state
 - Use `anyhow` for error handling and context

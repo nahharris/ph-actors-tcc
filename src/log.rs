@@ -53,8 +53,12 @@ impl Log {
         max_age: usize,
         log_dir: crate::ArcPath,
     ) -> anyhow::Result<Self> {
-        let (log, _) = LogCore::build(fs, level, max_age, log_dir).await?.spawn();
-        Ok(log)
+        let (tx, rx) = tokio::sync::mpsc::channel(crate::BUFFER_SIZE);
+        let core = LogCore::build(fs, level, max_age, log_dir).await?;
+        let _ = tokio::spawn(async move {
+            core.init(rx).await;
+        });
+        Ok(Self::Actual(tx))
     }
 
     /// Creates a new mock logging instance for testing.

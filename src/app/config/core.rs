@@ -41,62 +41,62 @@ impl Core {
         }
     }
 
-    /// Spawns the configuration actor and returns a handle to it.
+    /// Initializes the configuration actor message receiver.
     ///
-    /// # Returns
-    /// A tuple containing the configuration actor and its task handle.
-    pub fn spawn(mut self) -> (super::Config, tokio::task::JoinHandle<()>) {
-        let (tx, mut rx) = tokio::sync::mpsc::channel(32);
-        let handle = tokio::spawn(async move {
-            while let Some(msg) = rx.recv().await {
-                match msg {
-                    Message::Load { tx } => {
-                        let res = self.load().await;
-                        let _ = tx.send(res);
-                    }
-                    Message::Save { tx } => {
-                        let res = self.save().await;
-                        let _ = tx.send(res);
-                    }
-                    Message::GetPath { opt, tx } => {
-                        let res = self.data.path(opt);
-                        let _ = tx.send(res);
-                    }
-                    Message::GetLogLevel { tx } => {
-                        let res = self.data.log_level();
-                        let _ = tx.send(res);
-                    }
-                    Message::GetUSize { opt, tx } => {
-                        let res = self.data.usize(opt);
-                        let _ = tx.send(res);
-                    }
-                    Message::SetPath { opt, path } => {
-                        self.data.set_path(opt, path);
-                    }
-                    Message::SetLogLevel { level } => {
-                        self.data.set_log_level(level);
-                    }
-                    Message::SetUSize { opt, size } => {
-                        self.data.set_usize(opt, size);
-                    }
-                    Message::GetRenderer { opt, tx } => {
-                        let res = self.data.renderer(opt);
-                        let _ = tx.send(res);
-                    }
-                    Message::SetRenderer { opt, renderer } => {
-                        self.data.set_renderer(opt, renderer);
-                    }
+    /// This method processes messages from the receiver in a loop, handling each message
+    /// using pattern matching.
+    ///
+    /// # Arguments
+    /// * `rx` - A receiver for messages to process
+    pub async fn init(mut self, mut rx: tokio::sync::mpsc::Receiver<Message>) {
+        while let Some(msg) = rx.recv().await {
+            use Message::*;
+            match msg {
+                Load { tx } => {
+                    let res = self.handle_load().await;
+                    let _ = tx.send(res);
+                }
+                Save { tx } => {
+                    let res = self.handle_save().await;
+                    let _ = tx.send(res);
+                }
+                GetPath { opt, tx } => {
+                    let res = self.data.path(opt);
+                    let _ = tx.send(res);
+                }
+                GetLogLevel { tx } => {
+                    let res = self.data.log_level();
+                    let _ = tx.send(res);
+                }
+                GetUSize { opt, tx } => {
+                    let res = self.data.usize(opt);
+                    let _ = tx.send(res);
+                }
+                SetPath { opt, path } => {
+                    self.data.set_path(opt, path);
+                }
+                SetLogLevel { level } => {
+                    self.data.set_log_level(level);
+                }
+                SetUSize { opt, size } => {
+                    self.data.set_usize(opt, size);
+                }
+                GetRenderer { opt, tx } => {
+                    let res = self.data.renderer(opt);
+                    let _ = tx.send(res);
+                }
+                SetRenderer { opt, renderer } => {
+                    self.data.set_renderer(opt, renderer);
                 }
             }
-        });
-        (super::Config::Actual(tx), handle)
+        }
     }
 
     /// Loads the configuration from the file.
     ///
     /// # Returns
     /// `Ok(())` if the configuration was loaded successfully.
-    async fn load(&mut self) -> anyhow::Result<()> {
+    async fn handle_load(&mut self) -> anyhow::Result<()> {
         let mut file = self.fs.read_file(self.path.clone()).await?;
         let mut contents = String::new();
         use tokio::io::AsyncReadExt;
@@ -110,7 +110,7 @@ impl Core {
     ///
     /// # Returns
     /// `Ok(())` if the configuration was saved successfully.
-    async fn save(&self) -> anyhow::Result<()> {
+    async fn handle_save(&self) -> anyhow::Result<()> {
         let contents = toml::to_string(&self.data)?;
         let mut file = self.fs.write_file(self.path.clone()).await?;
         use tokio::io::AsyncWriteExt;

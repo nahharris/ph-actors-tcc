@@ -45,8 +45,12 @@ impl Net {
     /// # Returns
     /// A new networking instance with a spawned actor.
     pub async fn spawn(config: Config, log: crate::log::Log) -> Self {
-        let (net, _) = Core::new(config, log).await.spawn();
-        net
+        let (tx, rx) = tokio::sync::mpsc::channel(crate::BUFFER_SIZE);
+        let core = Core::new(config, log).await;
+        let _ = tokio::spawn(async move {
+            core.init(rx).await;
+        });
+        Self::Actual(tx)
     }
 
     /// Creates a new mock networking instance for testing.

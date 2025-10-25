@@ -18,27 +18,24 @@ impl Core {
         Default::default()
     }
 
-    pub fn spawn(self) -> (super::Fs, tokio::task::JoinHandle<()>) {
-        let (tx, mut rx) = mpsc::channel(crate::BUFFER_SIZE);
-        let handle = tokio::spawn(async move {
-            while let Some(msg) = rx.recv().await {
-                use Message::*;
-                match msg {
-                    ReadFile { tx, path } => Self::read_file(tx, path).await,
-                    WriteFile { tx, path } => Self::write_file(tx, path).await,
-                    AppendFile { tx, path } => Self::append_file(tx, path).await,
-                    RemoveFile { tx, path } => Self::remove_file(tx, path).await,
-                    ReadDir { tx, path } => Self::read_dir(tx, path).await,
-                    MkDir { tx, path } => Self::mkdir(tx, path).await,
-                    RmDir { tx, path } => Self::rmdir(tx, path).await,
-                }
+    pub async fn init(self, mut rx: mpsc::Receiver<Message>) {
+        while let Some(msg) = rx.recv().await {
+            use Message::*;
+            match msg {
+                ReadFile { tx, path } => self.handle_read_file(tx, path).await,
+                WriteFile { tx, path } => self.handle_write_file(tx, path).await,
+                AppendFile { tx, path } => self.handle_append_file(tx, path).await,
+                RemoveFile { tx, path } => self.handle_remove_file(tx, path).await,
+                ReadDir { tx, path } => self.handle_read_dir(tx, path).await,
+                MkDir { tx, path } => self.handle_mkdir(tx, path).await,
+                RmDir { tx, path } => self.handle_rmdir(tx, path).await,
             }
-        });
-        (super::Fs::Actual(tx), handle)
+        }
     }
 
     /// Opens a file for reading only (does not create if it doesn't exist).
-    async fn read_file(
+    async fn handle_read_file(
+        &self,
         tx: tokio::sync::oneshot::Sender<Result<tokio::fs::File, tokio::io::Error>>,
         path: ArcPath,
     ) {
@@ -47,7 +44,8 @@ impl Core {
     }
 
     /// Opens a file for writing (truncates content, creates if needed).
-    async fn write_file(
+    async fn handle_write_file(
+        &self,
         tx: tokio::sync::oneshot::Sender<Result<tokio::fs::File, tokio::io::Error>>,
         path: ArcPath,
     ) {
@@ -66,7 +64,8 @@ impl Core {
     }
 
     /// Opens a file for appending (creates if needed).
-    async fn append_file(
+    async fn handle_append_file(
+        &self,
         tx: tokio::sync::oneshot::Sender<Result<tokio::fs::File, tokio::io::Error>>,
         path: ArcPath,
     ) {
@@ -84,7 +83,8 @@ impl Core {
         let _ = tx.send(res);
     }
 
-    async fn remove_file(
+    async fn handle_remove_file(
+        &self,
         tx: tokio::sync::oneshot::Sender<Result<(), tokio::io::Error>>,
         path: ArcPath,
     ) {
@@ -92,7 +92,8 @@ impl Core {
         let _ = tx.send(res);
     }
 
-    async fn read_dir(
+    async fn handle_read_dir(
+        &self,
         tx: tokio::sync::oneshot::Sender<Result<LinkedList<ArcPath>, io::Error>>,
         path: ArcPath,
     ) {
@@ -114,12 +115,20 @@ impl Core {
         }
     }
 
-    async fn mkdir(tx: tokio::sync::oneshot::Sender<Result<(), io::Error>>, path: ArcPath) {
+    async fn handle_mkdir(
+        &self,
+        tx: tokio::sync::oneshot::Sender<Result<(), io::Error>>,
+        path: ArcPath,
+    ) {
         let res = tokio::fs::create_dir_all(&path).await;
         let _ = tx.send(res);
     }
 
-    async fn rmdir(tx: tokio::sync::oneshot::Sender<Result<(), io::Error>>, path: ArcPath) {
+    async fn handle_rmdir(
+        &self,
+        tx: tokio::sync::oneshot::Sender<Result<(), io::Error>>,
+        path: ArcPath,
+    ) {
         let res = tokio::fs::remove_dir_all(&path).await;
         let _ = tx.send(res);
     }

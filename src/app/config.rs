@@ -4,6 +4,7 @@ use message::Message;
 
 use crate::{ArcPath, env::Env, fs::Fs, log::LogLevel};
 use anyhow::Context;
+use tokio::sync::mpsc::Sender;
 
 mod core;
 mod data;
@@ -31,7 +32,7 @@ mod tests;
 #[derive(Debug, Clone)]
 pub enum Config {
     /// A real configuration actor that reads from and writes to a file
-    Actual(tokio::sync::mpsc::Sender<Message>),
+    Actual(Sender<Message>),
     /// A mock implementation for testing that stores data in memory
     Mock(mock::Mock),
 }
@@ -47,8 +48,12 @@ impl Config {
     /// # Returns
     /// A new configuration instance with a spawned actor.
     pub fn spawn(env: Env, fs: Fs, path: ArcPath) -> Self {
-        let (config, _) = core::Core::new(env, fs, path).spawn();
-        config
+        let (tx, rx) = tokio::sync::mpsc::channel(crate::BUFFER_SIZE);
+        let core = core::Core::new(env, fs, path);
+        let _ = tokio::spawn(async move {
+            core.init(rx).await;
+        });
+        Self::Actual(tx)
     }
 
     /// Creates a new mock configuration instance for testing.
