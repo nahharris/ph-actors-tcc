@@ -11,6 +11,14 @@ mod data;
 mod message;
 
 pub use data::{AppState, Command, MockData};
+#[cfg(not(test))]
+use crate::env::Env;
+#[cfg(test)]
+use crate::env::mock::MockEnv as Env;
+#[cfg(not(test))]
+use crate::fs::Fs;
+#[cfg(test)]
+use crate::fs::mock::MockFs as Fs;
 use message::Message;
 
 /// App actor - Central coordinator for the entire application
@@ -36,8 +44,8 @@ impl App {
     /// - Cache initialization and loading
     ///
     /// Returns the App actor ready for resolve() or spawn()
-    pub async fn build() -> Result<Self> {
-        let core = core::Core::build().await?;
+    pub async fn build(env: Env, fs: Fs) -> Result<Self> {
+        let core = core::Core::build(env, fs).await?;
         Ok(Self::Ready(Arc::new(core)))
     }
 

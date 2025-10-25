@@ -5,9 +5,14 @@ mod mock;
 #[cfg(test)]
 mod tests;
 
-pub use core::LogCore;
+pub use core::Core;
 pub use data::LogLevel;
 use data::LogMessage;
+
+#[cfg(not(test))]
+use crate::fs::Fs;
+#[cfg(test)]
+use crate::fs::mock::MockFs as Fs;
 
 use std::fmt::Display;
 use tokio::sync::mpsc::Sender;
@@ -15,9 +20,8 @@ use tokio::task::JoinHandle;
 
 /// The logging actor that provides a thread-safe interface for logging operations.
 ///
-/// This enum represents either a real logging actor or a mock implementation
-/// for testing purposes. It provides a unified interface for logging operations
-/// regardless of the underlying implementation.
+/// This struct provides a unified interface for logging operations
+/// using message passing to a background actor.
 ///
 /// # Examples
 /// ```ignore
@@ -27,13 +31,10 @@ use tokio::task::JoinHandle;
 ///
 /// # Thread Safety
 /// This type is designed to be safely shared between threads. Cloning is cheap as it only
-/// copies the channel sender or mock reference.
+/// copies the channel sender.
 #[derive(Debug, Clone)]
-pub enum Log {
-    /// A real logging actor that writes to files and stderr
-    Actual(Sender<message::Message>),
-    /// A mock implementation for testing that stores messages in memory
-    Mock(mock::Mock),
+pub struct Log {
+    tx: Sender<message::Message>,
 }
 
 impl Log {
@@ -48,46 +49,31 @@ impl Log {
     /// # Returns
     /// A new logging instance with a spawned actor.
     pub async fn spawn(
-        fs: crate::fs::Fs,
+        fs: Fs,
         level: LogLevel,
         max_age: usize,
         log_dir: crate::ArcPath,
     ) -> anyhow::Result<Self> {
         let (tx, rx) = tokio::sync::mpsc::channel(crate::BUFFER_SIZE);
-        let core = LogCore::build(fs, level, max_age, log_dir).await?;
+        let core = Core::build(fs, level, max_age, log_dir).await?;
         let _ = tokio::spawn(async move {
             core.init(rx).await;
         });
-        Ok(Self::Actual(tx))
-    }
-
-    /// Creates a new mock logging instance for testing.
-    ///
-    /// # Returns
-    /// A new mock logging instance that stores messages in memory.
-    pub fn mock() -> Self {
-        Self::Mock(mock::Mock::new())
+        Ok(Self { tx })
     }
 
     fn log(&self, scope: &'static str, message: String, level: LogLevel) {
-        match self {
-            Log::Actual(sender) => {
-                let sender = sender.clone();
-                tokio::spawn(async move {
-                    sender
-                        .send(message::Message::Log(LogMessage {
-                            level,
-                            scope,
-                            message: message.to_string(),
-                        }))
-                        .await
-                        .expect("Attempt to use logger after a flush");
-                });
-            }
-            Log::Mock(mock) => {
-                mock.log(scope, message, level);
-            }
-        }
+        let sender = self.tx.clone();
+        tokio::spawn(async move {
+            sender
+                .send(message::Message::Log(LogMessage {
+                    level,
+                    scope,
+                    message: message.to_string(),
+                }))
+                .await
+                .expect("Attempt to use logger after a flush");
+        });
     }
 
     /// Log a message with the `INFO` level
@@ -105,83 +91,25 @@ impl Log {
         self.log(scope, message.to_string(), LogLevel::Error);
     }
 
-    /// Log an info message if the result is an error
-    /// and return the result as is
-    #[allow(dead_code)]
-    pub fn info_on_error<T, E: Display>(
-        &self,
-        scope: &'static str,
-        result: Result<T, E>,
-    ) -> Result<T, E> {
-        match result {
-            Ok(value) => Ok(value),
-            Err(err) => {
-                self.log(scope, err.to_string(), LogLevel::Info);
-                Err(err)
-            }
-        }
-    }
-
-    /// Log a warning message if the result is an error
-    /// and return the result as is
-    #[allow(dead_code)]
-    pub fn warn_on_error<T, E: Display>(
-        &self,
-        scope: &'static str,
-        result: Result<T, E>,
-    ) -> Result<T, E> {
-        match result {
-            Ok(value) => Ok(value),
-            Err(err) => {
-                self.log(scope, err.to_string(), LogLevel::Warning);
-                Err(err)
-            }
-        }
-    }
-
-    /// Log an error message if the result is an error
-    /// and return the result as is
-    pub fn error_on_error<T, E: Display>(
-        &self,
-        scope: &'static str,
-        result: Result<T, E>,
-    ) -> Result<T, E> {
-        match result {
-            Ok(value) => Ok(value),
-            Err(err) => {
-                self.log(scope, err.to_string(), LogLevel::Error);
-                Err(err)
-            }
-        }
-    }
-
     /// Flushes the logger by printing its messages to [`stderr`] and closing
     /// the log file. After this method is called, the logger is destroyed and
     /// any attempt to use it will panic.
     pub fn flush(self) -> JoinHandle<()> {
-        match self {
-            Self::Actual(sender) => tokio::spawn(async move {
-                sender
-                    .send(message::Message::Flush)
-                    .await
-                    .expect("Flushing a logger twice");
-            }),
-            Self::Mock(mock) => mock.flush(),
-        }
+        tokio::spawn(async move {
+            self.tx
+                .send(message::Message::Flush)
+                .await
+                .expect("Flushing a logger twice");
+        })
     }
 
     /// Collects the garbage from the logs directory. Garbage logs are the ones
     /// older than the [`max_age`] set during the logger [`build`].
     pub async fn collect_garbage(&self) {
-        match self {
-            Self::Actual(sender) => sender
-                .send(message::Message::CollectGarbage)
-                .await
-                .expect("Attempt to use logger after a flush"),
-            Self::Mock(mock) => {
-                mock.collect_garbage().await;
-            }
-        }
+        self.tx
+            .send(message::Message::CollectGarbage)
+            .await
+            .expect("Attempt to use logger after a flush")
     }
 
     /// Gets all logged messages from the mock implementation.
@@ -189,10 +117,11 @@ impl Log {
     ///
     /// # Returns
     /// A vector of all logged messages, or None if this is not a mock instance.
+    ///
+    /// # Note
+    /// This method is deprecated in the struct-based approach. Use MockLog directly for testing.
+    #[deprecated(note = "Use MockLog directly for testing instead")]
     pub async fn get_messages(&self) -> Option<Vec<LogMessage>> {
-        match self {
-            Self::Mock(mock) => Some(mock.get_messages().await),
-            Self::Actual(_) => None,
-        }
+        None
     }
 }

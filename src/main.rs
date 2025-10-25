@@ -1,6 +1,8 @@
 use clap::{Parser, Subcommand};
 use ph::ArcStr;
 use ph::app::{App, Command};
+use ph::env::Env;
+use ph::fs::Fs;
 use ph::utils::install_panic_hook;
 
 #[derive(Parser)]
@@ -55,7 +57,7 @@ async fn main() -> anyhow::Result<()> {
     let cli = Cli::parse();
 
     // Build the App actor with all dependencies
-    let app = App::build().await?;
+    let app = App::build(Env::spawn(), Fs::spawn()).await?;
 
     // Execute the appropriate command or run interactive mode
     match cli.command {

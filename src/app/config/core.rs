@@ -1,4 +1,9 @@
-use crate::{ArcPath, env::Env, fs::Fs};
+use crate::ArcPath;
+
+#[cfg(not(test))]
+use crate::{env::Env, fs::Fs};
+#[cfg(test)]
+use crate::{env::mock::MockEnv as Env, fs::mock::MockFs as Fs};
 
 use super::{data::Data, message::Message};
 

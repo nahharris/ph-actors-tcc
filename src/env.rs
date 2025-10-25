@@ -7,15 +7,15 @@ use crate::{ArcOsStr, ArcStr};
 
 mod core;
 mod message;
-mod mock;
+#[cfg(test)]
+pub mod mock;
 #[cfg(test)]
 mod tests;
 
 /// The environment actor that provides a thread-safe interface for environment variable operations.
 ///
-/// This enum represents either a real environment actor or a mock implementation
-/// for testing purposes. It provides a unified interface for environment variable operations
-/// regardless of the underlying implementation.
+/// This struct provides a unified interface for environment variable operations
+/// using message passing to a background actor.
 ///
 /// # Examples
 /// ```ignore
@@ -26,13 +26,10 @@ mod tests;
 ///
 /// # Thread Safety
 /// This type is designed to be safely shared between threads. Cloning is cheap as it only
-/// copies the channel sender or mock reference.
+/// copies the channel sender.
 #[derive(Debug, Clone)]
-pub enum Env {
-    /// A real environment variable actor that interacts with the system
-    Actual(Sender<message::Message>),
-    /// A mock implementation for testing
-    Mock(mock::Mock),
+pub struct Env {
+    tx: Sender<message::Message>,
 }
 
 impl Env {
@@ -45,16 +42,7 @@ impl Env {
         let _ = tokio::spawn(async move {
             core::Core::new().init(rx).await;
         });
-        let env = Self::Actual(tx);
-        env
-    }
-
-    /// Creates a new mock environment instance for testing.
-    ///
-    /// # Returns
-    /// A new mock environment instance that stores variables in memory.
-    pub fn mock() -> Self {
-        Self::Mock(mock::Mock::new())
+        Self { tx }
     }
 
     /// Sets an environment variable
@@ -62,50 +50,33 @@ impl Env {
     where
         V: Display,
     {
-        match self {
-            Self::Actual(sender) => {
-                let value = format!("{value}").into();
-                sender
-                    .send(message::Message::Set { key, value })
-                    .await
-                    .context("Setting environment variable with Env")
-                    .expect("env actor died")
-            }
-            Self::Mock(mock) => {
-                mock.set_env(key, value).await;
-            }
-        }
+        let value = format!("{value}").into();
+        self.tx
+            .send(message::Message::Set { key, value })
+            .await
+            .context("Setting environment variable with Env")
+            .expect("env actor died")
     }
 
     /// Unsets an environment variable
     pub async fn unset_env(&self, key: ArcOsStr) {
-        match self {
-            Self::Actual(sender) => sender
-                .send(message::Message::Unset { key })
-                .await
-                .context("Unsetting environment variable with Env")
-                .expect("env actor died"),
-            Self::Mock(mock) => {
-                mock.unset_env(key).await;
-            }
-        }
+        self.tx
+            .send(message::Message::Unset { key })
+            .await
+            .context("Unsetting environment variable with Env")
+            .expect("env actor died")
     }
 
     /// Gets an environment variable
     pub async fn env(&self, key: ArcOsStr) -> Result<ArcStr, VarError> {
-        match self {
-            Self::Actual(sender) => {
-                let (tx, rx) = tokio::sync::oneshot::channel();
-                sender
-                    .send(message::Message::Get { tx, key })
-                    .await
-                    .context("Getting environment variable with Env")
-                    .expect("env actor died");
-                rx.await
-                    .context("Awaiting response for environment variable get with Env")
-                    .expect("env actor died")
-            }
-            Self::Mock(mock) => mock.env(key).await,
-        }
+        let (tx, rx) = tokio::sync::oneshot::channel();
+        self.tx
+            .send(message::Message::Get { tx, key })
+            .await
+            .context("Getting environment variable with Env")
+            .expect("env actor died");
+        rx.await
+            .context("Awaiting response for environment variable get with Env")
+            .expect("env actor died")
     }
 }

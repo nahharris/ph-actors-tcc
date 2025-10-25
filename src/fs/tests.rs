@@ -3,6 +3,7 @@ use tokio::fs::File;
 use crate::ArcPath;
 
 use super::Fs;
+use super::mock::MockFs;
 
 #[tokio::test]
 async fn test_fs_open_close() {
@@ -22,6 +23,40 @@ async fn test_fs_open_close() {
     // Cleanup
     fs.remove_file(path).await.unwrap();
     temp_dir.close().unwrap();
+}
+
+#[tokio::test]
+async fn test_mock_fs_operations() {
+    let mut mock_fs = MockFs::new();
+    let path = ArcPath::from("test_file.txt");
+
+    // Set up expectations
+    mock_fs
+        .expect_read_file()
+        .with(mockall::predicate::eq(path.clone()))
+        .times(1)
+        .returning(|_| {
+            Err(std::io::Error::new(
+                std::io::ErrorKind::NotFound,
+                "File not found",
+            ))
+        });
+
+    mock_fs
+        .expect_write_file()
+        .with(mockall::predicate::eq(path.clone()))
+        .times(1)
+        .returning(|_| Ok(File::from_std(std::fs::File::create("temp").unwrap())));
+
+    // Test the mock
+    let result = mock_fs.read_file(path.clone()).await;
+    assert!(result.is_err());
+
+    let result = mock_fs.write_file(path).await;
+    assert!(result.is_ok());
+
+    // Cleanup temp file
+    std::fs::remove_file("temp").ok();
 }
 
 #[tokio::test]
@@ -74,21 +109,6 @@ async fn test_fs_remove_file() {
     // Cleanup
     fs.rmdir(dir_path).await.unwrap();
     temp_dir.close().unwrap();
-}
-
-#[tokio::test]
-async fn test_fs_mock() {
-    let fs = Fs::mock();
-    let path = ArcPath::from("test.txt");
-
-    // Test file operations (should succeed)
-    assert!(fs.write_file(path.clone()).await.is_ok());
-    assert!(fs.read_file(path.clone()).await.is_ok());
-    assert!(fs.append_file(path.clone()).await.is_ok());
-    assert!(fs.read_dir(path.clone()).await.is_err());
-    assert!(fs.mkdir(path.clone()).await.is_err());
-    assert!(fs.rmdir(path.clone()).await.is_err());
-    assert!(fs.remove_file(path.clone()).await.is_ok());
 }
 
 #[tokio::test]

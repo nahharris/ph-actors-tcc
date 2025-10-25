@@ -8,8 +8,14 @@ use crate::api::lore::LoreApi;
 use crate::app::cache::{FeedCache, MailingListCache, PatchCache};
 use crate::app::config::{Config, PathOpt, USizeOpt};
 use crate::app::ui::{NavigationAction, Ui};
+#[cfg(not(test))]
 use crate::env::Env;
+#[cfg(test)]
+use crate::env::mock::MockEnv as Env;
+#[cfg(not(test))]
 use crate::fs::Fs;
+#[cfg(test)]
+use crate::fs::mock::MockFs as Fs;
 use crate::log::Log;
 use crate::net::Net;
 use crate::render::Render;
@@ -54,11 +60,7 @@ pub struct Core {
 
 impl Core {
     /// Build a new App actor core with full initialization
-    pub async fn build() -> Result<Self> {
-        // Initialize basic actors
-        let env = Env::spawn();
-        let fs = Fs::spawn();
-
+    pub async fn build(env: Env, fs: Fs) -> Result<Self> {
         // Set up configuration
         let home = env.env(ArcOsStr::from("HOME")).await;
         let config_base = match home {

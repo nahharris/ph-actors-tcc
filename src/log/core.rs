@@ -2,7 +2,11 @@ use anyhow::Context;
 
 use super::data::{LogLevel, LogMessage};
 use super::message::Message;
-use crate::{ArcPath, fs::Fs};
+use crate::ArcPath;
+#[cfg(not(test))]
+use crate::fs::Fs;
+#[cfg(test)]
+use crate::fs::mock::MockFs as Fs;
 
 const SCOPE: &str = "log";
 
@@ -21,7 +25,7 @@ const SCOPE: &str = "log";
 ///
 /// # Examples
 /// ```ignore
-/// let (log, _) = LogCore::build(fs, LogLevel::Info, 7, log_dir).await?.spawn();
+/// let (log, _) = Core::build(fs, LogLevel::Info, 7, log_dir).await?.spawn();
 /// log.info("Application started");
 /// ```
 ///
@@ -29,7 +33,7 @@ const SCOPE: &str = "log";
 /// This type is designed to be safely shared between threads through the actor pattern.
 /// All logging operations are handled sequentially to ensure consistency.
 #[derive(Debug)]
-pub struct LogCore {
+pub struct Core {
     /// Filesystem interface for file operations
     fs: Fs,
     /// Directory where log files are stored
@@ -48,7 +52,7 @@ pub struct LogCore {
     max_age: usize,
 }
 
-impl LogCore {
+impl Core {
     pub async fn build(
         fs: Fs,
         level: LogLevel,

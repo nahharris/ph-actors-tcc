@@ -1,12 +1,20 @@
 use ph::api::lore::LoreApi;
 use ph::app::config::Config;
+use ph::fs::Fs;
 use ph::log::Log;
 use ph::net::Net;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     let config = Config::mock(Default::default());
-    let log = Log::mock();
+    let fs = Fs::spawn();
+    let log = Log::spawn(
+        fs,
+        ph::log::LogLevel::Info,
+        7,
+        std::path::Path::new("logs").into(),
+    )
+    .await?;
     let net = Net::spawn(config, log).await;
 
     let lore = LoreApi::spawn(net);

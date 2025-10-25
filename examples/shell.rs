@@ -1,11 +1,18 @@
 #[macro_use]
 extern crate ph;
-use ph::{log::Log, shell::Shell};
+use ph::{fs::Fs, log::Log, shell::Shell};
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     // Initialize logging
-    let log = Log::mock();
+    let fs = Fs::spawn();
+    let log = Log::spawn(
+        fs,
+        ph::log::LogLevel::Info,
+        7,
+        std::path::Path::new("logs").into(),
+    )
+    .await?;
 
     // Initialize shell actor
     let shell = Shell::spawn(log.clone()).await?;

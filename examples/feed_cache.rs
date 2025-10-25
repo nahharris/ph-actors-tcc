@@ -12,8 +12,14 @@ use ph::{
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     let config = Config::mock(Default::default());
-    let log = Log::mock();
     let fs = Fs::spawn();
+    let log = Log::spawn(
+        fs.clone(),
+        ph::log::LogLevel::Info,
+        7,
+        std::path::Path::new("logs").into(),
+    )
+    .await?;
     let net = Net::spawn(config.clone(), log.clone()).await;
     let lore = LoreApi::spawn(net);
     let feed_cache = FeedCache::spawn(lore, fs.clone(), config.clone(), log.clone()).await?;

@@ -3,6 +3,7 @@ use ph::{
         cache::{feed::FeedCache, mailing_list::MailingListCache, patch::PatchCache},
         ui::Ui,
     },
+    fs::Fs,
     log::Log,
     render::Render,
     terminal::Terminal,
@@ -11,7 +12,14 @@ use ph::{
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     // Create mock actors
-    let log = Log::mock();
+    let fs = Fs::spawn();
+    let log = Log::spawn(
+        fs,
+        ph::log::LogLevel::Info,
+        7,
+        std::path::Path::new("logs").into(),
+    )
+    .await?;
     let render = Render::mock(std::collections::HashMap::new());
 
     // Create mock caches

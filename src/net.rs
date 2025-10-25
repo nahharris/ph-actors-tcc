@@ -14,9 +14,8 @@ mod mock;
 
 /// The networking actor that provides a thread-safe interface for network operations.
 ///
-/// This enum represents either a real networking actor or a mock implementation
-/// for testing purposes. It provides a unified interface for network operations
-/// regardless of the underlying implementation.
+/// This struct provides a unified interface for network operations
+/// using message passing to a background actor.
 ///
 /// # Examples
 /// ```ignore
@@ -26,13 +25,10 @@ mod mock;
 ///
 /// # Thread Safety
 /// This type is designed to be safely shared between threads. Cloning is cheap as it only
-/// copies the channel sender or mock reference.
+/// copies the channel sender.
 #[derive(Debug, Clone)]
-pub enum Net {
-    /// A real networking actor that performs HTTP requests
-    Actual(Sender<Message>),
-    /// A mock implementation for testing
-    Mock(mock::Mock),
+pub struct Net {
+    tx: Sender<Message>,
 }
 
 impl Net {
@@ -50,26 +46,7 @@ impl Net {
         let _ = tokio::spawn(async move {
             core.init(rx).await;
         });
-        Self::Actual(tx)
-    }
-
-    /// Creates a new mock networking instance for testing.
-    ///
-    /// # Arguments
-    /// * `responses` - Initial response cache mapping HTTP method + URL pairs to responses
-    ///
-    /// # Returns
-    /// A new mock networking instance that returns predefined responses.
-    pub fn mock(responses: HashMap<crate::net::message::MockRequestKey, ArcStr>) -> Self {
-        Self::Mock(mock::Mock::new(responses))
-    }
-
-    /// Creates a new empty mock networking instance for testing.
-    ///
-    /// # Returns
-    /// A new mock networking instance with an empty response cache.
-    pub fn mock_empty() -> Self {
-        Self::Mock(mock::Mock::empty())
+        Self { tx }
     }
 
     /// Performs an HTTP GET request to the specified URL.
@@ -85,20 +62,15 @@ impl Net {
         url: ArcStr,
         headers: Option<HashMap<ArcStr, ArcStr>>,
     ) -> Result<ArcStr, anyhow::Error> {
-        match self {
-            Net::Actual(sender) => {
-                let (tx, rx) = tokio::sync::oneshot::channel();
-                sender
-                    .send(Message::Get { url, headers, tx })
-                    .await
-                    .context("Sending message to Net actor")
-                    .expect("Net actor died");
-                rx.await
-                    .context("Awaiting response from Net actor")
-                    .expect("Net actor died")
-            }
-            Net::Mock(mock) => mock.get(url, headers).await,
-        }
+        let (tx, rx) = tokio::sync::oneshot::channel();
+        self.tx
+            .send(Message::Get { url, headers, tx })
+            .await
+            .context("Sending message to Net actor")
+            .expect("Net actor died");
+        rx.await
+            .context("Awaiting response from Net actor")
+            .expect("Net actor died")
     }
 
     /// Performs an HTTP POST request to the specified URL.
@@ -116,22 +88,17 @@ impl Net {
         headers: Option<HashMap<ArcStr, ArcStr>>,
         body: Option<ArcStr>,
     ) -> Result<ArcStr, anyhow::Error> {
-        match self {
-            Net::Actual(sender) => {
-                let (tx, rx) = tokio::sync::oneshot::channel();
-                sender
-                    .send(Message::Post {
-                        url,
-                        headers,
-                        body,
-                        tx,
-                    })
-                    .await
-                    .context("Sending message to Net actor")?;
-                rx.await.context("Receiving response from Net actor")?
-            }
-            Net::Mock(mock) => mock.post(url, headers, body).await,
-        }
+        let (tx, rx) = tokio::sync::oneshot::channel();
+        self.tx
+            .send(Message::Post {
+                url,
+                headers,
+                body,
+                tx,
+            })
+            .await
+            .context("Sending message to Net actor")?;
+        rx.await.context("Receiving response from Net actor")?
     }
 
     /// Performs an HTTP PUT request to the specified URL.
@@ -149,22 +116,17 @@ impl Net {
         headers: Option<HashMap<ArcStr, ArcStr>>,
         body: Option<ArcStr>,
     ) -> Result<ArcStr, anyhow::Error> {
-        match self {
-            Net::Actual(sender) => {
-                let (tx, rx) = tokio::sync::oneshot::channel();
-                sender
-                    .send(Message::Put {
-                        url,
-                        headers,
-                        body,
-                        tx,
-                    })
-                    .await
-                    .context("Sending message to Net actor")?;
-                rx.await.context("Receiving response from Net actor")?
-            }
-            Net::Mock(mock) => mock.put(url, headers, body).await,
-        }
+        let (tx, rx) = tokio::sync::oneshot::channel();
+        self.tx
+            .send(Message::Put {
+                url,
+                headers,
+                body,
+                tx,
+            })
+            .await
+            .context("Sending message to Net actor")?;
+        rx.await.context("Receiving response from Net actor")?
     }
 
     /// Performs an HTTP DELETE request to the specified URL.
@@ -180,17 +142,12 @@ impl Net {
         url: ArcStr,
         headers: Option<HashMap<ArcStr, ArcStr>>,
     ) -> Result<ArcStr, anyhow::Error> {
-        match self {
-            Net::Actual(sender) => {
-                let (tx, rx) = tokio::sync::oneshot::channel();
-                sender
-                    .send(Message::Delete { url, headers, tx })
-                    .await
-                    .context("Sending message to Net actor")?;
-                rx.await.context("Receiving response from Net actor")?
-            }
-            Net::Mock(mock) => mock.delete(url, headers).await,
-        }
+        let (tx, rx) = tokio::sync::oneshot::channel();
+        self.tx
+            .send(Message::Delete { url, headers, tx })
+            .await
+            .context("Sending message to Net actor")?;
+        rx.await.context("Receiving response from Net actor")?
     }
 
     /// Performs an HTTP PATCH request to the specified URL.
@@ -208,21 +165,16 @@ impl Net {
         headers: Option<HashMap<ArcStr, ArcStr>>,
         body: Option<ArcStr>,
     ) -> Result<ArcStr, anyhow::Error> {
-        match self {
-            Net::Actual(sender) => {
-                let (tx, rx) = tokio::sync::oneshot::channel();
-                sender
-                    .send(Message::Patch {
-                        url,
-                        headers,
-                        body,
-                        tx,
-                    })
-                    .await
-                    .context("Sending message to Net actor")?;
-                rx.await.context("Receiving response from Net actor")?
-            }
-            Net::Mock(mock) => mock.patch(url, headers, body).await,
-        }
+        let (tx, rx) = tokio::sync::oneshot::channel();
+        self.tx
+            .send(Message::Patch {
+                url,
+                headers,
+                body,
+                tx,
+            })
+            .await
+            .context("Sending message to Net actor")?;
+        rx.await.context("Receiving response from Net actor")?
     }
 }
