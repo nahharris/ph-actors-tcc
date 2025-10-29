@@ -162,7 +162,7 @@ The documentation for the actor should be in the format to help the AI Coding Ag
 
 - Always provide a separate public (test only) `mock::Mock...` struct in `mock.rs` that uses `mockall::mock` to enable mocking for it
 - Every module must import other actors as `use crate::actor::Actor;` and `use crate::actor::mock::MockActor as Actor;` depending on the build configuration to allow mocking for it
-- Every module must provide a `tests.rs` file for unit tests over the actor using mocked dependents
+- Every module must provide a `tests.rs` file for unit tests over the actor using mocked dependencies (only the dependencies should be mocked, the actor itself should not be mocked)
 
 ## Module Structure
 
@@ -190,9 +190,9 @@ use crate::{ArcStr, ArcOsStr, ArcPath}; // as needed
 
 // Actors it depends on
 #[cfg(not(test))]
-use crate::{actor::Actor};
+use crate::{other_actor::OtherActor};
 #[cfg(test)]
-use crate::{actor::mock::MockActor as Actor};
+use crate::{other_actor::mock::MockOtherActor as OtherActor};
 
 mod core;
 mod message;
