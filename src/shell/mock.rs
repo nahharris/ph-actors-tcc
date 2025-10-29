@@ -1,14 +1,11 @@
 #[cfg(test)]
 use mockall::mock;
 
-use crate::shell::data::Result;
-use crate::{ArcSlice, ArcStr};
-
 #[cfg(test)]
 mock! {
     #[derive(Debug)]
     pub Shell {
-        pub async fn execute(&self, program: ArcStr, args: ArcSlice<ArcStr>, stdin: Option<ArcStr>) -> anyhow::Result<Result>;
+        pub async fn execute(&self, program: crate::ArcStr, args: crate::ArcSlice<crate::ArcStr>, stdin: Option<crate::ArcStr>) -> anyhow::Result<crate::shell::data::Result>;
     }
 
     impl Clone for Shell {
