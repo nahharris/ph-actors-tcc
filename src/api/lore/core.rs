@@ -1,11 +1,17 @@
 use anyhow::Context;
 use std::collections::HashMap;
-use tokio::task::JoinHandle;
 
 use super::data::{LoreMailingList, LorePage, LorePatchMetadata};
 use super::parse;
 use crate::ArcSlice;
-use crate::{ArcStr, api::lore::message::LoreApiMessage, net::Net};
+use crate::{ArcStr, api::lore::message::LoreApiMessage};
+
+#[cfg(not(test))]
+use crate::net::Net;
+#[cfg(test)]
+use crate::net::mock::MockNet as Net;
+
+const DOMAIN: &str = "https://lore.kernel.org";
 
 /// The core of the Lore API system that handles Lore-specific HTTP requests.
 ///
@@ -47,20 +53,8 @@ impl Core {
     pub fn new(net: Net) -> Self {
         Self {
             net,
-            domain: ArcStr::from("https://lore.kernel.org"),
+            domain: ArcStr::from(DOMAIN),
         }
-    }
-
-    /// Creates a new Lore API core instance with a custom domain.
-    ///
-    /// # Arguments
-    /// * `net` - The networking actor for making HTTP requests
-    /// * `domain` - The base domain for API requests
-    ///
-    /// # Returns
-    /// A new instance of `Core` configured with the specified domain.
-    pub fn with_domain(net: Net, domain: ArcStr) -> Self {
-        Self { net, domain }
     }
 
     /// Transforms the Lore API core instance into an actor.
@@ -76,47 +70,42 @@ impl Core {
     ///
     /// # Panics
     /// This function will panic if the underlying task fails to spawn.
-    pub fn spawn(self) -> (crate::api::lore::LoreApi, JoinHandle<()>) {
-        let (tx, mut rx) = tokio::sync::mpsc::channel(100);
-
-        let handle = tokio::spawn(async move {
-            while let Some(message) = rx.recv().await {
-                match message {
-                    LoreApiMessage::GetPatchFeedPage {
-                        target_list,
-                        min_index,
-                        tx,
-                    } => {
-                        let response = self
-                            .handle_get_patch_feed_page(&target_list, min_index)
-                            .await
-                            .with_context(|| {
-                                format!("GET patch feed failed for list: {target_list}")
-                            });
-                        let _ = tx.send(response);
-                    }
-                    LoreApiMessage::GetAvailableLists { tx } => {
-                        let response = self
-                            .handle_get_available_lists()
-                            .await
-                            .with_context(|| "GET available lists failed");
-                        let _ = tx.send(response);
-                    }
-                    LoreApiMessage::GetAvailableListsPage { min_index, tx } => {
-                        let response = self
-                            .handle_get_available_lists_page(min_index)
-                            .await
-                            .with_context(|| {
-                                format!("GET available lists failed for index: {min_index}")
-                            });
-                        let _ = tx.send(response);
-                    }
-                    LoreApiMessage::GetPatchHtml {
-                        target_list,
-                        message_id,
-                        tx,
-                    } => {
-                        let response = self
+    pub async fn init(self, mut rx: tokio::sync::mpsc::Receiver<LoreApiMessage>) {
+        while let Some(message) = rx.recv().await {
+            match message {
+                LoreApiMessage::GetPatchFeedPage {
+                    target_list,
+                    min_index,
+                    tx,
+                } => {
+                    let response = self
+                        .handle_get_patch_feed_page(&target_list, min_index)
+                        .await
+                        .with_context(|| format!("GET patch feed failed for list: {target_list}"));
+                    let _ = tx.send(response);
+                }
+                LoreApiMessage::GetAvailableLists { tx } => {
+                    let response = self
+                        .handle_get_available_lists()
+                        .await
+                        .with_context(|| "GET available lists failed");
+                    let _ = tx.send(response);
+                }
+                LoreApiMessage::GetAvailableListsPage { min_index, tx } => {
+                    let response = self
+                        .handle_get_available_lists_page(min_index)
+                        .await
+                        .with_context(|| {
+                            format!("GET available lists failed for index: {min_index}")
+                        });
+                    let _ = tx.send(response);
+                }
+                LoreApiMessage::GetPatchHtml {
+                    target_list,
+                    message_id,
+                    tx,
+                } => {
+                    let response = self
                             .handle_get_patch_html(&target_list, &message_id)
                             .await
                             .with_context(|| {
@@ -124,14 +113,14 @@ impl Core {
                                     "GET patch HTML failed for list: {target_list}, message: {message_id}"
                                 )
                             });
-                        let _ = tx.send(response);
-                    }
-                    LoreApiMessage::GetRawPatch {
-                        target_list,
-                        message_id,
-                        tx,
-                    } => {
-                        let response = self
+                    let _ = tx.send(response);
+                }
+                LoreApiMessage::GetRawPatch {
+                    target_list,
+                    message_id,
+                    tx,
+                } => {
+                    let response = self
                             .handle_get_raw_patch(&target_list, &message_id)
                             .await
                             .with_context(|| {
@@ -139,14 +128,14 @@ impl Core {
                                     "GET raw patch failed for list: {target_list}, message: {message_id}"
                                 )
                             });
-                        let _ = tx.send(response);
-                    }
-                    LoreApiMessage::GetPatchMetadata {
-                        target_list,
-                        message_id,
-                        tx,
-                    } => {
-                        let response = self
+                    let _ = tx.send(response);
+                }
+                LoreApiMessage::GetPatchMetadata {
+                    target_list,
+                    message_id,
+                    tx,
+                } => {
+                    let response = self
                             .handle_get_patch_metadata(&target_list, &message_id)
                             .await
                             .with_context(|| {
@@ -154,13 +143,10 @@ impl Core {
                                     "GET patch metadata failed for list: {target_list}, message: {message_id}"
                                 )
                             });
-                        let _ = tx.send(response);
-                    }
+                    let _ = tx.send(response);
                 }
             }
-        });
-
-        (crate::api::lore::LoreApi::Actual(tx), handle)
+        }
     }
 
     /// Handles GET patch feed requests

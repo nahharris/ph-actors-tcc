@@ -1,14 +1,22 @@
 use anyhow::Context;
-use std::collections::HashMap;
-use tokio::sync::{mpsc::Sender, oneshot};
+use tokio::sync::{mpsc, oneshot};
 
+use crate::ArcStr;
 use crate::utils::ArcSlice;
-use crate::{ArcStr, net::Net};
+
+#[cfg(not(test))]
+use crate::net::Net;
+#[cfg(test)]
+use crate::net::mock::MockNet as Net;
+
+const SCOPE: &str = "api.lore";
+const BUFFER_SIZE: usize = 64;
 
 mod core;
 pub mod data;
 mod message;
-mod mock;
+#[cfg(test)]
+pub mod mock;
 pub mod parse;
 
 // Re-export public types for external use
@@ -31,56 +39,19 @@ pub use message::LoreApiMessage;
 /// This type is designed to be safely shared between threads. Cloning is cheap as it only
 /// copies the channel sender or mock reference.
 #[derive(Debug, Clone)]
-pub enum LoreApi {
+pub struct LoreApi {
     /// A real Lore API actor that performs HTTP requests through the networking actor
-    Actual(Sender<LoreApiMessage>),
-    /// A mock implementation for testing
-    Mock(mock::Mock),
+    tx: mpsc::Sender<LoreApiMessage>,
 }
 
 impl LoreApi {
-    /// Creates a new Lore API actor and spawns its core.
-    ///
-    /// # Arguments
-    /// * `net` - The networking actor for making HTTP requests
-    ///
-    /// # Returns
-    /// A new Lore API actor configured for the Lore Kernel Archive.
     pub fn spawn(net: Net) -> Self {
-        let (lore_api, _) = core::Core::new(net).spawn();
-        lore_api
-    }
-
-    /// Creates a new Lore API actor with a custom domain.
-    ///
-    /// # Arguments
-    /// * `net` - The networking actor for making HTTP requests
-    /// * `domain` - The base domain for API requests
-    ///
-    /// # Returns
-    /// A new Lore API actor configured with the specified domain.
-    pub fn spawn_with_domain(net: Net, domain: ArcStr) -> Self {
-        let (lore_api, _) = core::Core::with_domain(net, domain).spawn();
-        lore_api
-    }
-
-    /// Creates a new mock Lore API instance for testing.
-    ///
-    /// # Arguments
-    /// * `responses` - Initial response cache mapping operation keys to responses
-    ///
-    /// # Returns
-    /// A new mock Lore API instance that returns predefined responses.
-    pub fn mock(responses: HashMap<String, ArcStr>) -> Self {
-        Self::Mock(mock::Mock::new(responses))
-    }
-
-    /// Creates a new empty mock Lore API instance for testing.
-    ///
-    /// # Returns
-    /// A new mock Lore API instance with an empty response cache.
-    pub fn mock_empty() -> Self {
-        Self::Mock(mock::Mock::empty())
+        let (tx, rx) = mpsc::channel(BUFFER_SIZE);
+        let core = core::Core::new(net);
+        let _ = tokio::spawn(async move {
+            core.init(rx).await;
+        });
+        Self { tx }
     }
 
     /// Fetches a patch feed from a specific mailing list with pagination.
@@ -104,24 +75,19 @@ impl LoreApi {
         target_list: ArcStr,
         min_index: usize,
     ) -> anyhow::Result<Option<LorePage<LorePatchMetadata>>> {
-        match self {
-            LoreApi::Actual(sender) => {
-                let (tx, rx) = oneshot::channel();
-                sender
-                    .send(LoreApiMessage::GetPatchFeedPage {
-                        target_list,
-                        min_index,
-                        tx,
-                    })
-                    .await
-                    .context("Sending message to LoreApi actor")
-                    .expect("LoreApi actor died");
-                rx.await
-                    .context("Awaiting response from LoreApi actor")
-                    .expect("LoreApi actor died")
-            }
-            LoreApi::Mock(mock) => mock.get_patch_feed_page(target_list, min_index).await,
-        }
+        let (tx, rx) = oneshot::channel();
+        self.tx
+            .send(LoreApiMessage::GetPatchFeedPage {
+                target_list,
+                min_index,
+                tx,
+            })
+            .await
+            .context("Sending message to LoreApi actor")
+            .expect("LoreApi actor died");
+        rx.await
+            .context("Awaiting response from LoreApi actor")
+            .expect("LoreApi actor died")
     }
 
     /// Fetches a single page of available mailing lists with pagination.
@@ -138,20 +104,15 @@ impl LoreApi {
         &self,
         min_index: usize,
     ) -> anyhow::Result<Option<LorePage<LoreMailingList>>> {
-        match self {
-            LoreApi::Actual(sender) => {
-                let (tx, rx) = oneshot::channel();
-                sender
-                    .send(LoreApiMessage::GetAvailableListsPage { min_index, tx })
-                    .await
-                    .context("Sending message to LoreApi actor")
-                    .expect("LoreApi actor died");
-                rx.await
-                    .context("Awaiting response from LoreApi actor")
-                    .expect("LoreApi actor died")
-            }
-            LoreApi::Mock(mock) => mock.get_available_lists_page(min_index).await,
-        }
+        let (tx, rx) = oneshot::channel();
+        self.tx
+            .send(LoreApiMessage::GetAvailableListsPage { min_index, tx })
+            .await
+            .context("Sending message to LoreApi actor")
+            .expect("LoreApi actor died");
+        rx.await
+            .context("Awaiting response from LoreApi actor")
+            .expect("LoreApi actor died")
     }
 
     /// Fetches all available mailing lists, aggregating all paginated results.
@@ -162,20 +123,15 @@ impl LoreApi {
     /// # Returns
     /// An `ArcSlice<LoreMailingList>` containing all available mailing lists.
     pub async fn get_available_lists(&self) -> anyhow::Result<ArcSlice<LoreMailingList>> {
-        match self {
-            LoreApi::Actual(sender) => {
-                let (tx, rx) = oneshot::channel();
-                sender
-                    .send(LoreApiMessage::GetAvailableLists { tx })
-                    .await
-                    .context("Sending message to LoreApi actor")
-                    .expect("LoreApi actor died");
-                rx.await
-                    .context("Awaiting response from LoreApi actor")
-                    .expect("LoreApi actor died")
-            }
-            LoreApi::Mock(mock) => mock.get_available_lists().await,
-        }
+        let (tx, rx) = oneshot::channel();
+        self.tx
+            .send(LoreApiMessage::GetAvailableLists { tx })
+            .await
+            .context("Sending message to LoreApi actor")
+            .expect("LoreApi actor died");
+        rx.await
+            .context("Awaiting response from LoreApi actor")
+            .expect("LoreApi actor died")
     }
 
     /// Fetches the HTML content of a specific patch.
@@ -199,24 +155,19 @@ impl LoreApi {
         target_list: ArcStr,
         message_id: ArcStr,
     ) -> anyhow::Result<ArcStr> {
-        match self {
-            LoreApi::Actual(sender) => {
-                let (tx, rx) = oneshot::channel();
-                sender
-                    .send(LoreApiMessage::GetPatchHtml {
-                        target_list,
-                        message_id,
-                        tx,
-                    })
-                    .await
-                    .context("Sending message to LoreApi actor")
-                    .expect("LoreApi actor died");
-                rx.await
-                    .context("Awaiting response from LoreApi actor")
-                    .expect("LoreApi actor died")
-            }
-            LoreApi::Mock(mock) => mock.get_patch_html(target_list, message_id).await,
-        }
+        let (tx, rx) = oneshot::channel();
+        self.tx
+            .send(LoreApiMessage::GetPatchHtml {
+                target_list,
+                message_id,
+                tx,
+            })
+            .await
+            .context("Sending message to LoreApi actor")
+            .expect("LoreApi actor died");
+        rx.await
+            .context("Awaiting response from LoreApi actor")
+            .expect("LoreApi actor died")
     }
 
     /// Fetches a raw patch in plain text format.
@@ -240,24 +191,19 @@ impl LoreApi {
         target_list: ArcStr,
         message_id: ArcStr,
     ) -> anyhow::Result<ArcStr> {
-        match self {
-            LoreApi::Actual(sender) => {
-                let (tx, rx) = oneshot::channel();
-                sender
-                    .send(LoreApiMessage::GetRawPatch {
-                        target_list,
-                        message_id,
-                        tx,
-                    })
-                    .await
-                    .context("Sending message to LoreApi actor")
-                    .expect("LoreApi actor died");
-                rx.await
-                    .context("Awaiting response from LoreApi actor")
-                    .expect("LoreApi actor died")
-            }
-            LoreApi::Mock(mock) => mock.get_raw_patch(target_list, message_id).await,
-        }
+        let (tx, rx) = oneshot::channel();
+        self.tx
+            .send(LoreApiMessage::GetRawPatch {
+                target_list,
+                message_id,
+                tx,
+            })
+            .await
+            .context("Sending message to LoreApi actor")
+            .expect("LoreApi actor died");
+        rx.await
+            .context("Awaiting response from LoreApi actor")
+            .expect("LoreApi actor died")
     }
 
     /// Fetches patch metadata in JSON format.
@@ -281,23 +227,18 @@ impl LoreApi {
         target_list: ArcStr,
         message_id: ArcStr,
     ) -> anyhow::Result<ArcStr> {
-        match self {
-            LoreApi::Actual(sender) => {
-                let (tx, rx) = oneshot::channel();
-                sender
-                    .send(LoreApiMessage::GetPatchMetadata {
-                        target_list,
-                        message_id,
-                        tx,
-                    })
-                    .await
-                    .context("Sending message to LoreApi actor")
-                    .expect("LoreApi actor died");
-                rx.await
-                    .context("Awaiting response from LoreApi actor")
-                    .expect("LoreApi actor died")
-            }
-            LoreApi::Mock(mock) => mock.get_patch_metadata(target_list, message_id).await,
-        }
+        let (tx, rx) = oneshot::channel();
+        self.tx
+            .send(LoreApiMessage::GetPatchMetadata {
+                target_list,
+                message_id,
+                tx,
+            })
+            .await
+            .context("Sending message to LoreApi actor")
+            .expect("LoreApi actor died");
+        rx.await
+            .context("Awaiting response from LoreApi actor")
+            .expect("LoreApi actor died")
     }
 }
