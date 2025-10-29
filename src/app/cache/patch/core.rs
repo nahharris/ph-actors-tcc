@@ -8,7 +8,6 @@ use crate::fs::Fs;
 use crate::log::Log;
 use anyhow::Context;
 use tokio::sync::mpsc;
-use tokio::task::JoinHandle;
 
 const BUFFER_SIZE: usize = 100;
 const SCOPE: &str = "app.cache.patch";
@@ -44,42 +43,35 @@ impl Core {
     }
 
     /// Spawns the actor and returns the public interface and join handle.
-    pub fn spawn(self) -> (super::PatchCache, JoinHandle<()>) {
-        let (tx, mut rx) = mpsc::channel(BUFFER_SIZE);
-        let handle = tokio::spawn(async move {
-            let mut core = self;
-
-            while let Some(message) = rx.recv().await {
-                match message {
-                    Message::Get {
-                        list,
-                        message_id,
-                        tx,
-                    } => {
-                        let result = core.handle_get(&list, &message_id).await;
-                        let _ = tx.send(result);
-                    }
-                    Message::Invalidate {
-                        list,
-                        message_id,
-                        tx,
-                    } => {
-                        let result = core.handle_invalidate(&list, &message_id).await;
-                        let _ = tx.send(result);
-                    }
-                    Message::IsAvailable {
-                        list,
-                        message_id,
-                        tx,
-                    } => {
-                        let result = core.handle_is_available(&list, &message_id);
-                        let _ = tx.send(result);
-                    }
+    pub async fn init(mut self, mut rx: mpsc::Receiver<Message>) {
+        while let Some(message) = rx.recv().await {
+            match message {
+                Message::Get {
+                    list,
+                    message_id,
+                    tx,
+                } => {
+                    let result = self.handle_get(&list, &message_id).await;
+                    let _ = tx.send(result);
+                }
+                Message::Invalidate {
+                    list,
+                    message_id,
+                    tx,
+                } => {
+                    let result = self.handle_invalidate(&list, &message_id).await;
+                    let _ = tx.send(result);
+                }
+                Message::IsAvailable {
+                    list,
+                    message_id,
+                    tx,
+                } => {
+                    let result = self.handle_is_available(&list, &message_id);
+                    let _ = tx.send(result);
                 }
             }
-        });
-
-        (super::PatchCache::Actual(tx), handle)
+        }
     }
 
     /// Handles getting a patch by mailing list and message ID.
@@ -100,7 +92,7 @@ impl Core {
         // Fetch from API
         self.log.info(
             SCOPE,
-            &format!("Fetching patch {} from API for list: {}", message_id, list),
+            format!("Fetching patch {} from API for list: {}", message_id, list),
         );
 
         let content = self
@@ -116,7 +108,7 @@ impl Core {
         {
             self.log.error(
                 SCOPE,
-                &format!("Failed to save patch {list}/{message_id} to disk: {e}"),
+                format!("Failed to save patch {list}/{message_id} to disk: {e}"),
             );
         }
         self.data
@@ -218,7 +210,7 @@ impl Core {
 
         self.log.info(
             SCOPE,
-            &format!("Saved patch {} to disk for list: {}", message_id, list),
+            format!("Saved patch {} to disk for list: {}", message_id, list),
         );
         Ok(())
     }

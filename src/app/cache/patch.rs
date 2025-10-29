@@ -1,9 +1,11 @@
 use anyhow::Context;
+use tokio::sync::mpsc;
 
 mod core;
 mod data;
 pub mod message;
-mod mock;
+#[cfg(test)]
+pub mod mock;
 
 use crate::ArcStr;
 use crate::api::lore::LoreApi;
@@ -18,92 +20,60 @@ use message::Message;
 /// is cached, it's considered valid forever. It provides a small in-memory
 /// buffer for fast access to recently used patches.
 #[derive(Debug, Clone)]
-pub enum PatchCache {
-    Actual(tokio::sync::mpsc::Sender<Message>),
-    Mock(mock::Mock),
-}
-
-#[derive(Debug, Clone, Default)]
-pub struct MockData {
-    pub patches: std::collections::HashMap<String, String>,
+pub struct PatchCache {
+    /// The sender for sending messages to the PatchCache actor.
+    tx: tokio::sync::mpsc::Sender<Message>,
 }
 
 impl PatchCache {
-    /// Spawns a new PatchCache actor.
-    pub async fn spawn(lore: LoreApi, fs: Fs, config: Config, log: Log) -> anyhow::Result<Self> {
-        let core = core::Core::new(lore, fs, config, log).await?;
-        let (state, _handle) = core.spawn();
-        Ok(state)
+    /// Creates a new PatchCache actor.
+    pub fn new(tx: tokio::sync::mpsc::Sender<Message>) -> Self {
+        Self { tx }
     }
 
-    /// Creates a new mock PatchCache actor for testing.
-    pub fn mock(data: MockData) -> Self {
-        Self::Mock(mock::Mock::new(data))
+    /// Spawns a new PatchCache actor.
+    pub async fn spawn(lore: LoreApi, fs: Fs, config: Config, log: Log) -> anyhow::Result<Self> {
+        let (tx, rx) = mpsc::channel(crate::BUFFER_SIZE);
+        let core = core::Core::new(lore, fs, config, log).await?;
+        let _ = tokio::spawn(async move {
+            core.init(rx).await;
+        });
+        Ok(Self { tx })
     }
 
     /// Fetches a patch by mailing list and message ID.
     pub async fn get(&self, list: ArcStr, message_id: ArcStr) -> anyhow::Result<String> {
-        match self {
-            Self::Actual(sender) => {
-                let (tx, rx) = tokio::sync::oneshot::channel();
-                sender
-                    .send(Message::Get {
-                        list,
-                        message_id,
-                        tx,
-                    })
-                    .await
-                    .context("Sending message to PatchCache actor")
-                    .expect("PatchCache actor died");
-                rx.await
-                    .context("Awaiting response from PatchCache actor")
-                    .expect("PatchCache actor died")
-            }
-            Self::Mock(mock) => mock.get(list, message_id).await,
-        }
+        let (tx, rx) = tokio::sync::oneshot::channel();
+        self.tx
+            .send(Message::Get { list, message_id, tx })
+            .await
+            .context("Sending message to PatchCache actor")
+            .expect("PatchCache actor died");
+        rx.await.context("Awaiting response from PatchCache actor")
+            .expect("PatchCache actor died")
     }
 
     /// Invalidates a specific patch.
     pub async fn invalidate(&self, list: ArcStr, message_id: ArcStr) -> anyhow::Result<()> {
-        match self {
-            Self::Actual(sender) => {
-                let (tx, rx) = tokio::sync::oneshot::channel();
-                sender
-                    .send(Message::Invalidate {
-                        list,
-                        message_id,
-                        tx,
-                    })
-                    .await
-                    .context("Sending message to PatchCache actor")
-                    .expect("PatchCache actor died");
-                rx.await
-                    .context("Awaiting response from PatchCache actor")
-                    .expect("PatchCache actor died")
-            }
-            Self::Mock(mock) => mock.invalidate(list, message_id).await,
-        }
+        let (tx, rx) = tokio::sync::oneshot::channel();
+        self.tx
+            .send(Message::Invalidate { list, message_id, tx })
+            .await
+            .context("Sending message to PatchCache actor")
+            .expect("PatchCache actor died");
+        rx.await.context("Awaiting response from PatchCache actor")
+            .expect("PatchCache actor died")
     }
 
     /// Checks if a patch is available in cache.
     pub async fn is_available(&self, list: ArcStr, message_id: ArcStr) -> bool {
-        match self {
-            Self::Actual(sender) => {
-                let (tx, rx) = tokio::sync::oneshot::channel();
-                sender
-                    .send(Message::IsAvailable {
-                        list,
-                        message_id,
-                        tx,
-                    })
-                    .await
-                    .context("Sending message to PatchCache actor")
-                    .expect("PatchCache actor died");
-                rx.await
-                    .context("Awaiting response from PatchCache actor")
-                    .expect("PatchCache actor died")
-            }
-            Self::Mock(mock) => mock.is_available(list, message_id).await,
-        }
+        let (tx, rx) = tokio::sync::oneshot::channel();
+        self.tx
+            .send(Message::IsAvailable { list, message_id, tx })
+            .await
+            .context("Sending message to PatchCache actor")
+            .expect("PatchCache actor died");
+        rx.await.context("Awaiting response from PatchCache actor")
+            .expect("PatchCache actor died")
     }
 }

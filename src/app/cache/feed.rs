@@ -1,9 +1,11 @@
 use anyhow::Context;
+use tokio::sync::mpsc;
 
 mod core;
 mod data;
 pub mod message;
-mod mock;
+#[cfg(test)]
+pub mod mock;
 
 use crate::ArcStr;
 use crate::api::lore::{LoreApi, LorePatchMetadata};
@@ -18,27 +20,24 @@ use message::Message;
 /// smart pagination and cache validation. It fetches data on demand and maintains
 /// cache validity based on the 0-th item's updated time.
 #[derive(Debug, Clone)]
-pub enum FeedCache {
-    Actual(tokio::sync::mpsc::Sender<Message>),
-    Mock(mock::Mock),
-}
-
-#[derive(Debug, Clone, Default)]
-pub struct MockData {
-    pub feeds: std::collections::HashMap<ArcStr, Vec<LorePatchMetadata>>,
+pub struct FeedCache {
+    tx: tokio::sync::mpsc::Sender<Message>,
 }
 
 impl FeedCache {
-    /// Spawns a new FeedCache actor.
-    pub async fn spawn(lore: LoreApi, fs: Fs, config: Config, log: Log) -> anyhow::Result<Self> {
-        let core = core::Core::new(lore, fs, config, log).await?;
-        let (state, _handle) = core.spawn();
-        Ok(state)
+    /// Creates a new FeedCache actor.
+    pub fn new(tx: tokio::sync::mpsc::Sender<Message>) -> Self {
+        Self { tx }
     }
 
-    /// Creates a new mock FeedCache actor for testing.
-    pub fn mock(data: MockData) -> Self {
-        Self::Mock(mock::Mock::new(data))
+    /// Spawns a new FeedCache actor.
+    pub async fn spawn(lore: LoreApi, fs: Fs, config: Config, log: Log) -> anyhow::Result<Self> {
+        let (tx, rx) = mpsc::channel(crate::BUFFER_SIZE);
+        let core = core::Core::new(lore, fs, config, log).await?;
+        let _ = tokio::spawn(async move {
+            core.init(rx).await;
+        });
+        Ok(Self { tx })
     }
 
     /// Fetches a single patch metadata item by index for a given mailing list.
@@ -47,20 +46,15 @@ impl FeedCache {
         list: ArcStr,
         index: usize,
     ) -> anyhow::Result<Option<LorePatchMetadata>> {
-        match self {
-            Self::Actual(sender) => {
-                let (tx, rx) = tokio::sync::oneshot::channel();
-                sender
-                    .send(Message::Get { list, index, tx })
-                    .await
-                    .context("Sending message to FeedCache actor")
-                    .expect("FeedCache actor died");
-                rx.await
-                    .context("Awaiting response from FeedCache actor")
-                    .expect("FeedCache actor died")
-            }
-            Self::Mock(mock) => mock.get(list, index).await,
-        }
+        let (tx, rx) = tokio::sync::oneshot::channel();
+        self.tx
+            .send(Message::Get { list, index, tx })
+            .await
+            .context("Sending message to FeedCache actor")
+            .expect("FeedCache actor died");
+        rx.await
+            .context("Awaiting response from FeedCache actor")
+            .expect("FeedCache actor died")
     }
 
     /// Fetches a slice of patch metadata items by range for a given mailing list.
@@ -69,165 +63,115 @@ impl FeedCache {
         list: ArcStr,
         range: std::ops::Range<usize>,
     ) -> anyhow::Result<Vec<LorePatchMetadata>> {
-        match self {
-            Self::Actual(sender) => {
-                let (tx, rx) = tokio::sync::oneshot::channel();
-                sender
-                    .send(Message::GetSlice { list, range, tx })
-                    .await
-                    .context("Sending message to FeedCache actor")
-                    .expect("FeedCache actor died");
-                rx.await
-                    .context("Awaiting response from FeedCache actor")
-                    .expect("FeedCache actor died")
-            }
-            Self::Mock(mock) => mock.get_slice(list, range).await,
-        }
+        let (tx, rx) = tokio::sync::oneshot::channel();
+        self.tx
+            .send(Message::GetSlice { list, range, tx })
+            .await
+            .context("Sending message to FeedCache actor")
+            .expect("FeedCache actor died");
+        rx.await
+            .context("Awaiting response from FeedCache actor")
+            .expect("FeedCache actor died")
     }
 
     /// Refreshes the cache for a specific mailing list.
     pub async fn refresh(&self, list: ArcStr) -> anyhow::Result<()> {
-        match self {
-            Self::Actual(sender) => {
-                let (tx, rx) = tokio::sync::oneshot::channel();
-                sender
-                    .send(Message::Refresh { list, tx })
-                    .await
-                    .context("Sending message to FeedCache actor")
-                    .expect("FeedCache actor died");
-                rx.await
-                    .context("Awaiting response from FeedCache actor")
-                    .expect("FeedCache actor died")
-            }
-            Self::Mock(mock) => mock.refresh(list).await,
-        }
+        let (tx, rx) = tokio::sync::oneshot::channel();
+        self.tx
+            .send(Message::Refresh { list, tx })
+            .await
+            .context("Sending message to FeedCache actor")
+            .expect("FeedCache actor died");
+        rx.await
+            .context("Awaiting response from FeedCache actor")
+            .expect("FeedCache actor died")
     }
 
     /// Invalidates the cache for a specific mailing list.
     pub async fn invalidate(&self, list: ArcStr) -> anyhow::Result<()> {
-        match self {
-            Self::Actual(sender) => {
-                let (tx, rx) = tokio::sync::oneshot::channel();
-                sender
-                    .send(Message::Invalidate { list, tx })
-                    .await
-                    .context("Sending message to FeedCache actor")
-                    .expect("FeedCache actor died");
-                rx.await
-                    .context("Awaiting response from FeedCache actor")
-                    .expect("FeedCache actor died")
-            }
-            Self::Mock(mock) => mock.invalidate(list).await,
-        }
+        let (tx, rx) = tokio::sync::oneshot::channel();
+        self.tx
+            .send(Message::Invalidate { list, tx })
+            .await
+            .context("Sending message to FeedCache actor")
+            .expect("FeedCache actor died");
+        rx.await
+            .context("Awaiting response from FeedCache actor")
+            .expect("FeedCache actor died")
     }
 
     /// Checks if the requested range is available in cache for a mailing list.
     pub async fn is_available(&self, list: ArcStr, range: std::ops::Range<usize>) -> bool {
-        match self {
-            Self::Actual(sender) => {
-                let (tx, rx) = tokio::sync::oneshot::channel();
-                sender
-                    .send(Message::IsAvailable { list, range, tx })
-                    .await
-                    .context("Sending message to FeedCache actor")
-                    .expect("FeedCache actor died");
-                rx.await
-                    .context("Awaiting response from FeedCache actor")
-                    .expect("FeedCache actor died")
-            }
-            Self::Mock(mock) => mock.is_available(list, range).await,
-        }
+        let (tx, rx) = tokio::sync::oneshot::channel();
+        self.tx
+            .send(Message::IsAvailable { list, range, tx })
+            .await
+            .context("Sending message to FeedCache actor")
+            .expect("FeedCache actor died");
+        rx.await
+            .context("Awaiting response from FeedCache actor")
+            .expect("FeedCache actor died")
     }
 
     /// Returns the number of cached items for a given mailing list.
     pub async fn len(&self, list: ArcStr) -> usize {
-        match self {
-            Self::Actual(sender) => {
-                let (tx, rx) = tokio::sync::oneshot::channel();
-                sender
-                    .send(Message::Len { list, tx })
-                    .await
-                    .context("Sending message to FeedCache actor")
-                    .expect("FeedCache actor died");
-                rx.await
-                    .context("Awaiting response from FeedCache actor")
-                    .expect("FeedCache actor died")
-            }
-            Self::Mock(mock) => mock.len(list).await,
-        }
-    }
-
-    /// Returns true if the cache is empty for a given mailing list.
-    pub async fn is_empty(&self, list: ArcStr) -> bool {
-        self.len(list).await == 0
+        let (tx, rx) = tokio::sync::oneshot::channel();
+        self.tx
+            .send(Message::Len { list, tx })
+            .await
+            .context("Sending message to FeedCache actor")
+            .expect("FeedCache actor died");
+        rx.await
+            .context("Awaiting response from FeedCache actor")
+            .expect("FeedCache actor died")
     }
 
     /// Checks if the cache has been loaded from disk for a given mailing list.
     /// This is different from is_empty() - a cache can be loaded but empty.
     pub async fn is_loaded(&self, list: ArcStr) -> bool {
-        match self {
-            Self::Actual(sender) => {
-                let (tx, rx) = tokio::sync::oneshot::channel();
-                sender
-                    .send(Message::IsLoaded { list, tx })
-                    .await
-                    .context("Sending message to FeedCache actor")
-                    .expect("FeedCache actor died");
-                rx.await
-                    .context("Awaiting response from FeedCache actor")
-                    .expect("FeedCache actor died")
-            }
-            Self::Mock(mock) => mock.is_loaded(list).await,
-        }
+        let (tx, rx) = tokio::sync::oneshot::channel();
+        self.tx
+            .send(Message::IsLoaded { list, tx })
+            .await
+            .context("Sending message to FeedCache actor")
+            .expect("FeedCache actor died");
+        rx.await
+            .context("Awaiting response from FeedCache actor")
+            .expect("FeedCache actor died")
     }
 
     /// Ensures the cache is loaded for a given mailing list.
     /// This will load from disk if not already loaded.
     pub async fn ensure_loaded(&self, list: ArcStr) -> anyhow::Result<()> {
-        match self {
-            Self::Actual(_) => {
-                if !self.is_loaded(list.clone()).await {
-                    self.load(list.clone()).await?;
-                }
-                Ok(())
-            }
-            Self::Mock(mock) => mock.ensure_loaded(list).await,
+        if !self.is_loaded(list.clone()).await {
+            self.load(list).await?;
         }
+        Ok(())
     }
 
     /// Persists the cache for a specific mailing list to the filesystem.
     pub async fn persist(&self, list: ArcStr) -> anyhow::Result<()> {
-        match self {
-            Self::Actual(sender) => {
-                let (tx, rx) = tokio::sync::oneshot::channel();
-                sender
-                    .send(Message::Persist { list, tx })
-                    .await
-                    .context("Sending message to FeedCache actor")
-                    .expect("FeedCache actor died");
-                rx.await
-                    .context("Awaiting response from FeedCache actor")
-                    .expect("FeedCache actor died")
-            }
-            Self::Mock(mock) => mock.persist(list).await,
-        }
+        let (tx, rx) = tokio::sync::oneshot::channel();
+        self.tx
+            .send(Message::Persist { list, tx })
+            .await
+            .context("Sending message to FeedCache actor")
+            .expect("FeedCache actor died");
+        rx.await
+            .context("Awaiting response from FeedCache actor")
+            .expect("FeedCache actor died")
     }
 
     /// Loads the cache for a specific mailing list from the filesystem.
     pub async fn load(&self, list: ArcStr) -> anyhow::Result<()> {
-        match self {
-            Self::Actual(sender) => {
-                let (tx, rx) = tokio::sync::oneshot::channel();
-                sender
-                    .send(Message::Load { list, tx })
-                    .await
-                    .context("Sending message to FeedCache actor")
-                    .expect("FeedCache actor died");
-                rx.await
-                    .context("Awaiting response from FeedCache actor")
-                    .expect("FeedCache actor died")
-            }
-            Self::Mock(mock) => mock.load(list).await,
-        }
+        let (tx, rx) = tokio::sync::oneshot::channel();
+        self.tx
+            .send(Message::Load { list, tx })
+            .await
+            .context("Sending message to FeedCache actor")
+            .expect("FeedCache actor died");
+        rx.await
+            .context("Awaiting response from FeedCache actor")
+            .expect("FeedCache actor died")
     }
 }

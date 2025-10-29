@@ -7,7 +7,6 @@ use crate::fs::Fs;
 use crate::log::Log;
 use anyhow::Context;
 use tokio::sync::mpsc;
-use tokio::task::JoinHandle;
 
 const BUFFER_SIZE: usize = 100;
 const SCOPE: &str = "app.cache.mailing_list";
@@ -43,56 +42,49 @@ impl Core {
     }
 
     /// Spawns the actor and returns the public interface and join handle.
-    pub fn spawn(self) -> (super::MailingListCache, JoinHandle<()>) {
-        let (tx, mut rx) = mpsc::channel(BUFFER_SIZE);
-        let handle = tokio::spawn(async move {
-            let mut core = self;
+    pub async fn init(mut self, mut rx: mpsc::Receiver<Message>) {
+        // Load cache on startup
+        if let Err(e) = self.load_cache().await {
+            self.log
+                .error(SCOPE, format!("Failed to load cache: {}", e));
+        }
 
-            // Load cache on startup
-            if let Err(e) = core.load_cache().await {
-                core.log
-                    .error(SCOPE, &format!("Failed to load cache: {}", e));
-            }
-
-            while let Some(message) = rx.recv().await {
-                match message {
-                    Message::Get { index, tx } => {
-                        let result = core.handle_get(index).await;
-                        let _ = tx.send(result);
-                    }
-                    Message::GetSlice { range, tx } => {
-                        let result = core.handle_get_slice(range).await;
-                        let _ = tx.send(result);
-                    }
-                    Message::Refresh { tx } => {
-                        let result = core.handle_refresh().await;
-                        let _ = tx.send(result);
-                    }
-                    Message::Invalidate { tx } => {
-                        let result = core.handle_invalidate().await;
-                        let _ = tx.send(result);
-                    }
-                    Message::IsAvailable { range, tx } => {
-                        let result = core.handle_is_available(range);
-                        let _ = tx.send(result);
-                    }
-                    Message::Len { tx } => {
-                        let result = core.data.lists.len();
-                        let _ = tx.send(result);
-                    }
-                    Message::Persist { tx } => {
-                        let result = core.persist_cache().await;
-                        let _ = tx.send(result);
-                    }
-                    Message::Load { tx } => {
-                        let result = core.load_cache().await;
-                        let _ = tx.send(result);
-                    }
+        while let Some(message) = rx.recv().await {
+            match message {
+                Message::Get { index, tx } => {
+                    let result = self.handle_get(index).await;
+                    let _ = tx.send(result);
+                }
+                Message::GetSlice { range, tx } => {
+                    let result = self.handle_get_slice(range).await;
+                    let _ = tx.send(result);
+                }
+                Message::Refresh { tx } => {
+                    let result = self.handle_refresh().await;
+                    let _ = tx.send(result);
+                }
+                Message::Invalidate { tx } => {
+                    let result = self.handle_invalidate().await;
+                    let _ = tx.send(result);
+                }
+                Message::IsAvailable { range, tx } => {
+                    let result = self.handle_is_available(range);
+                    let _ = tx.send(result);
+                }
+                Message::Len { tx } => {
+                    let result = self.data.lists.len();
+                    let _ = tx.send(result);
+                }
+                Message::Persist { tx } => {
+                    let result = self.persist_cache().await;
+                    let _ = tx.send(result);
+                }
+                Message::Load { tx } => {
+                    let result = self.load_cache().await;
+                    let _ = tx.send(result);
                 }
             }
-        });
-
-        (super::MailingListCache::Actual(tx), handle)
+        }
     }
 
     /// Handles getting a single mailing list by index.
@@ -146,7 +138,8 @@ impl Core {
 
     /// Refreshes the cache by fetching all mailing lists and sorting them.
     async fn refresh_cache(&mut self) -> anyhow::Result<()> {
-        self.log.info(SCOPE, "Refreshing mailing list cache");
+        self.log
+            .info(SCOPE, "Refreshing mailing list cache".to_string());
 
         let mut all_lists = Vec::new();
         let mut min_index = 0;
@@ -179,7 +172,7 @@ impl Core {
 
         self.log.info(
             SCOPE,
-            &format!("Cached {} mailing lists", self.data.lists.len()),
+            format!("Cached {} mailing lists", self.data.lists.len()),
         );
         Ok(())
     }
@@ -236,7 +229,7 @@ impl Core {
 
         self.log.info(
             SCOPE,
-            &format!("Loaded {} mailing lists from cache", self.data.lists.len()),
+            format!("Loaded {} mailing lists from cache", self.data.lists.len()),
         );
         Ok(())
     }
