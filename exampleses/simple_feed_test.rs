@@ -28,7 +28,7 @@ async fn main() -> anyhow::Result<()> {
     let patch_cache = PatchCache::mock(Default::default());
 
     // Test that UI actor can be created with patch cache dependency
-    let terminal = Terminal::spawn(log.clone());
+    let (terminal, _terminal_handle) = Terminal::spawn(log.clone());
     let (_ui, _handle) = Ui::spawn(
         log,
         terminal,

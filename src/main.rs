@@ -50,7 +50,7 @@ async fn main() -> anyhow::Result<()> {
     let patch_cache =
         PatchCache::spawn(lore.clone(), fs.clone(), config.clone(), log.clone()).await?;
 
-    let terminal = Terminal::spawn(log.clone());
+    let (terminal, terminal_handle) = Terminal::spawn(log.clone());
     let ui = Ui::spawn(
         log.clone(),
         terminal.clone(),
@@ -73,6 +73,7 @@ async fn main() -> anyhow::Result<()> {
         feed_cache,
         patch_cache,
         terminal,
+        terminal_handle,
         ui,
     );
 

@@ -1,5 +1,4 @@
 use anyhow::Context;
-use std::sync::Arc;
 use tokio::sync::{mpsc, oneshot};
 use tokio::task::JoinHandle;
 
@@ -20,30 +19,20 @@ use message::Message;
 #[derive(Debug, Clone)]
 pub struct Terminal {
     tx: mpsc::Sender<Message>,
-    /// Join handle that completes when the terminal exits
-    handle: Arc<JoinHandle<()>>,
 }
 
 impl Terminal {
     /// Spawns a terminal actor using the Cursive `crossterm` backend.
     ///
     /// The actor stores `UiEvent`s in an internal FIFO queue and accepts `Message`s to update the UI.
-    /// Returns the terminal interface with the join handle stored as a field.
-    pub fn spawn(log: Log) -> Self {
+    /// Returns a tuple of the terminal interface and the join handle for awaiting terminal completion.
+    pub fn spawn(log: Log) -> (Self, JoinHandle<()>) {
         let (tx, rx) = mpsc::channel(crate::BUFFER_SIZE);
         let core = core::Core::new(log);
         let handle = tokio::spawn(async move {
             core.init(rx).await;
         });
-        Self {
-            tx,
-            handle: Arc::new(handle),
-        }
-    }
-
-    /// Get a reference to the join handle for awaiting terminal completion
-    pub fn handle(&self) -> &Arc<JoinHandle<()>> {
-        &self.handle
+        (Self { tx }, handle)
     }
 
     /// Requests the terminal to show a specific screen.

@@ -1,6 +1,5 @@
 use anyhow::Result;
-use std::sync::Arc;
-use tokio::sync::{mpsc, oneshot};
+use tokio::sync::mpsc;
 
 use crate::ArcStr;
 #[cfg(not(test))]
@@ -42,7 +41,6 @@ use crate::{app::ui::NavigationAction, terminal::UiEvent};
 use super::data::AppState;
 use super::message::Message;
 
-const BUFFER_SIZE: usize = 64;
 const SCOPE: &str = "app";
 
 /// Core implementation of the App actor
@@ -72,6 +70,8 @@ pub struct Core {
     patch_cache: PatchCache,
     /// Terminal actor
     terminal: Terminal,
+    /// Terminal task handle for monitoring completion
+    terminal_handle: tokio::task::JoinHandle<()>,
     /// UI actor
     ui: Ui,
 }
@@ -90,6 +90,7 @@ impl Core {
         feed_cache: FeedCache,
         patch_cache: PatchCache,
         terminal: Terminal,
+        terminal_handle: tokio::task::JoinHandle<()>,
         ui: Ui,
     ) -> Self {
         Self {
@@ -108,6 +109,7 @@ impl Core {
             feed_cache,
             patch_cache,
             terminal,
+            terminal_handle,
             ui,
         }
     }
@@ -119,14 +121,17 @@ impl Core {
     pub async fn init(self, mut rx: mpsc::Receiver<Message>) {
         let Self {
             terminal,
+            terminal_handle,
             ui,
             log,
             mailing_list_cache,
             feed_cache,
             ..
         } = self;
-        let terminal_handle = terminal.handle().clone();
         let terminal_for_events = terminal.clone();
+
+        // Pin the handle so we can await it in the select! loop
+        tokio::pin!(terminal_handle);
 
         // Start with lists view
         let _ = ui.show_lists(0).await;
@@ -136,9 +141,6 @@ impl Core {
                 Some(msg) = rx.recv() => {
                     use Message::*;
                     match msg {
-                        KeyEvent { event } => {
-                            Self::handle_key_event_static(&ui, event).await;
-                        }
                         Shutdown { tx } => {
                             let result = Self::handle_shutdown_static(
                                 &log,
@@ -156,8 +158,12 @@ impl Core {
                     }
                     // If no event, continue polling
                 }
-                _ = Self::await_terminal_handle(terminal_handle.clone()) => {
-                    // Terminal exited, shutdown
+                result = terminal_handle.as_mut() => {
+                    // Terminal exited, check for panics
+                    if let Err(e) = result {
+                        eprintln!("Terminal task panicked: {:?}", e);
+                    }
+                    // Shutdown the application
                     let _ = Self::handle_shutdown_static(
                         &log,
                         &mailing_list_cache,
@@ -165,67 +171,6 @@ impl Core {
                     ).await;
                     break;
                 }
-            }
-        }
-    }
-
-    /// Helper function to await a JoinHandle wrapped in an Arc
-    ///
-    /// This function properly awaits the terminal task's JoinHandle to detect panics or errors.
-    /// Since the JoinHandle is wrapped in Arc (preventing direct awaiting), we use a background
-    /// task that monitors completion and properly awaits to catch any panics or errors.
-    async fn await_terminal_handle(handle: Arc<tokio::task::JoinHandle<()>>) {
-        let (tx, rx) = oneshot::channel::<Result<(), tokio::task::JoinError>>();
-        let handle_for_monitor = handle.clone();
-
-        // Spawn a monitoring task that waits for completion and checks for errors
-        tokio::spawn(async move {
-            // Use interval for more efficient polling than fixed sleep loops
-            let mut interval = tokio::time::interval(std::time::Duration::from_millis(100));
-            interval.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
-
-            loop {
-                interval.tick().await;
-
-                if handle_for_monitor.is_finished() {
-                    // Try to unwrap the Arc to get the JoinHandle and properly await it
-                    // This allows us to catch panics and errors from the terminal task
-                    match Arc::try_unwrap(handle_for_monitor) {
-                        Ok(join_handle) => {
-                            // Properly await to catch panics and errors
-                            let result = join_handle.await;
-                            let _ = tx.send(result);
-                            break;
-                        }
-                        Err(_arc_handle) => {
-                            // Multiple owners still exist, we can't await directly
-                            // Log a warning and signal completion (best-effort error detection)
-                            eprintln!(
-                                "Warning: Terminal JoinHandle has multiple owners, cannot check for panics"
-                            );
-                            let _ = tx.send(Ok(()));
-                            break;
-                        }
-                    }
-                }
-            }
-        });
-
-        // Wait for the monitor task to signal completion
-        // This provides a clean completion signal for tokio::select!
-        match rx.await {
-            Ok(Ok(())) => {
-                // Terminal task completed successfully
-            }
-            Ok(Err(e)) => {
-                // Terminal task panicked, propagate the error
-                eprintln!("Terminal task panicked: {:?}", e);
-                // Note: We could propagate this further if needed, but for now we log it
-                // The shutdown will still proceed
-            }
-            Err(_) => {
-                // Monitor task itself panicked or was dropped (shouldn't happen)
-                eprintln!("Warning: Terminal handle monitor task failed");
             }
         }
     }

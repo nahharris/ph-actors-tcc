@@ -61,6 +61,7 @@ impl App {
         feed_cache: FeedCache,
         patch_cache: PatchCache,
         terminal: Terminal,
+        terminal_handle: tokio::task::JoinHandle<()>,
         ui: Ui,
     ) -> (Self, tokio::task::JoinHandle<()>) {
         let (tx, rx) = mpsc::channel(crate::BUFFER_SIZE);
@@ -76,6 +77,7 @@ impl App {
             feed_cache,
             patch_cache,
             terminal,
+            terminal_handle,
             ui,
         );
         let handle = tokio::spawn(async move {

@@ -37,7 +37,7 @@ async fn create_test_log() -> Log {
 async fn test_terminal_show_screen() {
     let log = create_test_log().await;
 
-    let terminal = Terminal::spawn(log);
+    let (terminal, _handle) = Terminal::spawn(log);
 
     // Test showing different screen types
     terminal
@@ -71,7 +71,7 @@ async fn test_terminal_show_screen() {
 async fn test_terminal_get_ui_event_empty_queue() {
     let log = create_test_log().await;
 
-    let terminal = Terminal::spawn(log);
+    let (terminal, _handle) = Terminal::spawn(log);
 
     // Get event from empty queue should return None
     let event = terminal.get_ui_event().await;
@@ -86,7 +86,7 @@ async fn test_terminal_get_ui_event_empty_queue() {
 async fn test_terminal_clear_ui_events() {
     let log = create_test_log().await;
 
-    let terminal = Terminal::spawn(log);
+    let (terminal, _handle) = Terminal::spawn(log);
 
     // Clear events should complete without error
     terminal.clear_ui_events().await;
@@ -100,7 +100,7 @@ async fn test_terminal_clear_ui_events() {
 async fn test_terminal_quit() {
     let log = create_test_log().await;
 
-    let terminal = Terminal::spawn(log);
+    let (terminal, _handle) = Terminal::spawn(log);
 
     // Quit should complete successfully
     terminal.quit().await;
@@ -113,7 +113,7 @@ async fn test_terminal_quit() {
 async fn test_terminal_show_all_screen_variants() {
     let log = create_test_log().await;
 
-    let terminal = Terminal::spawn(log);
+    let (terminal, _handle) = Terminal::spawn(log);
 
     // Test all screen variants
     terminal

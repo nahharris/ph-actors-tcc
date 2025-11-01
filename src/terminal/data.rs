@@ -34,12 +34,3 @@ pub enum Screen {
     /// Error screen with a message
     Error(ArcStr),
 }
-
-/// Mock data for testing terminal operations
-#[derive(Debug, Clone, Default)]
-pub struct MockData {
-    /// Last screen that was requested to be shown
-    pub last_screen: Option<Screen>,
-    /// Whether quit was called
-    pub quit_called: bool,
-}
