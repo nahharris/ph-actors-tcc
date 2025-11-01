@@ -22,17 +22,17 @@ A API do lore suporta consultas complexas através de parâmetros de query strin
 
 O projeto KWorkflow (kw) surgiu como uma resposta aos desafios de configuração e complexidade do ambiente de desenvolvimento para o kernel Linux~\cite{kworkflow_org}. O kw é descrito como uma "ferramenta de fluxo de trabalho de desenvolvedor de kernel" que visa reduzir a sobrecarga de configuração e fornecer ferramentas para tarefas comuns do desenvolvimento de kernel.
 
-O projeto oferece uma interface unificada para diversas operações como compilação, deploy, debug e gerenciamento de configurações, consolidando ferramentas anteriormente dispersas em um único comando de terminal.
+O projeto oferece um utilitário de terminal unificado para diversas operações como compilação, deploy, debug e gerenciamento de configurações, consolidando ferramentas anteriormente dispersas.
 
 \subsection{O Patch-Hub}
 
-O Patch-Hub é uma ferramenta de interface terminal desenvolvida como parte do ecossistema KWorkflow, especificamente projetada para interagir com a API do lore.kernel.org~\cite{patch_hub_github}. Sua missão é agilizar a navegação e revisão de contribuições para o kernel Linux, fornecendo uma interface de usuário baseada em terminal (TUI) que simplifica o processo de descoberta, análise e acompanhamento de patches.
+O Patch-Hub é uma ferramenta desenvolvida como parte do ecossistema KWorkflow, especificamente projetada para interagir com a API do lore.kernel.org~\cite{patch_hub_github}. Sua missão é agilizar a navegação e revisão de contribuições para o kernel Linux, fornecendo uma interface de usuário baseada em terminal (TUI) que simplifica o processo de descoberta, análise e acompanhamento de patches.
 
 A ferramenta permite aos desenvolvedores navegar por listas de patches, aplicar filtros de busca, visualizar conteúdo de patches e gerenciar seu fluxo de trabalho de revisão diretamente do terminal, eliminando a necessidade de alternar entre interfaces web e ferramentas de linha de comando.
 
-\section{Arquitetura Atual}
+\section{Arquitetura Original}
 
-A implementação atual do Patch-Hub segue uma arquitetura majoritariamente single-threaded e monolítica com inspirações no padrão arquitetural MVC. A organização do código foi dada em termos dos seguintes módulos:
+A implementação original do Patch-Hub seguia uma arquitetura majoritariamente single-threaded e monolítica com inspirações no padrão arquitetural MVC. A organização do código era dada em termos dos seguintes módulos:
 
 \begin{itemize}
     \item \textbf{\texttt{lore}}: Interface para interagir com a API do lore para buscar dados de patches
@@ -49,16 +49,16 @@ A implementação atual do Patch-Hub segue uma arquitetura majoritariamente sing
 
 \section{Funcionalidades Principais}
 
-A implementação atual do Patch-Hub fornece um conjunto de funcionalidades para interagir com o arquivo de patches do kernel Linux. O sistema permite a seleção e navegação de listas de discussão arquivadas no \textit{lore.kernel.org}, apresentando os conjuntos de patches associados. Ao examinar uma série específica, a interface disponibiliza o conteúdo individual dos patches juntamente com metadados relevantes, incluindo título, autor, versão, quantidade de patches e timestamp da última atualização.
+A implementação do Patch-Hub (tanto a original quanto a refatorada) fornece um conjunto de funcionalidades para interagir com o arquivo de patches do kernel Linux. O sistema permite a seleção e navegação de listas de discussão arquivadas no \textit{lore.kernel.org}, apresentando os conjuntos de patches associados. Ao examinar uma série específica, a interface disponibiliza o conteúdo individual dos patches juntamente com metadados relevantes, incluindo título, autor, versão, quantidade de patches e timestamp da última atualização.
 
 -- imagem --
 
 O sistema implementa operações fundamentais para o workflow de revisão de patches: aplicação de patches em repositórios locais do kernel, organização de séries em um sistema de favoritos, e composição de respostas com tags de revisão padrão, como \texttt{Reviewed-by}.
 
-A renderização do conteúdo dos patches é implementada com suporte a múltiplos backends, incluindo ferramentas externas, além de um renderizador padrão. Esta arquitetura permite variação na apresentação visual dos patches sem comprometer a portabilidade da aplicação.
-\section{Limitações Arquiteturais}
+A renderização do conteúdo dos patches é implementada com suporte a múltiplos backends, incluindo ferramentas externas, além de um renderizador padrão. Esta arquitetura permite variação na apresentação visual dos patches ao gosto do usuário sem comprometer a portabilidade da aplicação.
+\section{Limitações da Arquitetura Original}
 
-Apesar de sua funcionalidade, a implementação atual do Patch-Hub apresenta limitações arquiteturais fundamentais que comprometem sua extensibilidade, manutenibilidade e capacidade de evolução. Essas limitações vem de decisões de design que, embora funcionais para o escopo inicial, criam gargalos estruturais que dificultam a adição de novas funcionalidades e a manutenção do código no longo prazo.
+Apesar de sua funcionalidade, a implementação original do Patch-Hub apresentava limitações arquiteturais fundamentais que comprometiam sua extensibilidade, manutenibilidade e capacidade de evolução. Essas limitações vinham de decisões de design que, embora funcionais para o escopo inicial, criavam gargalos estruturais que dificultavam a adição de novas funcionalidades e a manutenção do código no longo prazo.
 
 \subsection{Gargalo de Mutação Centralizada}
 
@@ -112,9 +112,11 @@ A arquitetura monolítica torna extremamente difícil a criação de testes unit
 
 Esta limitação compromete significativamente a capacidade de garantir qualidade através de testes automatizados, aumentando o risco de regressões em mudanças futuras.
 
+\textbf{Nota}: As limitações descritas acima pertenciam à implementação monolítica original do Patch-Hub. A refatoração para o Modelo de Atores resolve essas questões através de message passing, gestão independente de estado por ator, e integração com mockall para testabilidade.
+
 \section{Objetivos}
 
-Fica evidente que o Patch-Hub necessita de refatorações para tentar resolver os problemas supracitados. Em especial, fica notável uma grande necessidade de melhorias do ponto de vista da flexibilidade do sistema. Tendo em vista que o Modelo de Atores proporciona alta modularidade e baixo acoplamento aos sistemas, isso torna o Patch-Hub  um candidato interessante para experimentação. Além disso, o Patch-Hub toca em domínios o suficiente para que o experimento seja bastante completo.
+Fica evidente que o Patch-Hub necessita de refatorações para tentar resolver os problemas supracitados. Em especial, fica notável uma grande necessidade de melhorias do ponto de vista da flexibilidade do sistema. Tendo em vista que o Modelo de Atores proporciona alta modularidade e baixo acoplamento aos sistemas, isso torna o Patch-Hub  um candidato interessante para experimentação e avaliação de valor da proposta. Além disso, o Patch-Hub toca em domínios suficientemente diversos para que o experimento seja bastante completo.
 
 Este trabalho não criará uma reescrita completa com 100\% de compatibilidade de funcionalidades. Ao invés disso, um subconjunto das funcionalidades foi escolhido para implementação, suficiente para ter as funcionalidades principais do Patch-Hub, que são:
 
@@ -134,7 +136,7 @@ Com objetivos estabelecidos, resta apenas modelar a arquitetura do Patch-Hub com
 
 Os atores responsáveis por interações com componentes externos ao sistema, como por exemplo o sistema de arquivos, a internet ou o terminal. Este grupo será chamado de atores de integração pois permitem a integração do programa com outros sistemas, geral assim efeitos no mundo real.
 
-O segundo grupo é formado pelos demais atores que irão interagir apenas com demais atores, ou seja, componentes internos ao sistema. Este grupo tem uma diferença fundamental no que diz respeito a sua testabilidade. Por dependerem apenas de outros atores, testes unitários se tornam triviais uma vez que se criem dublês. Uma vez que, testando um ator contra dublês, dá a garantia que apenas o código do próprio ator é o que influencia no resultado dos testes. Este grupo será chamado de atores de lógica pois conterá, majoritariamente, atores modelados pela lógica de negócio da aplicação.
+O segundo grupo é formado pelos atores que irão interagir apenas com demais atores, ou seja, componentes internos ao sistema. Este grupo tem uma diferença fundamental no que diz respeito a sua testabilidade. Por dependerem apenas de outros atores, testes unitários se tornam triviais uma vez que se criem dublês (mocks). Uma vez que, testando um ator contra dublês, dá a garantia que apenas o código do próprio ator é o que influencia no resultado dos testes. Este grupo será chamado de atores de lógica pois conterá, majoritariamente, atores modelados pela lógica de negócio da aplicação.
 
 
 \subsection{Atores de Integração}
@@ -145,13 +147,15 @@ Primeiramente é necessário identificar quais são as capacidades do Patch-Hub 
     \item Operações do sistema de arquivos
     \item Requisições HTTP
     \item Manipulação de variáveis de ambiente
-    \item Controle de terminal
-    \item Integração com shell
+    \item Controle de entrada e saída do terminal
+    \item Execução de comandos externos
 \end{itemize}
 
-Essas capacidades não fazem parte da lógica de negócio do Patch-Hub, mas servem de bases para permitir a implementação de tal. Cada uma dessas capacidades pode ser traduzida para um ator em nossa aplicação seguindo os princípios SOLID, especialmente a responsabilidade única e a segregação de interfaces.
+Essas capacidades não fazem parte da lógica de negócio do Patch-Hub, mas servem de bases para permitir a sua implementação. Cada uma dessas capacidades pode ser traduzida para um ator em nossa aplicação seguindo os princípios SOLID, especialmente os princípios de responsabilidade única e de segregação de interfaces.
 
 \subsubsection{Sistema de Arquivos}
+
+O ator Sistema de Arquivos é responsável por gerenciar as operações de leitura, escrita, remoção e listagem de arquivos e diretórios. Ele é responsável por garantir que as operações sejam realizadas de forma segura, garantindo que o sistema de arquivos seja consistente e que os arquivos e diretórios sejam gerenciados corretamente.
 
 \textbf{Mensagens:}
 
@@ -167,6 +171,8 @@ Essas capacidades não fazem parte da lógica de negócio do Patch-Hub, mas serv
 
 \subsubsection{Rede}
 
+O ator Rede é responsável por gerenciar as operações de requisição HTTP. Ele é o mecanismo base que vai permitir a integração do sistema com a API web do lore.kernel.org.
+
 \textbf{Mensagens:}
 
 \begin{itemize}
@@ -179,6 +185,8 @@ Essas capacidades não fazem parte da lógica de negócio do Patch-Hub, mas serv
 
 \subsubsection{Variáveis de Ambiente}
 
+O ator Variáveis de Ambiente é responsável por gerenciar as operações de definição, remoção e recuperação de variáveis de ambiente.
+
 \textbf{Mensagens:}
 
 \begin{itemize}
@@ -187,16 +195,30 @@ Essas capacidades não fazem parte da lógica de negócio do Patch-Hub, mas serv
     \item \texttt{Get}: Recupera o valor de uma variável de ambiente (retorna VarError se não encontrada)
 \end{itemize}
 
-\subsection{Terminal}
+\subsubsection{Terminal}
+
+O ator Terminal gerencia o loop de eventos da interface de usuário baseada na biblioteca Cursive. Ele mantém uma fila FIFO interna de eventos de UI (teclas pressionadas, seleções, etc.) além de ser responsável por desenhar no terminal. Ele também expõe uma API baseada em mensagens para atualizar a interface e recuperar os eventos de UI ocorridos.
+
+\textbf{Depende:}
+
+\begin{itemize}
+    \item \textbf{Log}: Para registrar eventos do terminal para posterior análise
+\end{itemize}
 
 \textbf{Mensagens:}
 
 \begin{itemize}
     \item \texttt{Show}: Atualiza a tela exibida com um novo tipo de tela
+    \item \texttt{GetUiEvent}: Recupera o próximo evento de UI da fila
+    \item \texttt{ClearUiEvents}: Limpa a fila de eventos de UI
     \item \texttt{Quit}: Termina a UI e sai da aplicação
 \end{itemize}
 
-\subsection{Shell}
+O ator Terminal também expõe um \texttt{JoinHandle} que permite que outros atores detectem quando o terminal foi encerrado, permitindo encerramento gracioso da aplicação.
+
+\subsubsection{Shell}
+
+O ator Shell é responsável por executar comandos integrando o Patch-Hub ao shell do sistema hospedeiro. Através dele é possível expandir as funcionalidades do Patch-Hub com o uso de ferramentas externas.
 
 \textbf{Mensagens:}
 
@@ -206,7 +228,7 @@ Essas capacidades não fazem parte da lógica de negócio do Patch-Hub, mas serv
 
 \subsection{Atores de Lógica}
 
-Agora é momento de se identificar as demais capacidades relacionadas à lógica da aplicação que não foram cobertas pelos atores de integração. São elas:
+É chegado o momento de se identificar as demais capacidades relacionadas à lógica da aplicação que não foram cobertas pelos atores de integração. São elas:
 
 \begin{itemize}
 	\item Registrar eventos com um sistema de logs
@@ -268,6 +290,51 @@ Gerencia toda a comunicação com a API externa do Lore patchwork. Ele abstrai o
     \item \texttt{GetAvailableListsPage}: Busca uma lista paginada de listas de discussão disponíveis
     \item \texttt{GetPatchFeedPage}: Busca um feed paginado de patches para uma lista de discussão específica
     \item \texttt{GetRawPatch}: Busca o conteúdo bruto de um único patch
+\end{itemize}
+
+\subsubsection{Interface de Usuário}
+
+O ator UI gerencia a lógica de navegação e estado da interface, coordenando a comunicação entre os caches e o Terminal. Ele mantém o estado de navegação (lista atual, página, seleção) e decide quais telas mostrar com base nas ações do usuário.
+
+\textbf{Depende:}
+
+\begin{itemize}
+    \item \textbf{Terminal}: Para atualizar a interface visual
+    \item \textbf{Cache de Listas}: Para recuperar dados de listas de discussão
+    \item \textbf{Cache de Feed}: Para recuperar metadados de patches
+    \item \textbf{Cache de Patches}: Para recuperar conteúdo de patches
+    \item \textbf{Render}: Para renderizar conteúdo de patches
+    \item \textbf{Log}: Para registrar operações de UI
+\end{itemize}
+
+\textbf{Mensagens:}
+
+\begin{itemize}
+    \item \texttt{ShowLists}: Exibe a visão de listas de discussão na página especificada
+    \item \texttt{ShowFeed}: Exibe o feed de patches para uma lista específica na página especificada
+    \item \texttt{ShowPatch}: Exibe o conteúdo renderizado de um patch específico
+    \item \texttt{UpdateSelection}: Atualiza o item selecionado na visão atual
+    \item \texttt{PreviousPage}: Navega para a página anterior
+    \item \texttt{NextPage}: Navega para a próxima página
+    \item \texttt{NavigateBack}: Navega de volta na hierarquia (patch → feed → listas)
+    \item \texttt{SubmitSelection}: Submete a seleção atual (abre feed ou patch)
+\end{itemize}
+
+\subsubsection{Render}
+
+O ator Render é responsável por processar conteúdo bruto de patches e convertê-los em uma representação visual formatada. Ele suporta múltiplos backends de renderização, incluindo ferramentas externas como \texttt{bat} ou \texttt{delta}.
+
+\textbf{Depende:}
+
+\begin{itemize}
+    \item \textbf{Shell}: Para executar programas externos de renderização
+    \item \textbf{Configurações}: Para obter a configuração do renderizador a ser usado
+\end{itemize}
+
+\textbf{Mensagens:}
+
+\begin{itemize}
+    \item \texttt{Render}: Renderiza o conteúdo bruto do patch usando o renderizador configurado
 \end{itemize}
 
 \subsubsection{Cache}
@@ -340,4 +407,21 @@ Armazena em cache o conteúdo bruto de patches individuais (formato \texttt{.mbo
     \item \texttt{Get}: Recupera o conteúdo bruto de um patch dado sua lista de discussão e ID de mensagem
     \item \texttt{Invalidate}: Remove um patch específico do cache em disco e buffer em memória
     \item \texttt{IsAvailable}: Verifica se um patch está em cache sem buscá-lo
+\end{itemize}
+
+\subsubsection{App}
+
+O ator App atua como coordenador central da aplicação, gerenciando o ciclo de vida e coordenando a comunicação entre todos os outros atores. Ele é responsável por inicializar a aplicação, processar eventos de UI do Terminal e realizar encerramento gracioso quando apropriado.
+
+\textbf{Depende:}
+
+\begin{itemize}
+    \item \textbf{Todos os atores}: O App depende de praticamente todos os outros atores da aplicação como dependências injetadas
+\end{itemize}
+
+\textbf{Mensagens:}
+
+\begin{itemize}
+    \item \texttt{KeyEvent}: Processa um evento de teclado recebido do Terminal
+    \item \texttt{Shutdown}: Inicia o processo de encerramento graceful da aplicação
 \end{itemize}
