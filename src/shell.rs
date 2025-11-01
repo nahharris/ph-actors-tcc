@@ -1,5 +1,5 @@
 mod core;
-mod data;
+pub mod data;
 mod message;
 pub mod mock;
 #[cfg(test)]
