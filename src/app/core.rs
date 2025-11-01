@@ -1,22 +1,42 @@
 use anyhow::Result;
-use std::env::VarError;
-use std::path::Path;
 use tokio::sync::mpsc;
 use tokio::task::JoinHandle;
 
-use crate::api::lore::LoreApi;
-use crate::app::cache::{FeedCache, MailingListCache, PatchCache};
-use crate::app::config::Config;
-use crate::app::ui::{NavigationAction, Ui};
-#[cfg(test)]
-use crate::terminal::{Terminal, UiEvent};
-use crate::{ArcOsStr, ArcPath, ArcStr};
+use crate::{app::ui::NavigationAction, terminal::UiEvent};
+use crate::ArcStr;
 #[cfg(not(test))]
-use crate::{env::Env, fs::Fs, log::Log, net::Net, render::Render, shell::Shell};
+use crate::{
+    api::lore::LoreApi,
+    app::{
+        cache::{feed::FeedCache, mailing_list::MailingListCache, patch::PatchCache},
+        config::Config,
+        ui::Ui,
+    },
+    env::Env,
+    fs::Fs,
+    log::Log,
+    render::Render,
+    shell::Shell,
+    terminal::Terminal,
+};
 #[cfg(test)]
 use crate::{
-    env::mock::MockEnv as Env, fs::mock::MockFs as Fs, log::mock::MockLog as Log,
-    net::mock::MockNet as Net, render::mock::MockRender as Render, shell::mock::Mock as Shell,
+    api::lore::mock::MockLoreApi as LoreApi,
+    app::{
+        cache::{
+            feed::mock::MockFeedCache as FeedCache,
+            mailing_list::mock::MockMailingListCache as MailingListCache,
+            patch::mock::MockPatchCache as PatchCache,
+        },
+        config::mock::MockConfig as Config,
+        ui::mock::MockUi as Ui,
+    },
+    env::mock::MockEnv as Env,
+    fs::mock::MockFs as Fs,
+    log::mock::MockLog as Log,
+    render::mock::MockRender as Render,
+    shell::mock::MockShell as Shell,
+    terminal::mock::MockTerminal as Terminal,
 };
 
 use super::data::{AppState, Command};
@@ -38,8 +58,6 @@ pub struct Core {
     config: Config,
     /// Logging actor
     log: Log,
-    /// Network actor
-    net: Net,
     /// Lore API actor
     lore: LoreApi,
     /// Shell actor
@@ -56,60 +74,19 @@ pub struct Core {
 
 impl Core {
     /// Build a new App actor core with full initialization
-    pub async fn build(env: Env, fs: Fs, config: Config, log: Log) -> Result<Self> {
-        // Set up configuration
-        let home = env.env(ArcOsStr::from("HOME")).await;
-        let config_base = match home {
-            Ok(path) => path,
-            Err(VarError::NotPresent) => {
-                // Try USERPROFILE if HOME is not set
-                env.env(ArcOsStr::from("USERPROFILE")).await?
-            }
-            Err(e) => return Err(e.into()),
-        };
-        let config_dir = Path::new(&config_base).join(".config").join("patch-hub");
-        let config_file_path = config_dir.join("config.toml");
-        let config_path = ArcPath::from(&config_file_path);
-
-        // Ensure the config directory exists
-        let config_dir_path = ArcPath::from(&config_dir);
-        if let Err(e) = fs.mkdir(config_dir_path).await {
-            // If mkdir fails, it might be because the directory already exists
-            // or there's a permission issue. We'll try to continue and let the
-            // config save operation handle any remaining issues.
-            eprintln!("Warning: Failed to create config directory: {}", e);
-        }
-
-        // Initialize logging actor
-        let log = Log::spawn(fs.clone(), config.clone()).await?;
-        // Initialize network and API actors
-        let net = Net::spawn(config.clone(), log.clone());
-        let lore = LoreApi::spawn(net.clone());
-
-        // Initialize shell and render actors
-        let shell = Shell::spawn(log.clone()).await?;
-        let render = Render::spawn(shell.clone(), config.clone());
-
-        // Initialize cache actors
-        let mailing_list_cache =
-            MailingListCache::spawn(lore.clone(), fs.clone(), config.clone(), log.clone()).await?;
-        let feed_cache =
-            FeedCache::spawn(lore.clone(), fs.clone(), config.clone(), log.clone()).await?;
-        let patch_cache =
-            PatchCache::spawn(lore.clone(), fs.clone(), config.clone(), log.clone()).await?;
-
-        // Load existing cache data
-        if let Err(e) = mailing_list_cache.load().await {
-            log.warn(SCOPE, &format!("Failed to load mailing list cache: {}", e));
-        } else {
-            log.info(SCOPE, "Mailing list cache loaded successfully");
-        }
-
-        log.info(SCOPE, "Cache actors initialized successfully");
-
-        log.info(SCOPE, "App actor initialized successfully");
-
-        Ok(Self {
+    pub fn new(
+        log: Log,
+        fs: Fs,
+        env: Env,
+        config: Config,
+        lore: LoreApi,
+        shell: Shell,
+        render: Render,
+        mailing_list_cache: MailingListCache,
+        feed_cache: FeedCache,
+        patch_cache: PatchCache,
+    ) -> Self {
+        Self {
             state: AppState {
                 initialized: true,
                 current_command: None,
@@ -118,14 +95,13 @@ impl Core {
             fs,
             config,
             log,
-            net,
             lore,
             shell,
             render,
             mailing_list_cache,
             feed_cache,
             patch_cache,
-        })
+        }
     }
 
     /// Spawn the App actor for interactive mode
@@ -133,7 +109,7 @@ impl Core {
         // Create Terminal and UI actors for interactive mode
         let (ui_tx, ui_rx) = tokio::sync::mpsc::channel(64);
         let (terminal, ui_exit) = Terminal::spawn(self.log.clone(), ui_tx.clone());
-        let (ui, _ui_handle) = Ui::spawn(
+        let ui = Ui::spawn(
             self.log.clone(),
             terminal,
             self.mailing_list_cache.clone(),
@@ -240,23 +216,23 @@ impl Core {
 
     /// Handle graceful shutdown
     pub async fn handle_shutdown(&self) -> Result<()> {
-        self.log.info(SCOPE, "Shutting down application");
+        self.log.info(SCOPE, "Shutting down application".to_string());
 
         // Persist cache data before exiting
         if let Err(e) = self.mailing_list_cache.persist().await {
             self.log.warn(
                 SCOPE,
-                &format!("Failed to persist mailing list cache: {}", e),
+                format!("Failed to persist mailing list cache: {}", e),
             );
         }
         if let Err(e) = self.feed_cache.persist(ArcStr::from("")).await {
             self.log.warn(
                 SCOPE,
-                &format!("Failed to persist patch metadata cache: {}", e),
+                format!("Failed to persist patch metadata cache: {}", e),
             );
         }
 
-        self.log.info(SCOPE, "Application shutdown complete");
+        self.log.info(SCOPE, "Application shutdown complete".to_string());
         Ok(())
     }
 
