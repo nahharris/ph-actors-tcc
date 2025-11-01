@@ -2,13 +2,18 @@ use super::data::FeedData;
 use super::message::Message;
 use crate::ArcPath;
 use crate::ArcStr;
-use crate::api::lore::{LoreApi, LorePatchMetadata};
-use crate::app::config::Config;
-use crate::fs::Fs;
-use crate::log::Log;
+use crate::api::lore::LorePatchMetadata;
 use anyhow::Context;
 use std::collections::HashMap;
 use tokio::sync::mpsc;
+
+#[cfg(not(test))]
+use crate::{api::lore::LoreApi, app::config::Config, fs::Fs, log::Log};
+#[cfg(test)]
+use crate::{
+    api::lore::mock::MockLoreApi as LoreApi, app::config::mock::MockConfig as Config,
+    fs::mock::MockFs as Fs, log::mock::MockLog as Log,
+};
 
 const BUFFER_SIZE: usize = 100;
 const SCOPE: &str = "app.cache.feed";
