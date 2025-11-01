@@ -69,7 +69,7 @@ impl Core {
             .recv()
             .expect("failed to initialize cursive callback sink");
 
-        self.log.info(SCOPE, "Terminal actor spawned");
+        self.log.info(SCOPE, "Terminal actor spawned".to_string());
 
         // Message handling loop - this is the actual actor behavior
         while let Some(msg) = rx.recv().await {
@@ -78,8 +78,9 @@ impl Core {
                 Show(screen) => {
                     Self::handle_show_screen(screen, &cb_sink, self.ui_events.clone());
                 }
-                Quit => {
+                Quit { tx } => {
                     let _ = cb_sink.send(Box::new(|s: &mut Cursive| s.quit()));
+                    let _ = tx.send(());
                     break;
                 }
             }

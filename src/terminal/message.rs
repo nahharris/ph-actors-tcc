@@ -1,3 +1,4 @@
+use tokio::sync::oneshot;
 use super::data::Screen;
 
 /// Messages that can be sent to the terminal actor.
@@ -6,5 +7,5 @@ pub enum Message {
     /// Render the given screen
     Show(Screen),
     /// Quit the UI
-    Quit,
+    Quit { tx: oneshot::Sender<()> },
 }
