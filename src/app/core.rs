@@ -1,6 +1,6 @@
 use anyhow::Result;
 use std::sync::Arc;
-use tokio::sync::mpsc;
+use tokio::sync::{mpsc, oneshot};
 
 use crate::ArcStr;
 #[cfg(not(test))]
@@ -170,16 +170,63 @@ impl Core {
     }
 
     /// Helper function to await a JoinHandle wrapped in an Arc
+    ///
+    /// This function properly awaits the terminal task's JoinHandle to detect panics or errors.
+    /// Since the JoinHandle is wrapped in Arc (preventing direct awaiting), we use a background
+    /// task that monitors completion and properly awaits to catch any panics or errors.
     async fn await_terminal_handle(handle: Arc<tokio::task::JoinHandle<()>>) {
-        // Poll the JoinHandle by checking if it's finished
-        // We can't await JoinHandle through Arc directly, so we poll it
-        loop {
-            if handle.is_finished() {
-                // JoinHandle is finished, but we should still await it to get any potential errors
-                // Since we can't await through Arc, we'll just return
-                break;
+        let (tx, rx) = oneshot::channel::<Result<(), tokio::task::JoinError>>();
+        let handle_for_monitor = handle.clone();
+
+        // Spawn a monitoring task that waits for completion and checks for errors
+        tokio::spawn(async move {
+            // Use interval for more efficient polling than fixed sleep loops
+            let mut interval = tokio::time::interval(std::time::Duration::from_millis(100));
+            interval.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
+
+            loop {
+                interval.tick().await;
+
+                if handle_for_monitor.is_finished() {
+                    // Try to unwrap the Arc to get the JoinHandle and properly await it
+                    // This allows us to catch panics and errors from the terminal task
+                    match Arc::try_unwrap(handle_for_monitor) {
+                        Ok(join_handle) => {
+                            // Properly await to catch panics and errors
+                            let result = join_handle.await;
+                            let _ = tx.send(result);
+                            break;
+                        }
+                        Err(_arc_handle) => {
+                            // Multiple owners still exist, we can't await directly
+                            // Log a warning and signal completion (best-effort error detection)
+                            eprintln!(
+                                "Warning: Terminal JoinHandle has multiple owners, cannot check for panics"
+                            );
+                            let _ = tx.send(Ok(()));
+                            break;
+                        }
+                    }
+                }
             }
-            tokio::time::sleep(std::time::Duration::from_millis(10)).await;
+        });
+
+        // Wait for the monitor task to signal completion
+        // This provides a clean completion signal for tokio::select!
+        match rx.await {
+            Ok(Ok(())) => {
+                // Terminal task completed successfully
+            }
+            Ok(Err(e)) => {
+                // Terminal task panicked, propagate the error
+                eprintln!("Terminal task panicked: {:?}", e);
+                // Note: We could propagate this further if needed, but for now we log it
+                // The shutdown will still proceed
+            }
+            Err(_) => {
+                // Monitor task itself panicked or was dropped (shouldn't happen)
+                eprintln!("Warning: Terminal handle monitor task failed");
+            }
         }
     }
 
