@@ -18,6 +18,8 @@ mod message;
 #[cfg(test)]
 pub mod mock;
 pub mod parse;
+#[cfg(test)]
+mod tests;
 
 // Re-export public types for external use
 pub use data::{LoreMailingList, LorePage, LorePatchMetadata};
