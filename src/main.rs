@@ -1,102 +1,84 @@
-use clap::{Parser, Subcommand};
-use ph::ArcStr;
-use ph::app::{App, Command};
-use ph::env::Env;
-use ph::fs::Fs;
-use ph::utils::install_panic_hook;
-
-#[derive(Parser)]
-#[command(name = "patch-hub")]
-#[command(about = "A CLI tool for interacting with the Lore Kernel Archive")]
-struct Cli {
-    #[command(subcommand)]
-    command: Option<Commands>,
-}
-
-#[derive(Subcommand)]
-enum Commands {
-    /// List all available mailing lists
-    Lists {
-        /// Page number (0-based)
-        #[arg(short, long, default_value = "0")]
-        page: usize,
-        /// Number of items per page
-        #[arg(short, long, default_value = "10")]
-        count: usize,
+use ph::{
+    ArcPath,
+    api::lore::LoreApi,
+    app::ui::Ui,
+    app::{
+        App,
+        cache::{feed::FeedCache, mailing_list::MailingListCache, patch::PatchCache},
+        config::Config,
     },
-    /// Get the feed of a given mailing list
-    Feed {
-        /// The mailing list name (e.g., "amd-gfx", "linux-kernel")
-        #[arg(required = true)]
-        list: String,
-        /// Page number (0-based)
-        #[arg(short, long, default_value = "0")]
-        page: usize,
-        /// Number of items per page
-        #[arg(short, long, default_value = "10")]
-        count: usize,
-    },
-    /// Get the content of a patch from the feed
-    Patch {
-        /// The mailing list name
-        #[arg(required = true)]
-        list: String,
-        /// The message ID of the patch
-        #[arg(required = true)]
-        message_id: String,
-        /// Get HTML patch content instead of raw
-        #[arg(long)]
-        html: bool,
-    },
-}
+    env::Env,
+    fs::Fs,
+    log::Log,
+    net::Net,
+    render::Render,
+    shell::Shell,
+    terminal::Terminal,
+    utils::install_panic_hook,
+};
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     install_panic_hook()?;
 
-    let cli = Cli::parse();
+    // Build actors in dependency order
+    let env = Env::spawn();
+    let fs = Fs::spawn();
 
-    // Build the App actor with all dependencies
-    let app = App::build(Env::spawn(), Fs::spawn()).await?;
+    // Get config directory from environment or use default
+    let home = std::env::var("HOME")
+        .ok()
+        .or_else(|| std::env::var("USERPROFILE").ok()) // Windows
+        .unwrap_or_else(|| ".".to_string());
+    let config_dir = std::path::Path::new(&home)
+        .join(".config")
+        .join("patch-hub");
+    let config_path = ArcPath::from(&config_dir.join("config.toml"));
+    let config = Config::spawn(env.clone(), fs.clone(), config_path);
+    config.load().await.ok(); // Try to load, ignore errors if file doesn't exist
 
-    // Execute the appropriate command or run interactive mode
-    match cli.command {
-        Some(Commands::Lists { page, count }) => {
-            let command = Command::Lists { page, count };
-            app.resolve(command).await?;
-        }
-        Some(Commands::Feed { list, page, count }) => {
-            let command = Command::Feed {
-                list: ArcStr::from(list),
-                page,
-                count,
-            };
-            app.resolve(command).await?;
-        }
-        Some(Commands::Patch {
-            list,
-            message_id,
-            html,
-        }) => {
-            let command = Command::Patch {
-                list: ArcStr::from(list),
-                message_id: ArcStr::from(message_id),
-                html,
-            };
-            app.resolve(command).await?;
-        }
-        None => {
-            // Interactive mode - spawn the app and enter key event loop
-            let (_handle, join_handle) = app.spawn()?;
+    let log = Log::spawn(fs.clone(), config.clone()).await?;
+    let net = Net::spawn(config.clone(), log.clone());
+    let shell = Shell::spawn(log.clone()).await?;
+    let render = Render::spawn(shell.clone(), config.clone());
+    let lore = LoreApi::spawn(net);
 
-            // For now, just wait for the UI to exit
-            // In a real implementation, this is where we'd handle key events
-            // from the terminal and send them to handle.send_key_event()
+    let mailing_list_cache =
+        MailingListCache::spawn(lore.clone(), fs.clone(), config.clone(), log.clone()).await?;
+    let feed_cache =
+        FeedCache::spawn(lore.clone(), fs.clone(), config.clone(), log.clone()).await?;
+    let patch_cache =
+        PatchCache::spawn(lore.clone(), fs.clone(), config.clone(), log.clone()).await?;
 
-            // Wait for the application to finish
-            let _ = join_handle.await;
-        }
-    }
+    let terminal = Terminal::spawn(log.clone());
+    let ui = Ui::spawn(
+        log.clone(),
+        terminal.clone(),
+        mailing_list_cache.clone(),
+        feed_cache.clone(),
+        patch_cache.clone(),
+        render.clone(),
+    );
+
+    // Spawn the App actor
+    let (_app, app_handle) = App::spawn(
+        log,
+        fs,
+        env,
+        config,
+        lore,
+        shell,
+        render,
+        mailing_list_cache,
+        feed_cache,
+        patch_cache,
+        terminal,
+        ui,
+    );
+
+    // Wait for the application to finish (it will exit when the terminal exits)
+    // The app will handle its own shutdown when the terminal closes
+    let _ = app_handle.await;
 
     Ok(())
 }

@@ -1,36 +1,38 @@
 mod core;
-mod data;
+pub mod data;
 mod message;
-mod mock;
+pub mod mock;
 #[cfg(test)]
 mod tests;
 
 use anyhow::Context;
-use tokio::sync::mpsc::Sender;
+use tokio::sync::mpsc;
+
+#[cfg(not(test))]
+use crate::log::Log;
+#[cfg(test)]
+use crate::log::mock::MockLog as Log;
 
 use crate::{ArcSlice, ArcStr};
 
 /// The shell actor that provides a thread-safe interface for executing external programs.
 ///
-/// This enum represents either a real shell actor or a mock implementation
-/// for testing purposes. It provides a unified interface for executing external
-/// programs regardless of the underlying implementation.
+/// This struct provides a unified interface for executing external programs through
+/// an actor pattern. All shell operations are processed asynchronously and logged
+/// for debugging and monitoring purposes.
 ///
 /// # Examples
 /// ```ignore
-/// let shell = Shell::spawn(log).await?;
+/// let shell = Shell::spawn();
 /// let result = shell.execute(ArcStr::from("ls"), ArcSlice::from(&[ArcStr::from("-la")]), Some(ArcStr::from("input"))).await?;
 /// ```
 ///
 /// # Thread Safety
 /// This type is designed to be safely shared between threads. Cloning is cheap as it only
-/// copies the channel sender or mock reference.
+/// copies the channel sender.
 #[derive(Debug, Clone)]
-pub enum Shell {
-    /// A real shell actor that executes external programs
-    Actual(Sender<message::Message>),
-    /// A mock implementation for testing that stores commands in memory
-    Mock(mock::Mock),
+pub struct Shell {
+    tx: mpsc::Sender<message::Message>,
 }
 
 impl Shell {
@@ -41,21 +43,13 @@ impl Shell {
     ///
     /// # Returns
     /// A new shell instance with a spawned actor.
-    pub async fn spawn(log: crate::log::Log) -> anyhow::Result<Self> {
-        let (tx, rx) = tokio::sync::mpsc::channel(crate::BUFFER_SIZE);
+    pub async fn spawn(log: Log) -> anyhow::Result<Self> {
+        let (tx, rx) = mpsc::channel(crate::BUFFER_SIZE);
         let core = core::Core::new(log);
         let _ = tokio::spawn(async move {
             core.init(rx).await;
         });
-        Ok(Self::Actual(tx))
-    }
-
-    /// Creates a new mock shell instance for testing.
-    ///
-    /// # Returns
-    /// A new mock shell instance that stores commands in memory.
-    pub fn mock() -> Self {
-        Self::Mock(mock::Mock::new())
+        Ok(Self { tx })
     }
 
     /// Executes an external program with the given arguments and optional stdin.
@@ -73,36 +67,19 @@ impl Shell {
         args: ArcSlice<ArcStr>,
         stdin: Option<ArcStr>,
     ) -> anyhow::Result<data::Result> {
-        match self {
-            Self::Actual(sender) => {
-                let (tx, rx) = tokio::sync::oneshot::channel();
-                let command = data::Command {
-                    program,
-                    args,
-                    stdin,
-                };
-                sender
-                    .send(message::Message::Execute { tx, command })
-                    .await
-                    .context("Executing command with Shell")
-                    .expect("shell actor died");
-                rx.await
-                    .context("Awaiting response for command execution with Shell")
-                    .expect("shell actor died")
-            }
-            Self::Mock(mock) => mock.execute(program, args, stdin).await,
-        }
-    }
-
-    /// Gets all executed commands from the mock implementation.
-    /// This method is only available for mock instances and is useful for testing.
-    ///
-    /// # Returns
-    /// A vector of all executed commands, or None if this is not a mock instance.
-    pub async fn get_commands(&self) -> Option<Vec<data::Command>> {
-        match self {
-            Self::Mock(mock) => Some(mock.get_commands().await),
-            Self::Actual(_) => None,
-        }
+        let (tx, rx) = tokio::sync::oneshot::channel();
+        let command = data::Command {
+            program,
+            args,
+            stdin,
+        };
+        self.tx
+            .send(message::Message::Execute { tx, command })
+            .await
+            .context("Executing command with Shell")
+            .expect("shell actor died");
+        rx.await
+            .context("Awaiting response for command execution with Shell")
+            .expect("shell actor died")
     }
 }

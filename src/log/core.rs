@@ -4,9 +4,9 @@ use super::data::{LogLevel, LogMessage};
 use super::message::Message;
 use crate::ArcPath;
 #[cfg(not(test))]
-use crate::fs::Fs;
+use crate::{app::config::Config, fs::Fs};
 #[cfg(test)]
-use crate::fs::mock::MockFs as Fs;
+use crate::{app::config::mock::MockConfig as Config, fs::mock::MockFs as Fs};
 
 const SCOPE: &str = "log";
 
@@ -25,7 +25,8 @@ const SCOPE: &str = "log";
 ///
 /// # Examples
 /// ```ignore
-/// let (log, _) = Core::build(fs, LogLevel::Info, 7, log_dir).await?.spawn();
+/// let core = Core::new(fs, config).await?;
+/// let log = Log::spawn(core);
 /// log.info("Application started");
 /// ```
 ///
@@ -36,6 +37,8 @@ const SCOPE: &str = "log";
 pub struct Core {
     /// Filesystem interface for file operations
     fs: Fs,
+    /// Configuration interface for settings
+    config: Config,
     /// Directory where log files are stored
     log_dir: ArcPath,
     /// Path to the current timestamped log file
@@ -53,18 +56,19 @@ pub struct Core {
 }
 
 impl Core {
-    pub async fn build(
-        fs: Fs,
-        level: LogLevel,
-        max_age: usize,
-        log_dir: ArcPath,
-    ) -> anyhow::Result<Self> {
+    pub async fn new(fs: Fs, config: Config) -> anyhow::Result<Self> {
+        // Load configuration values
+        let log_level = config.log_level().await;
+        let max_age = config.usize(crate::app::config::USizeOpt::MaxAge).await;
+        let log_dir = config.path(crate::app::config::PathOpt::LogDir).await;
+
         let log_path = ArcPath::from(&log_dir.join(format!(
             "patch-hub_{}.log",
             chrono::Utc::now().format("%Y-%m-%d-%H-%M-%S")
         )));
         let latest_log_path = ArcPath::from(&log_dir.join("latest.log"));
 
+        // Create log directory and files
         fs.mkdir(log_dir.clone())
             .await
             .with_context(|| format!("Failed to create log directory: {}", log_dir.display()))?;
@@ -74,22 +78,20 @@ impl Core {
             .await
             .with_context(|| format!("Failed to create log file: {}", log_path.display()))?;
 
-        let latest_log_path_clone = latest_log_path.clone();
-        let latest_log_file = fs.write_file(latest_log_path).await.with_context(|| {
-            format!(
-                "Failed to create latest log file: {}",
-                latest_log_path_clone.display()
-            )
-        })?;
+        let latest_log_file = fs
+            .write_file(latest_log_path)
+            .await
+            .with_context(|| format!("Failed to create latest log file"))?;
 
         Ok(Self {
             fs,
+            config,
             log_dir,
             log_path,
             log_file,
             latest_log_file,
             logs_to_print: Vec::new(),
-            print_level: level,
+            print_level: log_level,
             max_age,
         })
     }
@@ -101,8 +103,8 @@ impl Core {
                 Log(msg) => {
                     self.handle_log(msg).await;
                 }
-                Flush => {
-                    self.handle_flush();
+                Flush { tx } => {
+                    self.handle_flush(tx);
                     rx.close();
                     break;
                 }
@@ -140,13 +142,14 @@ impl Core {
         }
     }
 
-    fn handle_flush(self) {
+    fn handle_flush(self, tx: tokio::sync::oneshot::Sender<anyhow::Result<()>>) {
         for message in &self.logs_to_print {
             eprintln!("{message}");
         }
         if !self.logs_to_print.is_empty() {
             eprintln!("Check the full log file: {}", self.log_path.display());
         }
+        let _ = tx.send(Ok(()));
     }
 
     async fn handle_collect_garbage(&mut self) {

@@ -2,7 +2,7 @@ use crate::ArcStr;
 use crate::api::lore::{LoreMailingList, LorePatchMetadata};
 
 /// UI key events emitted by the terminal.
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum UiEvent {
     Left,
     Right,

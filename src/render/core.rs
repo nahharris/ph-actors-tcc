@@ -1,8 +1,14 @@
-use tokio::sync::mpsc::Receiver;
+use tokio::sync::mpsc;
 
 use crate::{ArcSlice, ArcStr};
 
 use super::message::Message;
+
+// Actors it depends on
+#[cfg(not(test))]
+use crate::{app::config::Config, shell::Shell};
+#[cfg(test)]
+use crate::{app::config::mock::MockConfig as Config, shell::mock::MockShell as Shell};
 
 /// The core implementation of the render actor.
 ///
@@ -11,9 +17,9 @@ use super::message::Message;
 /// for renderer settings.
 pub struct Core {
     /// The shell actor for executing external programs
-    shell: crate::shell::Shell,
+    shell: Shell,
     /// The configuration actor for renderer settings
-    config: crate::app::config::Config,
+    config: Config,
 }
 
 impl Core {
@@ -25,7 +31,7 @@ impl Core {
     ///
     /// # Returns
     /// A new render actor core instance.
-    pub fn new(shell: crate::shell::Shell, config: crate::app::config::Config) -> Self {
+    pub fn new(shell: Shell, config: Config) -> Self {
         Self { shell, config }
     }
 
@@ -36,7 +42,7 @@ impl Core {
     ///
     /// # Arguments
     /// * `rx` - A receiver for messages to process
-    pub async fn init(self, mut rx: Receiver<Message>) {
+    pub async fn init(self, mut rx: mpsc::Receiver<Message>) {
         while let Some(msg) = rx.recv().await {
             use Message::*;
             match msg {
@@ -81,12 +87,12 @@ impl Core {
         if result.is_success() {
             Ok(result.stdout)
         } else {
-            Err(anyhow::anyhow!(
+            anyhow::bail!(
                 "Renderer '{}' failed with status: {}, stderr: {}",
                 renderer.program_name(),
                 result.status,
                 result.stderr
-            ))
+            )
         }
     }
 }

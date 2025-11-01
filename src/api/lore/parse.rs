@@ -371,4 +371,245 @@ mod tests {
         assert_eq!(result.0, 2); // version 2
         assert_eq!(result.1, Some(SequenceNumber::new(5, 10))); // sequence 5/10
     }
+
+    #[test]
+    fn test_parse_available_lists_html_single_item() {
+        let html = r#"
+* 2025-01-15 10:30
+<a href="all/">linux-kernel</a>
+Linux kernel development mailing list
+Results 1-1 of 1
+"#;
+        let result = parse_available_lists_html(html, 0).unwrap();
+        assert!(result.is_some());
+        let page = result.unwrap();
+        assert_eq!(page.items.len(), 1);
+        assert_eq!(page.items[0].name.as_ref() as &str, "linux-kernel");
+        assert_eq!(
+            page.items[0].description.as_ref() as &str,
+            "Linux kernel development mailing list"
+        );
+        assert_eq!(page.start_index, 0);
+    }
+
+    #[test]
+    fn test_parse_available_lists_html_multiple_items() {
+        let html = r#"
+* 2025-01-15 10:30
+<a href="all/">list1</a>
+Description 1
+* 2025-01-14 09:20
+<a href="all/">list2</a>
+Description 2
+Results 1-2 of 10
+"#;
+        let result = parse_available_lists_html(html, 0).unwrap();
+        assert!(result.is_some());
+        let page = result.unwrap();
+        assert_eq!(page.items.len(), 2);
+        assert_eq!(page.items[0].name.as_ref() as &str, "list1");
+        assert_eq!(page.items[1].name.as_ref() as &str, "list2");
+    }
+
+    #[test]
+    fn test_parse_available_lists_html_with_next_page() {
+        let html = r#"
+* 2025-01-15 10:30
+<a href="all/">list1</a>
+Description 1
+<a rel=next href="?&o=50"></a>
+Results 1-50 of ~200
+"#;
+        let result = parse_available_lists_html(html, 0).unwrap();
+        assert!(result.is_some());
+        let page = result.unwrap();
+        assert_eq!(page.next_page_index, Some(50));
+        assert_eq!(page.total_items, Some(200));
+    }
+
+    #[test]
+    fn test_parse_available_lists_html_empty() {
+        // Empty HTML should return None when start_index equals total_items (which defaults to 0)
+        let html = "";
+        let result = parse_available_lists_html(html, 0).unwrap();
+        // When start_index == total_items (0), returns None
+        assert!(result.is_none());
+
+        // But if start_index is not 0, it should return Some with empty items
+        let result2 = parse_available_lists_html(html, 10).unwrap();
+        assert!(result2.is_some());
+        let page = result2.unwrap();
+        assert_eq!(page.items.len(), 0);
+    }
+
+    #[test]
+    fn test_parse_available_lists_html_at_end() {
+        let html = r#"
+* 2025-01-15 10:30
+<a href="all/">list1</a>
+Description 1
+Results 1-200 of 200
+"#;
+        let result = parse_available_lists_html(html, 200).unwrap();
+        assert!(result.is_none());
+    }
+
+    #[test]
+    fn test_parse_available_lists_html_invalid_date() {
+        let html = r#"
+* invalid-date 10:30
+<a href="all/">list1</a>
+Description 1
+"#;
+        let result = parse_available_lists_html(html, 0);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_parse_patch_feed_xml_single_entry() {
+        let xml = r#"<?xml version="1.0" encoding="UTF-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+    <entry>
+        <title>[PATCH] Test patch</title>
+        <author>
+            <name>Test Author</name>
+            <email>test@example.com</email>
+        </author>
+        <id>https://lore.kernel.org/test-list/20250115103000.12345@example.com/</id>
+        <updated>2025-01-15T10:30:00Z</updated>
+        <link href="https://lore.kernel.org/test-list/20250115103000.12345@example.com/" />
+    </entry>
+</feed>"#;
+        let result = parse_patch_feed_xml(xml, 0).unwrap();
+        assert_eq!(result.items.len(), 1);
+        assert_eq!(result.items[0].title.as_ref() as &str, "[PATCH] Test patch");
+        assert_eq!(result.items[0].author.as_ref() as &str, "Test Author");
+        assert_eq!(result.items[0].email.as_ref() as &str, "test@example.com");
+        assert_eq!(result.items[0].list.as_ref() as &str, "test-list");
+        assert_eq!(result.start_index, 0);
+    }
+
+    #[test]
+    fn test_parse_patch_feed_xml_with_sequence() {
+        let xml = r#"<?xml version="1.0" encoding="UTF-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+    <entry>
+        <title>[PATCH 2/5] Test patch series</title>
+        <author>
+            <name>Test Author</name>
+            <email>test@example.com</email>
+        </author>
+        <id>https://lore.kernel.org/test-list/20250115103000.12345@example.com/</id>
+        <updated>2025-01-15T10:30:00Z</updated>
+        <link href="https://lore.kernel.org/test-list/20250115103000.12345@example.com/" />
+    </entry>
+</feed>"#;
+        let result = parse_patch_feed_xml(xml, 0).unwrap();
+        assert_eq!(result.items.len(), 1);
+        assert_eq!(result.items[0].sequence, Some(SequenceNumber::new(2, 5)));
+        assert_eq!(result.items[0].version, 1);
+    }
+
+    #[test]
+    fn test_parse_patch_feed_xml_with_version() {
+        let xml = r#"<?xml version="1.0" encoding="UTF-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+    <entry>
+        <title>[PATCH v3] Test patch</title>
+        <author>
+            <name>Test Author</name>
+            <email>test@example.com</email>
+        </author>
+        <id>https://lore.kernel.org/test-list/20250115103000.12345@example.com/</id>
+        <updated>2025-01-15T10:30:00Z</updated>
+        <link href="https://lore.kernel.org/test-list/20250115103000.12345@example.com/" />
+    </entry>
+</feed>"#;
+        let result = parse_patch_feed_xml(xml, 0).unwrap();
+        assert_eq!(result.items.len(), 1);
+        assert_eq!(result.items[0].version, 3);
+        assert_eq!(result.items[0].sequence, None);
+    }
+
+    #[test]
+    fn test_parse_patch_feed_xml_empty_feed() {
+        // Feed with no entries - entries with missing required fields get filtered
+        let _xml = r#"<?xml version="1.0" encoding="UTF-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+</feed>"#;
+        // XML parser requires entries field - test with minimal valid entry that gets filtered
+        let xml2 = r#"<?xml version="1.0" encoding="UTF-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+    <entry>
+        <title>Not a patch</title>
+        <author>
+            <name>Author</name>
+            <email>test@example.com</email>
+        </author>
+        <id>https://lore.kernel.org/test-list/message/</id>
+        <updated>2025-01-15T10:30:00Z</updated>
+        <link href="https://lore.kernel.org/test-list/message/" />
+    </entry>
+</feed>"#;
+        // This entry will be filtered out due to invalid title
+        let result = parse_patch_feed_xml(xml2, 0).unwrap();
+        assert_eq!(result.items.len(), 0);
+    }
+
+    #[test]
+    fn test_parse_patch_feed_xml_invalid_title_filtered() {
+        let xml = r#"<?xml version="1.0" encoding="UTF-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+    <entry>
+        <title>Invalid patch title</title>
+        <author>
+            <name>Test Author</name>
+            <email>test@example.com</email>
+        </author>
+        <id>https://lore.kernel.org/test-list/20250115103000.12345@example.com/</id>
+        <updated>2025-01-15T10:30:00Z</updated>
+        <link href="https://lore.kernel.org/test-list/20250115103000.12345@example.com/" />
+    </entry>
+</feed>"#;
+        let result = parse_patch_feed_xml(xml, 0).unwrap();
+        // Entries with invalid titles are filtered out
+        assert_eq!(result.items.len(), 0);
+    }
+
+    #[test]
+    fn test_parse_patch_feed_xml_multiple_entries() {
+        let xml = r#"<?xml version="1.0" encoding="UTF-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+    <entry>
+        <title>[PATCH] First patch</title>
+        <author>
+            <name>Author One</name>
+            <email>one@example.com</email>
+        </author>
+        <id>https://lore.kernel.org/test-list/20250115103000.11111@example.com/</id>
+        <updated>2025-01-15T10:30:00Z</updated>
+        <link href="https://lore.kernel.org/test-list/20250115103000.11111@example.com/" />
+    </entry>
+    <entry>
+        <title>[PATCH] Second patch</title>
+        <author>
+            <name>Author Two</name>
+            <email>two@example.com</email>
+        </author>
+        <id>https://lore.kernel.org/test-list/20250115103100.22222@example.com/</id>
+        <updated>2025-01-15T10:31:00Z</updated>
+        <link href="https://lore.kernel.org/test-list/20250115103100.22222@example.com/" />
+    </entry>
+</feed>"#;
+        let result = parse_patch_feed_xml(xml, 0).unwrap();
+        assert_eq!(result.items.len(), 2);
+        assert_eq!(
+            result.items[0].title.as_ref() as &str,
+            "[PATCH] First patch"
+        );
+        assert_eq!(
+            result.items[1].title.as_ref() as &str,
+            "[PATCH] Second patch"
+        );
+    }
 }

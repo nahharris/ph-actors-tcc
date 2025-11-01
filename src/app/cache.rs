@@ -8,13 +8,3 @@
 pub mod feed;
 pub mod mailing_list;
 pub mod patch;
-
-// Re-export the main cache actors
-pub use feed::FeedCache;
-pub use mailing_list::MailingListCache;
-pub use patch::PatchCache;
-
-// Re-export mock data types for testing
-pub use feed::MockData as FeedMockData;
-pub use mailing_list::MockData as MailingListMockData;
-pub use patch::MockData as PatchMockData;

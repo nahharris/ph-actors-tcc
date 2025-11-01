@@ -2,15 +2,18 @@ use anyhow::Context;
 use std::collections::HashMap;
 use tokio::sync::mpsc::Sender;
 
-use crate::{
-    ArcStr,
-    app::config::Config,
-    net::{core::Core, message::Message},
-};
+use crate::{ArcStr, net::core::Core};
+#[cfg(not(test))]
+use crate::{app::config::Config, log::Log};
+#[cfg(test)]
+use crate::{app::config::mock::MockConfig as Config, log::mock::MockLog as Log};
 
 mod core;
 pub mod message;
-mod mock;
+#[cfg(test)]
+pub mod mock;
+#[cfg(test)]
+mod tests;
 
 /// The networking actor that provides a thread-safe interface for network operations.
 ///
@@ -19,7 +22,7 @@ mod mock;
 ///
 /// # Examples
 /// ```ignore
-/// let net = Net::spawn(config, log);
+/// let net = Net::spawn();
 /// let response = net.get(url).await?;
 /// ```
 ///
@@ -28,7 +31,7 @@ mod mock;
 /// copies the channel sender.
 #[derive(Debug, Clone)]
 pub struct Net {
-    tx: Sender<Message>,
+    tx: Sender<message::Message>,
 }
 
 impl Net {
@@ -40,9 +43,9 @@ impl Net {
     ///
     /// # Returns
     /// A new networking instance with a spawned actor.
-    pub async fn spawn(config: Config, log: crate::log::Log) -> Self {
+    pub fn spawn(config: Config, log: Log) -> Self {
         let (tx, rx) = tokio::sync::mpsc::channel(crate::BUFFER_SIZE);
-        let core = Core::new(config, log).await;
+        let core = Core::new(config, log);
         let _ = tokio::spawn(async move {
             core.init(rx).await;
         });
@@ -64,12 +67,12 @@ impl Net {
     ) -> Result<ArcStr, anyhow::Error> {
         let (tx, rx) = tokio::sync::oneshot::channel();
         self.tx
-            .send(Message::Get { url, headers, tx })
+            .send(message::Message::Get { url, headers, tx })
             .await
-            .context("Sending message to Net actor")
+            .context("Sending GET message to Net actor")
             .expect("Net actor died");
         rx.await
-            .context("Awaiting response from Net actor")
+            .context("Awaiting GET response from Net actor")
             .expect("Net actor died")
     }
 
@@ -90,15 +93,18 @@ impl Net {
     ) -> Result<ArcStr, anyhow::Error> {
         let (tx, rx) = tokio::sync::oneshot::channel();
         self.tx
-            .send(Message::Post {
+            .send(message::Message::Post {
                 url,
                 headers,
                 body,
                 tx,
             })
             .await
-            .context("Sending message to Net actor")?;
-        rx.await.context("Receiving response from Net actor")?
+            .context("Sending POST message to Net actor")
+            .expect("Net actor died");
+        rx.await
+            .context("Awaiting POST response from Net actor")
+            .expect("Net actor died")
     }
 
     /// Performs an HTTP PUT request to the specified URL.
@@ -118,15 +124,18 @@ impl Net {
     ) -> Result<ArcStr, anyhow::Error> {
         let (tx, rx) = tokio::sync::oneshot::channel();
         self.tx
-            .send(Message::Put {
+            .send(message::Message::Put {
                 url,
                 headers,
                 body,
                 tx,
             })
             .await
-            .context("Sending message to Net actor")?;
-        rx.await.context("Receiving response from Net actor")?
+            .context("Sending PUT message to Net actor")
+            .expect("Net actor died");
+        rx.await
+            .context("Awaiting PUT response from Net actor")
+            .expect("Net actor died")
     }
 
     /// Performs an HTTP DELETE request to the specified URL.
@@ -144,10 +153,13 @@ impl Net {
     ) -> Result<ArcStr, anyhow::Error> {
         let (tx, rx) = tokio::sync::oneshot::channel();
         self.tx
-            .send(Message::Delete { url, headers, tx })
+            .send(message::Message::Delete { url, headers, tx })
             .await
-            .context("Sending message to Net actor")?;
-        rx.await.context("Receiving response from Net actor")?
+            .context("Sending DELETE message to Net actor")
+            .expect("Net actor died");
+        rx.await
+            .context("Awaiting DELETE response from Net actor")
+            .expect("Net actor died")
     }
 
     /// Performs an HTTP PATCH request to the specified URL.
@@ -167,14 +179,17 @@ impl Net {
     ) -> Result<ArcStr, anyhow::Error> {
         let (tx, rx) = tokio::sync::oneshot::channel();
         self.tx
-            .send(Message::Patch {
+            .send(message::Message::Patch {
                 url,
                 headers,
                 body,
                 tx,
             })
             .await
-            .context("Sending message to Net actor")?;
-        rx.await.context("Receiving response from Net actor")?
+            .context("Sending PATCH message to Net actor")
+            .expect("Net actor died");
+        rx.await
+            .context("Awaiting PATCH response from Net actor")
+            .expect("Net actor died")
     }
 }

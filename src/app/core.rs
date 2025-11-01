@@ -1,29 +1,45 @@
 use anyhow::Result;
-use std::env::VarError;
-use std::path::Path;
-use tokio::sync::mpsc;
-use tokio::task::JoinHandle;
+use std::sync::Arc;
+use tokio::sync::{mpsc, oneshot};
 
-use crate::api::lore::LoreApi;
-use crate::app::cache::{FeedCache, MailingListCache, PatchCache};
-use crate::app::config::{Config, PathOpt, USizeOpt};
-use crate::app::ui::{NavigationAction, Ui};
+use crate::ArcStr;
 #[cfg(not(test))]
-use crate::env::Env;
+use crate::{
+    api::lore::LoreApi,
+    app::{
+        cache::{feed::FeedCache, mailing_list::MailingListCache, patch::PatchCache},
+        config::Config,
+        ui::Ui,
+    },
+    env::Env,
+    fs::Fs,
+    log::Log,
+    render::Render,
+    shell::Shell,
+    terminal::Terminal,
+};
 #[cfg(test)]
-use crate::env::mock::MockEnv as Env;
-#[cfg(not(test))]
-use crate::fs::Fs;
-#[cfg(test)]
-use crate::fs::mock::MockFs as Fs;
-use crate::log::Log;
-use crate::net::Net;
-use crate::render::Render;
-use crate::shell::Shell;
-use crate::terminal::{Terminal, UiEvent};
-use crate::{ArcOsStr, ArcPath, ArcStr};
+use crate::{
+    api::lore::mock::MockLoreApi as LoreApi,
+    app::{
+        cache::{
+            feed::mock::MockFeedCache as FeedCache,
+            mailing_list::mock::MockMailingListCache as MailingListCache,
+            patch::mock::MockPatchCache as PatchCache,
+        },
+        config::mock::MockConfig as Config,
+        ui::mock::MockUi as Ui,
+    },
+    env::mock::MockEnv as Env,
+    fs::mock::MockFs as Fs,
+    log::mock::MockLog as Log,
+    render::mock::MockRender as Render,
+    shell::mock::MockShell as Shell,
+    terminal::mock::MockTerminal as Terminal,
+};
+use crate::{app::ui::NavigationAction, terminal::UiEvent};
 
-use super::data::{AppState, Command};
+use super::data::AppState;
 use super::message::Message;
 
 const BUFFER_SIZE: usize = 64;
@@ -42,8 +58,6 @@ pub struct Core {
     config: Config,
     /// Logging actor
     log: Log,
-    /// Network actor
-    net: Net,
     /// Lore API actor
     lore: LoreApi,
     /// Shell actor
@@ -56,78 +70,29 @@ pub struct Core {
     feed_cache: FeedCache,
     /// Patch cache actor
     patch_cache: PatchCache,
+    /// Terminal actor
+    terminal: Terminal,
+    /// UI actor
+    ui: Ui,
 }
 
 impl Core {
     /// Build a new App actor core with full initialization
-    pub async fn build(env: Env, fs: Fs) -> Result<Self> {
-        // Set up configuration
-        let home = env.env(ArcOsStr::from("HOME")).await;
-        let config_base = match home {
-            Ok(path) => path,
-            Err(VarError::NotPresent) => {
-                // Try USERPROFILE if HOME is not set
-                env.env(ArcOsStr::from("USERPROFILE")).await?
-            }
-            Err(e) => return Err(e.into()),
-        };
-        let config_dir = Path::new(&config_base).join(".config").join("patch-hub");
-        let config_file_path = config_dir.join("config.toml");
-        let config_path = ArcPath::from(&config_file_path);
-
-        // Ensure the config directory exists
-        let config_dir_path = ArcPath::from(&config_dir);
-        if let Err(e) = fs.mkdir(config_dir_path).await {
-            // If mkdir fails, it might be because the directory already exists
-            // or there's a permission issue. We'll try to continue and let the
-            // config save operation handle any remaining issues.
-            eprintln!("Warning: Failed to create config directory: {}", e);
-        }
-
-        let config = Config::spawn(env.clone(), fs.clone(), config_path);
-        let res = config.load().await;
-
-        if res.is_err() {
-            config.save().await?;
-        }
-
-        // Initialize logging actor
-        let log = Log::spawn(
-            fs.clone(),
-            config.log_level().await,
-            config.usize(USizeOpt::MaxAge).await,
-            config.path(PathOpt::LogDir).await,
-        )
-        .await?;
-
-        // Initialize network and API actors
-        let net = Net::spawn(config.clone(), log.clone()).await;
-        let lore = LoreApi::spawn(net.clone());
-
-        // Initialize shell and render actors
-        let shell = Shell::spawn(log.clone()).await?;
-        let render = Render::spawn(shell.clone(), config.clone()).await?;
-
-        // Initialize cache actors
-        let mailing_list_cache =
-            MailingListCache::spawn(lore.clone(), fs.clone(), config.clone(), log.clone()).await?;
-        let feed_cache =
-            FeedCache::spawn(lore.clone(), fs.clone(), config.clone(), log.clone()).await?;
-        let patch_cache =
-            PatchCache::spawn(lore.clone(), fs.clone(), config.clone(), log.clone()).await?;
-
-        // Load existing cache data
-        if let Err(e) = mailing_list_cache.load().await {
-            log.warn(SCOPE, &format!("Failed to load mailing list cache: {}", e));
-        } else {
-            log.info(SCOPE, "Mailing list cache loaded successfully");
-        }
-
-        log.info(SCOPE, "Cache actors initialized successfully");
-
-        log.info(SCOPE, "App actor initialized successfully");
-
-        Ok(Self {
+    pub fn new(
+        log: Log,
+        fs: Fs,
+        env: Env,
+        config: Config,
+        lore: LoreApi,
+        shell: Shell,
+        render: Render,
+        mailing_list_cache: MailingListCache,
+        feed_cache: FeedCache,
+        patch_cache: PatchCache,
+        terminal: Terminal,
+        ui: Ui,
+    ) -> Self {
+        Self {
             state: AppState {
                 initialized: true,
                 current_command: None,
@@ -136,91 +101,137 @@ impl Core {
             fs,
             config,
             log,
-            net,
             lore,
             shell,
             render,
             mailing_list_cache,
             feed_cache,
             patch_cache,
-        })
+            terminal,
+            ui,
+        }
     }
 
-    /// Spawn the App actor for interactive mode
-    pub fn spawn_interactive(self) -> Result<(super::App, JoinHandle<()>)> {
-        // Create Terminal and UI actors for interactive mode
-        let (ui_tx, ui_rx) = tokio::sync::mpsc::channel(64);
-        let (terminal, ui_exit) = Terminal::spawn(self.log.clone(), ui_tx.clone());
-        let (ui, _ui_handle) = Ui::spawn(
-            self.log.clone(),
+    /// Initialize the App actor message receiver
+    ///
+    /// This method processes messages from the receiver in a loop using tokio::select!
+    /// to handle both incoming messages and UI events from the terminal.
+    pub async fn init(self, mut rx: mpsc::Receiver<Message>) {
+        let Self {
             terminal,
-            self.mailing_list_cache.clone(),
-            self.feed_cache.clone(),
-            self.patch_cache.clone(),
-            self.render.clone(),
-        );
+            ui,
+            log,
+            mailing_list_cache,
+            feed_cache,
+            ..
+        } = self;
+        let terminal_handle = terminal.handle().clone();
+        let terminal_for_events = terminal.clone();
 
-        let (tx, mut rx) = mpsc::channel(BUFFER_SIZE);
-        let handle = tokio::spawn(async move {
-            let mut core = self;
-            let mut ui_event_rx = ui_rx;
-            let mut ui_exit = ui_exit;
+        // Start with lists view
+        let _ = ui.show_lists(0).await;
 
-            // Start with lists view
-            let _ = ui.show_lists(0).await;
-
-            loop {
-                tokio::select! {
-                    Some(message) = rx.recv() => {
-                        match message {
-                            Message::ExecuteCommand { command, tx } => {
-                                let result = core.handle_execute_command(command).await;
-                                let _ = tx.send(result);
-                            }
-                            Message::KeyEvent { event } => {
-                                core.handle_key_event(&ui, event).await;
-                            }
-                            Message::Shutdown { tx } => {
-                                let result = core.handle_shutdown().await;
-                                let _ = tx.send(result);
-                                break; // Exit the message loop
-                            }
+        loop {
+            tokio::select! {
+                Some(msg) = rx.recv() => {
+                    use Message::*;
+                    match msg {
+                        KeyEvent { event } => {
+                            Self::handle_key_event_static(&ui, event).await;
+                        }
+                        Shutdown { tx } => {
+                            let result = Self::handle_shutdown_static(
+                                &log,
+                                &mailing_list_cache,
+                                &feed_cache,
+                            ).await;
+                            let _ = tx.send(result);
+                            break;
                         }
                     }
-                    Some(ui_event) = ui_event_rx.recv() => {
-                        // Forward UI events to key event handler
-                        core.handle_key_event(&ui, ui_event).await;
+                }
+                event = terminal_for_events.get_ui_event() => {
+                    if let Some(event) = event {
+                        Self::handle_key_event_static(&ui, event).await;
                     }
-                    _ = &mut ui_exit => {
-                        // UI exited, shutdown
-                        let _ = core.handle_shutdown().await;
-                        break;
+                    // If no event, continue polling
+                }
+                _ = Self::await_terminal_handle(terminal_handle.clone()) => {
+                    // Terminal exited, shutdown
+                    let _ = Self::handle_shutdown_static(
+                        &log,
+                        &mailing_list_cache,
+                        &feed_cache,
+                    ).await;
+                    break;
+                }
+            }
+        }
+    }
+
+    /// Helper function to await a JoinHandle wrapped in an Arc
+    ///
+    /// This function properly awaits the terminal task's JoinHandle to detect panics or errors.
+    /// Since the JoinHandle is wrapped in Arc (preventing direct awaiting), we use a background
+    /// task that monitors completion and properly awaits to catch any panics or errors.
+    async fn await_terminal_handle(handle: Arc<tokio::task::JoinHandle<()>>) {
+        let (tx, rx) = oneshot::channel::<Result<(), tokio::task::JoinError>>();
+        let handle_for_monitor = handle.clone();
+
+        // Spawn a monitoring task that waits for completion and checks for errors
+        tokio::spawn(async move {
+            // Use interval for more efficient polling than fixed sleep loops
+            let mut interval = tokio::time::interval(std::time::Duration::from_millis(100));
+            interval.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
+
+            loop {
+                interval.tick().await;
+
+                if handle_for_monitor.is_finished() {
+                    // Try to unwrap the Arc to get the JoinHandle and properly await it
+                    // This allows us to catch panics and errors from the terminal task
+                    match Arc::try_unwrap(handle_for_monitor) {
+                        Ok(join_handle) => {
+                            // Properly await to catch panics and errors
+                            let result = join_handle.await;
+                            let _ = tx.send(result);
+                            break;
+                        }
+                        Err(_arc_handle) => {
+                            // Multiple owners still exist, we can't await directly
+                            // Log a warning and signal completion (best-effort error detection)
+                            eprintln!(
+                                "Warning: Terminal JoinHandle has multiple owners, cannot check for panics"
+                            );
+                            let _ = tx.send(Ok(()));
+                            break;
+                        }
                     }
                 }
             }
         });
-        Ok((super::App::Actual(tx), handle))
-    }
 
-    /// Handle command execution
-    async fn handle_execute_command(&mut self, command: Command) -> Result<()> {
-        self.state.current_command = Some(command.clone());
-
-        match command {
-            Command::Lists { page, count } => self.handle_lists_command(page, count).await,
-            Command::Feed { list, page, count } => {
-                self.handle_feed_command(list, page, count).await
+        // Wait for the monitor task to signal completion
+        // This provides a clean completion signal for tokio::select!
+        match rx.await {
+            Ok(Ok(())) => {
+                // Terminal task completed successfully
             }
-            Command::Patch {
-                list,
-                message_id,
-                html,
-            } => self.handle_patch_command(list, message_id, html).await,
+            Ok(Err(e)) => {
+                // Terminal task panicked, propagate the error
+                eprintln!("Terminal task panicked: {:?}", e);
+                // Note: We could propagate this further if needed, but for now we log it
+                // The shutdown will still proceed
+            }
+            Err(_) => {
+                // Monitor task itself panicked or was dropped (shouldn't happen)
+                eprintln!("Warning: Terminal handle monitor task failed");
+            }
         }
     }
 
     /// Handle key events from the terminal
-    async fn handle_key_event(&self, ui: &Ui, event: UiEvent) {
+    async fn handle_key_event_static(ui: &Ui, event: UiEvent) {
         match event {
             UiEvent::SelectionChange(index) => {
                 ui.update_selection(index).await;
@@ -257,135 +268,28 @@ impl Core {
     }
 
     /// Handle graceful shutdown
-    pub async fn handle_shutdown(&self) -> Result<()> {
-        self.log.info(SCOPE, "Shutting down application");
+    async fn handle_shutdown_static(
+        log: &Log,
+        mailing_list_cache: &MailingListCache,
+        feed_cache: &FeedCache,
+    ) -> Result<()> {
+        log.info(SCOPE, "Shutting down application".to_string());
 
         // Persist cache data before exiting
-        if let Err(e) = self.mailing_list_cache.persist().await {
-            self.log.warn(
+        if let Err(e) = mailing_list_cache.persist().await {
+            log.warn(
                 SCOPE,
-                &format!("Failed to persist mailing list cache: {}", e),
+                format!("Failed to persist mailing list cache: {}", e),
             );
         }
-        if let Err(e) = self.feed_cache.persist(ArcStr::from("")).await {
-            self.log.warn(
+        if let Err(e) = feed_cache.persist(ArcStr::from("")).await {
+            log.warn(
                 SCOPE,
-                &format!("Failed to persist patch metadata cache: {}", e),
+                format!("Failed to persist patch metadata cache: {}", e),
             );
         }
 
-        self.log.info(SCOPE, "Application shutdown complete");
-        Ok(())
-    }
-
-    /// Handle the lists command to display available mailing lists using cache
-    pub async fn handle_lists_command(&self, page: usize, count: usize) -> Result<()> {
-        println!("Fetching mailing lists (page {}, count {})...", page, count);
-
-        let start_index = page * count;
-        let end_index = start_index + count;
-        let range = start_index..end_index;
-
-        let lists = self.mailing_list_cache.get_slice(range).await?;
-
-        if lists.is_empty() {
-            println!("No mailing lists found for page {}", page);
-            return Ok(());
-        }
-
-        println!(
-            "Mailing Lists (Page {}, showing items {} to {}):",
-            page,
-            start_index + 1,
-            start_index + lists.len()
-        );
-        println!();
-
-        for (i, list) in lists.iter().enumerate() {
-            let global_index = start_index + i + 1;
-            println!("{}. {} - {}", global_index, list.name, list.description);
-            println!(
-                "   Last update: {}",
-                list.last_update.format("%Y-%m-%d %H:%M:%S UTC")
-            );
-            println!();
-        }
-
-        Ok(())
-    }
-
-    /// Handle the feed command to display patch feed for a mailing list using cache
-    pub async fn handle_feed_command(&self, list: ArcStr, page: usize, count: usize) -> Result<()> {
-        println!(
-            "Fetching patch feed for '{}' (page {}, count {})...",
-            list, page, count
-        );
-
-        let start_index = page * count;
-        let end_index = start_index + count;
-        let range = start_index..end_index;
-
-        let patches = self.feed_cache.get_slice(list.clone(), range).await?;
-
-        if patches.is_empty() {
-            println!("No patch feed found for '{}' on page {}", list, page);
-            return Ok(());
-        }
-
-        println!(
-            "Patch Feed for '{}' (Page {}, showing items {} to {}):",
-            list,
-            page,
-            start_index + 1,
-            start_index + patches.len()
-        );
-        println!();
-
-        for (i, patch) in patches.iter().enumerate() {
-            let global_index = start_index + i + 1;
-            println!("{}. {}", global_index, patch.title);
-            println!("   Author: {} <{}>", patch.author, patch.email);
-            println!(
-                "   Date: {}",
-                patch.last_update.format("%Y-%m-%d %H:%M:%S UTC")
-            );
-            println!("   Message ID: {}", patch.message_id);
-            println!("   Link: {}", patch.link);
-            println!();
-        }
-
-        Ok(())
-    }
-
-    /// Handle the patch command to display patch content
-    pub async fn handle_patch_command(
-        &self,
-        list: ArcStr,
-        message_id: ArcStr,
-        html: bool,
-    ) -> Result<()> {
-        println!(
-            "Fetching patch content for '{}' with message ID '{}'...",
-            list, message_id
-        );
-
-        let content = if html {
-            self.lore.get_patch_html(list, message_id).await?
-        } else {
-            self.lore.get_raw_patch(list, message_id).await?
-        };
-
-        if html {
-            println!("Patch content:");
-            println!("{}", "=".repeat(80));
-            println!("{}", content);
-            println!("{}", "=".repeat(80));
-        } else {
-            // Use the render actor to render the raw patch content
-            let rendered_content = self.render.render_patch(content).await?;
-            println!("{}", rendered_content);
-        }
-
+        log.info(SCOPE, "Application shutdown complete".to_string());
         Ok(())
     }
 }

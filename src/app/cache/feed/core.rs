@@ -2,14 +2,18 @@ use super::data::FeedData;
 use super::message::Message;
 use crate::ArcPath;
 use crate::ArcStr;
-use crate::api::lore::{LoreApi, LorePatchMetadata};
-use crate::app::config::Config;
-use crate::fs::Fs;
-use crate::log::Log;
+use crate::api::lore::LorePatchMetadata;
 use anyhow::Context;
 use std::collections::HashMap;
 use tokio::sync::mpsc;
-use tokio::task::JoinHandle;
+
+#[cfg(not(test))]
+use crate::{api::lore::LoreApi, app::config::Config, fs::Fs, log::Log};
+#[cfg(test)]
+use crate::{
+    api::lore::mock::MockLoreApi as LoreApi, app::config::mock::MockConfig as Config,
+    fs::mock::MockFs as Fs, log::mock::MockLog as Log,
+};
 
 const BUFFER_SIZE: usize = 100;
 const SCOPE: &str = "app.cache.feed";
@@ -45,54 +49,47 @@ impl Core {
     }
 
     /// Spawns the actor and returns the public interface and join handle.
-    pub fn spawn(self) -> (super::FeedCache, JoinHandle<()>) {
-        let (tx, mut rx) = mpsc::channel(BUFFER_SIZE);
-        let handle = tokio::spawn(async move {
-            let mut core = self;
-
-            while let Some(message) = rx.recv().await {
-                match message {
-                    Message::Get { list, index, tx } => {
-                        let result = core.handle_get(&list, index).await;
-                        let _ = tx.send(result);
-                    }
-                    Message::GetSlice { list, range, tx } => {
-                        let result = core.handle_get_slice(&list, range).await;
-                        let _ = tx.send(result);
-                    }
-                    Message::Refresh { list, tx } => {
-                        let result = core.refresh_cache(&list).await;
-                        let _ = tx.send(result);
-                    }
-                    Message::Invalidate { list, tx } => {
-                        let result = core.handle_invalidate(&list).await;
-                        let _ = tx.send(result);
-                    }
-                    Message::IsAvailable { list, range, tx } => {
-                        let result = core.handle_is_available(&list, range);
-                        let _ = tx.send(result);
-                    }
-                    Message::Len { list, tx } => {
-                        let result = core.data.len(&list);
-                        let _ = tx.send(result);
-                    }
-                    Message::Persist { list, tx } => {
-                        let result = core.persist_cache(&list).await;
-                        let _ = tx.send(result);
-                    }
-                    Message::Load { list, tx } => {
-                        let result = core.load_cache(&list).await;
-                        let _ = tx.send(result);
-                    }
-                    Message::IsLoaded { list, tx } => {
-                        let result = core.data.feeds.contains_key(&list.to_string());
-                        let _ = tx.send(result);
-                    }
+    pub async fn init(mut self, mut rx: mpsc::Receiver<Message>) {
+        while let Some(message) = rx.recv().await {
+            match message {
+                Message::Get { list, index, tx } => {
+                    let result = self.handle_get(&list, index).await;
+                    let _ = tx.send(result);
+                }
+                Message::GetSlice { list, range, tx } => {
+                    let result = self.handle_get_slice(&list, range).await;
+                    let _ = tx.send(result);
+                }
+                Message::Refresh { list, tx } => {
+                    let result = self.refresh_cache(&list).await;
+                    let _ = tx.send(result);
+                }
+                Message::Invalidate { list, tx } => {
+                    let result = self.handle_invalidate(&list).await;
+                    let _ = tx.send(result);
+                }
+                Message::IsAvailable { list, range, tx } => {
+                    let result = self.handle_is_available(&list, range);
+                    let _ = tx.send(result);
+                }
+                Message::Len { list, tx } => {
+                    let result = self.data.len(&list);
+                    let _ = tx.send(result);
+                }
+                Message::Persist { list, tx } => {
+                    let result = self.persist_cache(&list).await;
+                    let _ = tx.send(result);
+                }
+                Message::Load { list, tx } => {
+                    let result = self.load_cache(&list).await;
+                    let _ = tx.send(result);
+                }
+                Message::IsLoaded { list, tx } => {
+                    let result = self.data.feeds.contains_key(&list.to_string());
+                    let _ = tx.send(result);
                 }
             }
-        });
-
-        (super::FeedCache::Actual(tx), handle)
+        }
     }
 
     /// Handles getting a single patch metadata item by index.
@@ -187,7 +184,7 @@ impl Core {
 
         self.log.info(
             SCOPE,
-            &format!(
+            format!(
                 "Fetching pages for list '{}' until index {} (current: {})",
                 list, target_index, min_index
             ),
@@ -243,7 +240,7 @@ impl Core {
 
         self.log.info(
             SCOPE,
-            &format!(
+            format!(
                 "Fetched pages for list '{}', now have {} items",
                 list,
                 self.data.len(list)
@@ -256,7 +253,7 @@ impl Core {
     /// Refreshes the cache for a specific mailing list with smart pagination.
     async fn refresh_cache(&mut self, list: &str) -> anyhow::Result<()> {
         self.log
-            .info(SCOPE, &format!("Refreshing feed cache for list: {}", list));
+            .info(SCOPE, format!("Refreshing feed cache for list: {}", list));
 
         // Check if cache is empty
         if self
@@ -269,7 +266,7 @@ impl Core {
             // Cache is empty, fetch just one page
             self.log.info(
                 SCOPE,
-                &format!("Cache empty for list '{}', fetching first page", list),
+                format!("Cache empty for list '{}', fetching first page", list),
             );
             self.fetch_until_index(list, 0).await?;
             return Ok(());
@@ -284,7 +281,7 @@ impl Core {
 
         self.log.info(
             SCOPE,
-            &format!(
+            format!(
                 "Cache not empty for list '{}', fetching until we find item: {}",
                 list, newest_cached_message_id
             ),
@@ -318,7 +315,7 @@ impl Core {
                         // Found our newest cached item, we're done
                         self.log.info(
                             SCOPE,
-                            &format!(
+                            format!(
                                 "Found newest cached item in page for list '{}', stopping refresh",
                                 list
                             ),
@@ -358,7 +355,7 @@ impl Core {
 
         self.log.info(
             SCOPE,
-            &format!(
+            format!(
                 "Refreshed cache for list '{}', added {} new items, total: {}",
                 list,
                 new_items_count,
@@ -444,7 +441,7 @@ impl Core {
 
         self.log.info(
             SCOPE,
-            &format!("Loaded {} items for list: {}", self.data.len(list), list),
+            format!("Loaded {} items for list: {}", self.data.len(list), list),
         );
         Ok(())
     }

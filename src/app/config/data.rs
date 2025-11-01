@@ -46,7 +46,7 @@ impl Renderer {
 }
 
 /// Options for path-based configuration values that can be accessed and modified.
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum PathOpt {
     /// Directory where log files are stored
     LogDir,
@@ -55,7 +55,7 @@ pub enum PathOpt {
 }
 
 /// Options for numeric configuration values that can be accessed and modified.
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum USizeOpt {
     /// Maximum age of log files in days before they are deleted
     MaxAge,
@@ -64,7 +64,7 @@ pub enum USizeOpt {
 }
 
 /// Options for renderer configuration values that can be accessed and modified.
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum RendererOpt {
     /// The renderer to use for patch content
     PatchRenderer,

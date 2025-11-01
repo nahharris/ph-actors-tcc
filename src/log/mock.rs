@@ -2,16 +2,17 @@
 use mockall::mock;
 
 #[cfg(test)]
-use crate::log::LogMessage;
-#[cfg(test)]
-use tokio::task::JoinHandle;
-
-#[cfg(test)]
 mock! {
     #[derive(Debug)]
     pub Log {
         pub async fn collect_garbage(&self);
-        pub fn flush(self) -> JoinHandle<()>;
-        pub async fn get_messages(&self) -> Option<Vec<LogMessage>>;
+        pub async fn flush(self) -> anyhow::Result<()>;
+        pub fn info(&self, scope: &'static str, message: String);
+        pub fn warn(&self, scope: &'static str, message: String);
+        pub fn error(&self, scope: &'static str, message: String);
+    }
+
+    impl Clone for Log {
+        fn clone(&self) -> Self;
     }
 }

@@ -469,3 +469,429 @@ impl FromStr for SequenceNumber {
         Ok(Self { current, total })
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::ffi::OsString;
+
+    // ArcStr tests
+    #[test]
+    fn test_arcstr_from_string() {
+        let s = String::from("test");
+        let arc_str = ArcStr::from(s);
+        assert_eq!(arc_str.as_ref() as &str, "test");
+    }
+
+    #[test]
+    fn test_arcstr_from_str() {
+        let arc_str = ArcStr::from("test");
+        assert_eq!(arc_str.as_ref() as &str, "test");
+    }
+
+    #[test]
+    fn test_arcstr_from_string_ref() {
+        let s = "test".to_string();
+        let arc_str = ArcStr::from(&s);
+        assert_eq!(arc_str.as_ref() as &str, "test");
+    }
+
+    #[test]
+    fn test_arcstr_default() {
+        let arc_str = ArcStr::default();
+        assert_eq!(arc_str.as_ref() as &str, "");
+    }
+
+    #[test]
+    fn test_arcstr_display() {
+        let arc_str = ArcStr::from("test");
+        assert_eq!(format!("{}", arc_str), "test");
+    }
+
+    #[test]
+    fn test_arcstr_deref() {
+        let arc_str = ArcStr::from("test");
+        let s: &str = &arc_str;
+        assert_eq!(s, "test");
+    }
+
+    #[test]
+    fn test_arcstr_serialize_deserialize() {
+        // Test serialization/deserialization using TOML format
+        #[derive(Serialize, Deserialize)]
+        struct Wrapper {
+            value: ArcStr,
+        }
+        let wrapper = Wrapper {
+            value: ArcStr::from("test string"),
+        };
+        let toml_str = toml::to_string(&wrapper).unwrap();
+        let deserialized: Wrapper = toml::from_str(&toml_str).unwrap();
+        assert_eq!(
+            wrapper.value.as_ref() as &str,
+            deserialized.value.as_ref() as &str
+        );
+    }
+
+    #[test]
+    fn test_arcstr_clone() {
+        let arc_str1 = ArcStr::from("test");
+        let arc_str2 = arc_str1.clone();
+        assert_eq!(arc_str1.as_ref() as &str, arc_str2.as_ref() as &str);
+        // Both should point to the same underlying data (Arc)
+        assert_eq!(arc_str1, arc_str2);
+    }
+
+    // ArcPath tests
+    #[test]
+    fn test_arcpath_from_path() {
+        let path = Path::new("/tmp/test");
+        let arc_path = ArcPath::from(path);
+        assert_eq!(AsRef::<Path>::as_ref(&arc_path), path);
+    }
+
+    #[test]
+    fn test_arcpath_from_str() {
+        let arc_path = ArcPath::from("/tmp/test");
+        assert_eq!(AsRef::<Path>::as_ref(&arc_path), Path::new("/tmp/test"));
+    }
+
+    #[test]
+    fn test_arcpath_default() {
+        let arc_path = ArcPath::default();
+        assert_eq!(AsRef::<Path>::as_ref(&arc_path), Path::new(""));
+    }
+
+    #[test]
+    fn test_arcpath_deref() {
+        let arc_path = ArcPath::from("/tmp/test");
+        let path: &Path = &arc_path;
+        assert_eq!(path, Path::new("/tmp/test"));
+    }
+
+    #[test]
+    fn test_arcpath_as_ref_osstr() {
+        let arc_path = ArcPath::from("/tmp/test");
+        let os_str: &OsStr = arc_path.as_ref();
+        assert_eq!(os_str, OsStr::new("/tmp/test"));
+    }
+
+    #[test]
+    fn test_arcpath_serialize_deserialize() {
+        #[derive(Serialize, Deserialize)]
+        struct Wrapper {
+            value: ArcPath,
+        }
+        let wrapper = Wrapper {
+            value: ArcPath::from("/tmp/test"),
+        };
+        let toml_str = toml::to_string(&wrapper).unwrap();
+        let deserialized: Wrapper = toml::from_str(&toml_str).unwrap();
+        assert_eq!(
+            AsRef::<Path>::as_ref(&wrapper.value),
+            AsRef::<Path>::as_ref(&deserialized.value)
+        );
+    }
+
+    #[test]
+    fn test_arcpath_with_pathbuf() {
+        let path_buf = std::path::PathBuf::from("/tmp/test");
+        let arc_path = ArcPath::from(path_buf.as_path());
+        assert_eq!(AsRef::<Path>::as_ref(&arc_path), path_buf.as_path());
+    }
+
+    // ArcOsStr tests
+    #[test]
+    fn test_arcosstr_from_str() {
+        let arc_os_str = ArcOsStr::from("test");
+        assert_eq!(arc_os_str.as_ref(), OsStr::new("test"));
+    }
+
+    #[test]
+    fn test_arcosstr_from_osstr() {
+        let os_str = OsStr::new("test");
+        let arc_os_str = ArcOsStr::from(os_str);
+        assert_eq!(arc_os_str.as_ref(), os_str);
+    }
+
+    #[test]
+    fn test_arcosstr_default() {
+        let arc_os_str = ArcOsStr::default();
+        assert_eq!(arc_os_str.as_ref(), OsStr::new(""));
+    }
+
+    #[test]
+    fn test_arcosstr_deref() {
+        let arc_os_str = ArcOsStr::from("test");
+        let os_str: &OsStr = &arc_os_str;
+        assert_eq!(os_str, OsStr::new("test"));
+    }
+
+    #[test]
+    fn test_arcosstr_serialize_deserialize() {
+        #[derive(Serialize, Deserialize)]
+        struct Wrapper {
+            value: ArcOsStr,
+        }
+        let wrapper = Wrapper {
+            value: ArcOsStr::from("test string"),
+        };
+        let toml_str = toml::to_string(&wrapper).unwrap();
+        let deserialized: Wrapper = toml::from_str(&toml_str).unwrap();
+        assert_eq!(wrapper.value.as_ref(), deserialized.value.as_ref());
+    }
+
+    #[test]
+    fn test_arcosstr_from_os_string() {
+        let os_string = OsString::from("test");
+        let arc_os_str = ArcOsStr::from(os_string.as_os_str());
+        assert_eq!(arc_os_str.as_ref(), os_string.as_os_str());
+    }
+
+    // ArcSlice tests
+    #[test]
+    fn test_arcslice_from_slice() {
+        let slice = [1, 2, 3];
+        let arc_slice = ArcSlice::from(slice);
+        assert_eq!(arc_slice.len(), 3);
+        assert_eq!(arc_slice[0], 1);
+        assert_eq!(arc_slice[1], 2);
+        assert_eq!(arc_slice[2], 3);
+    }
+
+    #[test]
+    fn test_arcslice_from_vec() {
+        let vec = vec![1, 2, 3];
+        let arc_slice = ArcSlice::from(vec);
+        assert_eq!(arc_slice.len(), 3);
+    }
+
+    #[test]
+    fn test_arcslice_from_array() {
+        let array = [1, 2, 3];
+        let arc_slice = ArcSlice::from(array);
+        assert_eq!(arc_slice.len(), 3);
+        assert_eq!(arc_slice[0], 1);
+    }
+
+    #[test]
+    fn test_arcslice_default() {
+        let arc_slice: ArcSlice<i32> = ArcSlice::default();
+        assert_eq!(arc_slice.len(), 0);
+        assert!(arc_slice.is_empty());
+    }
+
+    #[test]
+    fn test_arcslice_len() {
+        let arc_slice = ArcSlice::from(&[1, 2, 3][..]);
+        assert_eq!(arc_slice.len(), 3);
+    }
+
+    #[test]
+    fn test_arcslice_is_empty() {
+        let empty: ArcSlice<i32> = ArcSlice::default();
+        assert!(empty.is_empty());
+
+        let non_empty = ArcSlice::from(&[1][..]);
+        assert!(!non_empty.is_empty());
+    }
+
+    #[test]
+    fn test_arcslice_deref() {
+        let arc_slice = ArcSlice::from(&[1, 2, 3][..]);
+        let slice: &[i32] = &arc_slice;
+        assert_eq!(slice, &[1, 2, 3]);
+    }
+
+    #[test]
+    fn test_arcslice_serialize_deserialize() {
+        #[derive(Serialize, Deserialize)]
+        struct Wrapper {
+            value: ArcSlice<i32>,
+        }
+        let wrapper = Wrapper {
+            value: ArcSlice::from(&[1, 2, 3][..]),
+        };
+        let toml_str = toml::to_string(&wrapper).unwrap();
+        let deserialized: Wrapper = toml::from_str(&toml_str).unwrap();
+        assert_eq!(wrapper.value.len(), deserialized.value.len());
+        assert_eq!(wrapper.value[0], deserialized.value[0]);
+    }
+
+    #[test]
+    fn test_arcslice_empty_slice() {
+        let arc_slice: ArcSlice<i32> = ArcSlice::from([]);
+        assert!(arc_slice.is_empty());
+        assert_eq!(arc_slice.len(), 0);
+    }
+
+    // ArcVec tests
+    #[test]
+    fn test_arcvec_from_vec() {
+        let vec = vec![1, 2, 3];
+        let arc_vec = ArcVec::from(vec);
+        assert_eq!(arc_vec.len(), 3);
+    }
+
+    #[test]
+    fn test_arcvec_default() {
+        let arc_vec: ArcVec<i32> = ArcVec::default();
+        assert_eq!(arc_vec.len(), 0);
+        assert!(arc_vec.is_empty());
+    }
+
+    #[test]
+    fn test_arcvec_len() {
+        let arc_vec = ArcVec::from(vec![1, 2, 3]);
+        assert_eq!(arc_vec.len(), 3);
+    }
+
+    #[test]
+    fn test_arcvec_is_empty() {
+        let empty: ArcVec<i32> = ArcVec::default();
+        assert!(empty.is_empty());
+
+        let non_empty = ArcVec::from(vec![1]);
+        assert!(!non_empty.is_empty());
+    }
+
+    #[test]
+    fn test_arcvec_as_vec() {
+        let arc_vec = ArcVec::from(vec![1, 2, 3]);
+        let vec_ref = arc_vec.as_vec();
+        assert_eq!(vec_ref, &vec![1, 2, 3]);
+    }
+
+    #[test]
+    fn test_arcvec_deref() {
+        let arc_vec = ArcVec::from(vec![1, 2, 3]);
+        let vec_ref: &Vec<i32> = &arc_vec;
+        assert_eq!(vec_ref, &vec![1, 2, 3]);
+    }
+
+    #[test]
+    fn test_arcvec_index() {
+        let arc_vec = ArcVec::from(vec![1, 2, 3]);
+        assert_eq!(arc_vec[0], 1);
+        assert_eq!(arc_vec[1], 2);
+        assert_eq!(arc_vec[2], 3);
+    }
+
+    #[test]
+    fn test_arcvec_serialize_deserialize() {
+        #[derive(Serialize, Deserialize)]
+        struct Wrapper {
+            value: ArcVec<i32>,
+        }
+        let wrapper = Wrapper {
+            value: ArcVec::from(vec![1, 2, 3]),
+        };
+        let toml_str = toml::to_string(&wrapper).unwrap();
+        let deserialized: Wrapper = toml::from_str(&toml_str).unwrap();
+        assert_eq!(wrapper.value.len(), deserialized.value.len());
+        assert_eq!(wrapper.value[0], deserialized.value[0]);
+    }
+
+    #[test]
+    fn test_arcvec_empty_vec() {
+        let arc_vec: ArcVec<i32> = ArcVec::from(vec![]);
+        assert!(arc_vec.is_empty());
+        assert_eq!(arc_vec.len(), 0);
+    }
+
+    // SequenceNumber tests
+    #[test]
+    fn test_sequencenumber_new() {
+        let seq = SequenceNumber::new(2, 5);
+        assert_eq!(seq.current, 2);
+        assert_eq!(seq.total, 5);
+    }
+
+    #[test]
+    fn test_sequencenumber_display() {
+        let seq = SequenceNumber::new(2, 5);
+        assert_eq!(format!("{}", seq), "2/5");
+    }
+
+    #[test]
+    fn test_sequencenumber_from_str_valid() {
+        let seq = SequenceNumber::from_str("2/5").unwrap();
+        assert_eq!(seq.current, 2);
+        assert_eq!(seq.total, 5);
+    }
+
+    #[test]
+    fn test_sequencenumber_from_str_invalid_format() {
+        let result = SequenceNumber::from_str("invalid");
+        assert!(result.is_err());
+
+        let result = SequenceNumber::from_str("2");
+        assert!(result.is_err());
+
+        let result = SequenceNumber::from_str("2/3/4");
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_sequencenumber_from_str_invalid_numbers() {
+        let result = SequenceNumber::from_str("abc/5");
+        assert!(result.is_err());
+
+        let result = SequenceNumber::from_str("2/def");
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_sequencenumber_from_tuple() {
+        let seq = SequenceNumber::from((2usize, 5usize));
+        assert_eq!(seq.current, 2);
+        assert_eq!(seq.total, 5);
+    }
+
+    #[test]
+    fn test_sequencenumber_into_tuple() {
+        let seq = SequenceNumber::new(2, 5);
+        let (current, total): (usize, usize) = seq.into();
+        assert_eq!(current, 2);
+        assert_eq!(total, 5);
+    }
+
+    #[test]
+    fn test_sequencenumber_from_str_large_numbers() {
+        let seq = SequenceNumber::from_str("100/200").unwrap();
+        assert_eq!(seq.current, 100);
+        assert_eq!(seq.total, 200);
+    }
+
+    #[test]
+    fn test_sequencenumber_from_str_zero() {
+        let seq = SequenceNumber::from_str("0/10").unwrap();
+        assert_eq!(seq.current, 0);
+        assert_eq!(seq.total, 10);
+    }
+
+    #[test]
+    fn test_sequencenumber_serialize_deserialize() {
+        let seq = SequenceNumber::new(2, 5);
+        let toml_str = toml::to_string(&seq).unwrap();
+        let deserialized: SequenceNumber = toml::from_str(&toml_str).unwrap();
+        assert_eq!(seq.current, deserialized.current);
+        assert_eq!(seq.total, deserialized.total);
+    }
+
+    #[test]
+    fn test_sequencenumber_clone() {
+        let seq1 = SequenceNumber::new(2, 5);
+        let seq2 = seq1.clone();
+        assert_eq!(seq1, seq2);
+    }
+
+    #[test]
+    fn test_sequencenumber_equality() {
+        let seq1 = SequenceNumber::new(2, 5);
+        let seq2 = SequenceNumber::new(2, 5);
+        let seq3 = SequenceNumber::new(3, 5);
+        assert_eq!(seq1, seq2);
+        assert_ne!(seq1, seq3);
+    }
+}

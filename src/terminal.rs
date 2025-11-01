@@ -1,5 +1,6 @@
 use anyhow::Context;
-use tokio::sync::mpsc;
+use std::sync::Arc;
+use tokio::sync::{mpsc, oneshot};
 use tokio::task::JoinHandle;
 
 use crate::log::Log;
@@ -7,63 +8,89 @@ use crate::log::Log;
 mod core;
 mod data;
 mod message;
-mod mock;
+#[cfg(test)]
+pub mod mock;
+#[cfg(test)]
+mod tests;
 
-use data::MockData;
 pub use data::{Screen, UiEvent};
 use message::Message;
 
 /// The terminal actor that owns the Cursive event loop and exposes a message-based API.
 #[derive(Debug, Clone)]
-pub enum Terminal {
-    Actual(mpsc::Sender<Message>),
-    Mock(mock::Mock),
+pub struct Terminal {
+    tx: mpsc::Sender<Message>,
+    /// Join handle that completes when the terminal exits
+    handle: Arc<JoinHandle<()>>,
 }
 
 impl Terminal {
     /// Spawns a terminal actor using the Cursive `crossterm` backend.
     ///
-    /// The actor sends `UiEvent`s to `ui_events` and accepts `Message`s to update the UI.
-    /// Returns the terminal interface and a JoinHandle that completes when the UI exits.
-    pub fn spawn(log: Log, ui_events: mpsc::Sender<UiEvent>) -> (Self, JoinHandle<()>) {
+    /// The actor stores `UiEvent`s in an internal FIFO queue and accepts `Message`s to update the UI.
+    /// Returns the terminal interface with the join handle stored as a field.
+    pub fn spawn(log: Log) -> Self {
         let (tx, rx) = mpsc::channel(crate::BUFFER_SIZE);
-        let core = core::Core::new(log, ui_events);
+        let core = core::Core::new(log);
         let handle = tokio::spawn(async move {
             core.init(rx).await;
         });
-        (Self::Actual(tx), handle)
+        Self {
+            tx,
+            handle: Arc::new(handle),
+        }
     }
 
-    /// Creates a mock terminal for testing.
-    pub fn mock(data: MockData) -> Self {
-        Self::Mock(mock::Mock::new(data))
+    /// Get a reference to the join handle for awaiting terminal completion
+    pub fn handle(&self) -> &Arc<JoinHandle<()>> {
+        &self.handle
     }
 
     /// Requests the terminal to show a specific screen.
-    pub async fn show(&self, screen: Screen) -> anyhow::Result<()> {
-        match self {
-            Terminal::Actual(tx) => {
-                tx.send(Message::Show(screen))
-                    .await
-                    .context("Sending Show message to terminal")
-                    .expect("Terminal actor died");
-                Ok(())
-            }
-            Terminal::Mock(mock) => mock.show(screen).await,
-        }
+    pub async fn show(&self, screen: Screen) {
+        self.tx
+            .send(Message::Show(screen))
+            .await
+            .context("Sending Show message to terminal")
+            .expect("Terminal actor died");
+    }
+
+    /// Get the next UI event from the terminal's internal queue (pops the head).
+    pub async fn get_ui_event(&self) -> Option<UiEvent> {
+        let (tx, rx) = oneshot::channel();
+        self.tx
+            .send(Message::GetUiEvent { tx })
+            .await
+            .context("Sending GetUiEvent message to terminal")
+            .expect("Terminal actor died");
+        rx.await
+            .context("Awaiting response for GetUiEvent from terminal")
+            .expect("Terminal actor died")
+    }
+
+    /// Clear all UI events from the terminal's internal queue.
+    pub async fn clear_ui_events(&self) {
+        let (tx, rx) = oneshot::channel();
+        self.tx
+            .send(Message::ClearUiEvents { tx })
+            .await
+            .context("Sending ClearUiEvents message to terminal")
+            .expect("Terminal actor died");
+        rx.await
+            .context("Awaiting response for ClearUiEvents from terminal")
+            .expect("Terminal actor died");
     }
 
     /// Requests the terminal to quit.
-    pub async fn quit(&self) -> anyhow::Result<()> {
-        match self {
-            Terminal::Actual(tx) => {
-                tx.send(Message::Quit)
-                    .await
-                    .context("Sending Quit message to terminal")
-                    .expect("Terminal actor died");
-                Ok(())
-            }
-            Terminal::Mock(mock) => mock.quit().await,
-        }
+    pub async fn quit(&self) {
+        let (tx, rx) = oneshot::channel();
+        self.tx
+            .send(Message::Quit { tx })
+            .await
+            .context("Sending Quit message to terminal")
+            .expect("Terminal actor died");
+        rx.await
+            .context("Awaiting response for Quit message from terminal")
+            .expect("Terminal actor died");
     }
 }
