@@ -25,7 +25,6 @@ use crate::{
 use super::data::{UiState, ViewKind};
 use super::message::{Message, NavigationAction};
 
-const BUFFER_SIZE: usize = 32;
 const SCOPE: &str = "app.ui";
 
 /// Core implementation of the UI actor
