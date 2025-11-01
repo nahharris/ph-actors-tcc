@@ -665,7 +665,7 @@ impl Core {
                                 ),
                             );
                             // Invalidate cache so next attempt refetches
-                            self.feed_cache.invalidate(list).await;
+                            let _ = self.feed_cache.invalidate(list).await;
                         } else {
                             self.log
                                 .info(SCOPE, format!("Patch: rendered chars={}", rendered.len()));
@@ -680,7 +680,7 @@ impl Core {
                     }
                     Err(e) => {
                         self.log.error(SCOPE, format!("Patch: render error: {}", e));
-                        self.feed_cache.invalidate(list).await;
+                        let _ = self.feed_cache.invalidate(list).await;
                         self.terminal
                             .show(Screen::Error(ArcStr::from("Failed to render patch")))
                             .await;
@@ -690,7 +690,7 @@ impl Core {
             }
             Err(e) => {
                 self.log.error(SCOPE, format!("Patch: fetch error: {}", e));
-                self.feed_cache.invalidate(list).await;
+                let _ = self.feed_cache.invalidate(list).await;
                 self.terminal
                     .show(Screen::Error(ArcStr::from("Failed to load patch")))
                     .await;
