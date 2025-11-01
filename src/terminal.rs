@@ -10,6 +10,8 @@ mod data;
 mod message;
 #[cfg(test)]
 pub mod mock;
+#[cfg(test)]
+mod tests;
 
 pub use data::{Screen, UiEvent};
 use message::Message;
