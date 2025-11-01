@@ -12,6 +12,8 @@ mod core;
 pub mod message;
 #[cfg(test)]
 pub mod mock;
+#[cfg(test)]
+mod tests;
 
 /// The networking actor that provides a thread-safe interface for network operations.
 ///
