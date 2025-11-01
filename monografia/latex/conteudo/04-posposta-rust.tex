@@ -474,3 +474,79 @@ impl App {
 No exemplo acima, a struct \texttt{App} encapsula o \texttt{Sender} do canal \texttt{mpsc} e fornece métodos públicos que abstraem completamente a lógica de envio de mensagens. O método \texttt{thing()} cria um canal \texttt{oneshot} para receber a resposta, envia a mensagem \texttt{GetThing} e aguarda a resposta. O método \texttt{thing\_alt()} oferece uma alternativa onde retorna o \texttt{Receiver} diretamente, permitindo que o invocador decida quando aguardar pela resposta. O método \texttt{set\_thing()} simplesmente envia a mensagem \texttt{SetThing} com o valor fornecido.
 
 Essa abstração permite que outros atores interajam com o ator sem precisar se preocupar com detalhes de comunicação por canais, mantendo a interface limpa e tipada.
+
+\section{Testabilidade e Mocks}
+
+Uma das principais vantagens da arquitetura baseada em atores é a facilidade de testar componentes isoladamente. Como cada ator possui dependências injetadas através de suas interfaces, é possível substituir dependências reais por implementações mockadas durante os testes.
+
+\subsection{Mockall}
+
+Para simplificar a criação de mocks, este trabalho faz uso da biblioteca \texttt{mockall}, que gera automaticamente implementações mock a partir de traits ou structs. Isso elimina a necessidade de escrever manualmente código boilerplate para mocks e garante que os mocks permaneçam sincronizados com as interfaces reais. O código para mock de um ator deve ser colocado no arquivo \texttt{mock.rs} do módulo do ator e o módulo deve ser declarado como:
+
+\begin{lstlisting}[language=Rust, caption=Exemplo de declaração de módulo para mock]
+#[cfg(test)]
+pub mod mock;
+\end{lstlisting}
+
+Desse modo, o código do mock não será incluso no binário de produção.
+
+\begin{lstlisting}[language=Rust, caption=Exemplo de mock usando mockall]
+mock!{
+    #[derive(Debug)]
+    pub App {
+        pub async fn operation(&self, params: Params) -> Result<Value>;
+    }
+
+    impl Clone for Actor {
+        fn clone(&self) -> Self;
+    }
+}
+\end{lstlisting}
+
+A macro \texttt{mock!} do mockall gera automaticamente uma estrutura com nome \texttt{MockApp} que implementa todos os métodos especificados e permite configurar comportamentos esperados para cada invocação. Além disso, a macro gera implementações de traits como \texttt{Debug} e \texttt{Clone}, mantendo a compatibilidade com a interface original.
+
+\subsection{Integração de Mocks}
+
+Para permitir a substituição fácil entre implementações reais e mockadas, o sistema usa atributos de compilação condicional (\texttt{\#[cfg(test)]} e \texttt{\#[cfg(not(test))]}) para alternar entre as implementações:
+
+\begin{lstlisting}[language=Rust, caption=Alternância entre implementações reais e mockadas]
+#[cfg(not(test))]
+use crate::other_actor::OtherActor;
+
+#[cfg(test)]
+use crate::other_actor::mock::MockOtherActor as OtherActor;
+
+pub struct App {
+    dependency: OtherActor,
+}
+
+impl App {
+    pub fn new(dependency: OtherActor) -> Self {
+        Self { dependency }
+    }
+}
+\end{lstlisting}
+
+Durante a compilação normal, o sistema usa a implementação real \texttt{OtherActor}. Durante a compilação de testes, automaticamente substitui por \texttt{MockOtherActor}. Com o uso de compilação condicional, é possível implementar uma infraestrutura de testes bastante robusta que terá nenhum impacto no código de produção.
+
+\subsection{Testes Unitários}
+
+Com mocks em vigor, escrever testes unitários torna-se direto. Cada teste pode configurar o comportamento esperado de suas dependências mockadas e verificar que o ator sob teste se comporta corretamente:
+
+\begin{lstlisting}[language=Rust, caption=Exemplo de teste unitário com mocks]
+#[tokio::test]
+async fn test_my_actor_operation() {
+    let mut mock_dep = MockOtherActor::new();
+    mock_dep
+        .expect_get_value()
+        .times(1)
+        .returning(|| Ok(42));
+    
+    let actor = App::spawn(mock_dep);
+    let result = actor.operation().await;
+    
+    assert_eq!(result, Ok(42));
+}
+\end{lstlisting}
+
+Os mocks permitem testar tanto cenários de sucesso quanto de falha, validando o tratamento de erros e garantindo que as interações entre atores funcionam corretamente em isolamento.
