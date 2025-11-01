@@ -2,6 +2,8 @@ use cursive::Cursive;
 use cursive::event::{Event, Key};
 use cursive::traits::*;
 use cursive::views::{Dialog, SelectView, TextView};
+use std::collections::VecDeque;
+use std::sync::{Arc, Mutex};
 use std::thread;
 use tokio::sync::mpsc;
 
@@ -14,7 +16,8 @@ const SCOPE: &str = "terminal";
 /// Core implementation of the terminal actor that manages the Cursive UI.
 pub struct Core {
     log: Log,
-    ui_events: mpsc::Sender<UiEvent>,
+    /// Internal FIFO queue for storing UI events
+    ui_events_queue: Arc<Mutex<VecDeque<UiEvent>>>,
 }
 
 impl Core {
@@ -22,9 +25,11 @@ impl Core {
     ///
     /// # Arguments
     /// * `log` - Logging actor for recording terminal events
-    /// * `ui_events` - Channel sender for forwarding UI events to the application
-    pub fn new(log: Log, ui_events: mpsc::Sender<UiEvent>) -> Self {
-        Self { log, ui_events }
+    pub fn new(log: Log) -> Self {
+        Self {
+            log,
+            ui_events_queue: Arc::new(Mutex::new(VecDeque::new())),
+        }
     }
 
     /// Initializes the terminal actor message receiver.
@@ -37,18 +42,20 @@ impl Core {
     pub async fn init(self, mut rx: mpsc::Receiver<Message>) {
         // Spawn the Cursive loop in its own thread and obtain its callback sink
         let (sink_tx, sink_rx) = std::sync::mpsc::channel();
-        let ui_events = self.ui_events.clone();
+        let ui_events_queue = self.ui_events_queue.clone();
 
         // We need to spawn Cursive in a thread because it requires blocking I/O
         // But the actor itself is still a tokio task
         thread::spawn(move || {
             let mut siv = cursive::crossterm();
 
-            // Install global key callbacks to forward to app actor
+            // Install global key callbacks to store events in the queue
             let fwd = |ev: UiEvent| {
-                let tx = ui_events.clone();
+                let queue = ui_events_queue.clone();
                 move |_s: &mut Cursive| {
-                    let _ = tx.try_send(ev);
+                    if let Ok(mut q) = queue.lock() {
+                        q.push_back(ev);
+                    }
                 }
             };
 
@@ -76,7 +83,23 @@ impl Core {
             use Message::*;
             match msg {
                 Show(screen) => {
-                    Self::handle_show_screen(screen, &cb_sink, self.ui_events.clone());
+                    self.handle_show_screen(screen, &cb_sink);
+                }
+                GetUiEvent { tx } => {
+                    let event = {
+                        if let Ok(mut queue) = self.ui_events_queue.lock() {
+                            queue.pop_front()
+                        } else {
+                            None
+                        }
+                    };
+                    let _ = tx.send(event);
+                }
+                ClearUiEvents { tx } => {
+                    if let Ok(mut queue) = self.ui_events_queue.lock() {
+                        queue.clear();
+                    }
+                    let _ = tx.send(());
                 }
                 Quit { tx } => {
                     let _ = cb_sink.send(Box::new(|s: &mut Cursive| s.quit()));
@@ -88,11 +111,8 @@ impl Core {
     }
 
     /// Handles the Show message by updating the UI with the given screen.
-    fn handle_show_screen(
-        screen: Screen,
-        cb_sink: &cursive::CbSink,
-        ui_events: mpsc::Sender<UiEvent>,
-    ) {
+    fn handle_show_screen(&self, screen: Screen, cb_sink: &cursive::CbSink) {
+        let ui_events_queue = self.ui_events_queue.clone();
         let _ = cb_sink.send(Box::new(move |s: &mut Cursive| match screen {
             Screen::Loading(text) => {
                 s.pop_layer();
@@ -115,13 +135,17 @@ impl Core {
                     let label = format!("{} - {}", it.name, it.description);
                     list.add_item(label, i);
                 }
-                let tx_sel = ui_events.clone();
+                let queue_sel = ui_events_queue.clone();
                 list.set_on_select(move |_siv, idx| {
-                    let _ = tx_sel.try_send(UiEvent::SelectionChange(*idx));
+                    if let Ok(mut q) = queue_sel.lock() {
+                        q.push_back(UiEvent::SelectionChange(*idx));
+                    }
                 });
-                let tx_submit = ui_events.clone();
+                let queue_submit = ui_events_queue.clone();
                 list.set_on_submit(move |_siv, idx| {
-                    let _ = tx_submit.try_send(UiEvent::SelectionSubmit(*idx));
+                    if let Ok(mut q) = queue_submit.lock() {
+                        q.push_back(UiEvent::SelectionSubmit(*idx));
+                    }
                 });
                 let len = list.len();
                 let idx = selected.min(len.saturating_sub(1));
@@ -142,13 +166,17 @@ impl Core {
                     let label = format!("{} — {} <{}>", p.title, p.author, p.email);
                     listv.add_item(label, i);
                 }
-                let tx_sel = ui_events.clone();
+                let queue_sel = ui_events_queue.clone();
                 listv.set_on_select(move |_siv, idx| {
-                    let _ = tx_sel.try_send(UiEvent::SelectionChange(*idx));
+                    if let Ok(mut q) = queue_sel.lock() {
+                        q.push_back(UiEvent::SelectionChange(*idx));
+                    }
                 });
-                let tx_submit = ui_events.clone();
+                let queue_submit = ui_events_queue.clone();
                 listv.set_on_submit(move |_siv, idx| {
-                    let _ = tx_submit.try_send(UiEvent::SelectionSubmit(*idx));
+                    if let Ok(mut q) = queue_submit.lock() {
+                        q.push_back(UiEvent::SelectionSubmit(*idx));
+                    }
                 });
                 let len = listv.len();
                 let idx = selected.min(len.saturating_sub(1));
