@@ -214,7 +214,7 @@ O ator Terminal gerencia o loop de eventos da interface de usuário baseada na b
     \item \texttt{Quit}: Termina a UI e sai da aplicação
 \end{itemize}
 
-O ator Terminal também expõe um \texttt{JoinHandle} que permite que outros atores detectem quando o terminal foi encerrado, permitindo encerramento gracioso da aplicação.
+O método \texttt{spawn()} do ator Terminal retorna uma tupla contendo a interface do ator e um \texttt{JoinHandle} que permite que outros atores detectem quando o terminal foi encerrado, permitindo encerramento gracioso da aplicação. Este design evita a necessidade de envolver o \texttt{JoinHandle} em um \texttt{Arc} e simplifica o gerenciamento do ciclo de vida do terminal.
 
 \subsubsection{Shell}
 
@@ -422,6 +422,7 @@ O ator App atua como coordenador central da aplicação, gerenciando o ciclo de 
 \textbf{Mensagens:}
 
 \begin{itemize}
-    \item \texttt{KeyEvent}: Processa um evento de teclado recebido do Terminal
     \item \texttt{Shutdown}: Inicia o processo de encerramento graceful da aplicação
 \end{itemize}
+
+Note que os eventos de teclado são registrados pelo Terminal e processados pelo App. Todavia isto não é feito com uma mensagem enviada pelo Terminal para o App. Mas sim o App que vai solicitar os eventos de UI ao Terminal no momento apropriado. Caso contrário, existiria um ciclo de dependências entre o Terminal e o App. Pois o App depende de Ui, que por sua vez depende de Terminal. Caso o Terminal tivesse de enviar mensagens ao App, então o Terminal dependeria do App, fechando o ciclo.
