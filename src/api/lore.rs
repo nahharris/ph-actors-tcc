@@ -9,9 +9,6 @@ use crate::net::Net;
 #[cfg(test)]
 use crate::net::mock::MockNet as Net;
 
-const SCOPE: &str = "api.lore";
-const BUFFER_SIZE: usize = 64;
-
 mod core;
 pub mod data;
 mod message;
@@ -48,7 +45,7 @@ pub struct LoreApi {
 
 impl LoreApi {
     pub fn spawn(net: Net) -> Self {
-        let (tx, rx) = mpsc::channel(BUFFER_SIZE);
+        let (tx, rx) = mpsc::channel(crate::BUFFER_SIZE);
         let core = core::Core::new(net);
         let _ = tokio::spawn(async move {
             core.init(rx).await;
