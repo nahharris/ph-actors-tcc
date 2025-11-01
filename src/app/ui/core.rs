@@ -1,12 +1,26 @@
 use anyhow::Result;
 use tokio::sync::mpsc;
-use tokio::task::JoinHandle;
 
 use crate::ArcStr;
-use crate::app::cache::{FeedCache, MailingListCache, PatchCache};
-use crate::log::Log;
-use crate::render::Render;
-use crate::terminal::{Screen, Terminal};
+use crate::terminal::Screen;
+#[cfg(not(test))]
+use crate::{
+    app::cache::{feed::FeedCache, mailing_list::MailingListCache, patch::PatchCache},
+    log::Log,
+    render::Render,
+    terminal::Terminal,
+};
+#[cfg(test)]
+use crate::{
+    app::cache::{
+        feed::mock::MockFeedCache as FeedCache,
+        mailing_list::mock::MockMailingListCache as MailingListCache,
+        patch::mock::MockPatchCache as PatchCache,
+    },
+    log::mock::MockLog as Log,
+    render::mock::MockRender as Render,
+    terminal::mock::MockTerminal as Terminal,
+};
 
 use super::data::{UiState, ViewKind};
 use super::message::{Message, NavigationAction};
@@ -54,64 +68,59 @@ impl Core {
     }
 
     /// Spawn the UI actor
-    pub fn spawn(self) -> (super::Ui, JoinHandle<()>) {
-        let (tx, mut rx) = mpsc::channel(BUFFER_SIZE);
-        let handle = tokio::spawn(async move {
-            let mut core = self;
+    pub async fn init(mut self, mut rx: mpsc::Receiver<Message>) {
+        // Show initial loading screen and render lists
+        let _ = self
+            .terminal
+            .show(Screen::Loading(ArcStr::from("Loading mailing lists...")))
+            .await;
+        self.log
+            .info(SCOPE, "Initial render of Lists screen".to_string());
+        let _ = self.render_lists().await;
 
-            // Show initial loading screen and render lists
-            let _ = core
-                .terminal
-                .show(Screen::Loading(ArcStr::from("Loading mailing lists...")))
-                .await;
-            core.log.info(SCOPE, "Initial render of Lists screen");
-            let _ = core.render_lists().await;
-
-            while let Some(message) = rx.recv().await {
-                match message {
-                    Message::ShowLists { page, tx } => {
-                        let result = core.handle_show_lists(page).await;
-                        let _ = tx.send(result);
-                    }
-                    Message::ShowFeed { list, page, tx } => {
-                        let result = core.handle_show_feed(list, page).await;
-                        let _ = tx.send(result);
-                    }
-                    Message::ShowPatch {
-                        list,
-                        message_id,
-                        title,
-                        tx,
-                    } => {
-                        let result = core.handle_show_patch(list, message_id, title).await;
-                        let _ = tx.send(result);
-                    }
-                    Message::UpdateSelection { index } => {
-                        core.handle_update_selection(index);
-                    }
-                    Message::PreviousPage { tx } => {
-                        let result = core.handle_previous_page().await;
-                        let _ = tx.send(result);
-                    }
-                    Message::NextPage { tx } => {
-                        let result = core.handle_next_page().await;
-                        let _ = tx.send(result);
-                    }
-                    Message::NavigateBack { tx } => {
-                        let result = core.handle_navigate_back().await;
-                        let _ = tx.send(result);
-                    }
-                    Message::SubmitSelection { tx } => {
-                        let result = core.handle_submit_selection().await;
-                        let _ = tx.send(result);
-                    }
-                    Message::GetState { tx } => {
-                        let _ = tx.send(core.state.clone());
-                    }
+        while let Some(message) = rx.recv().await {
+            match message {
+                Message::ShowLists { page, tx } => {
+                    let result = self.handle_show_lists(page).await;
+                    let _ = tx.send(result);
+                }
+                Message::ShowFeed { list, page, tx } => {
+                    let result = self.handle_show_feed(list, page).await;
+                    let _ = tx.send(result);
+                }
+                Message::ShowPatch {
+                    list,
+                    message_id,
+                    title,
+                    tx,
+                } => {
+                    let result = self.handle_show_patch(list, message_id, title).await;
+                    let _ = tx.send(result);
+                }
+                Message::UpdateSelection { index } => {
+                    self.handle_update_selection(index);
+                }
+                Message::PreviousPage { tx } => {
+                    let result = self.handle_previous_page().await;
+                    let _ = tx.send(result);
+                }
+                Message::NextPage { tx } => {
+                    let result = self.handle_next_page().await;
+                    let _ = tx.send(result);
+                }
+                Message::NavigateBack { tx } => {
+                    let result = self.handle_navigate_back().await;
+                    let _ = tx.send(result);
+                }
+                Message::SubmitSelection { tx } => {
+                    let result = self.handle_submit_selection().await;
+                    let _ = tx.send(result);
+                }
+                Message::GetState { tx } => {
+                    let _ = tx.send(self.state.clone());
                 }
             }
-        });
-        (super::Ui::Actual(tx), handle)
+        }
     }
 
     /// Handle showing lists view
@@ -132,22 +141,22 @@ impl Core {
         // Show loading screen immediately when transitioning to feed view
         self.terminal
             .show(Screen::Loading(ArcStr::from("Loading feed...")))
-            .await?;
+            .await;
 
         // Ensure cache is loaded from disk
         self.feed_cache.ensure_loaded(list.clone()).await?;
 
         // Check if cache has data
-        let is_empty = self.feed_cache.is_empty(list.clone()).await;
+        let is_empty = self.feed_cache.len(list.clone()).await == 0;
         if is_empty {
             self.log.info(
                 SCOPE,
-                &format!("Feed cache for '{}' is empty, will fetch data", list),
+                format!("Feed cache for '{}' is empty, will fetch data", list),
             );
         } else {
             self.log.info(
                 SCOPE,
-                &format!("Feed cache for '{}' has data, using cached version", list),
+                format!("Feed cache for '{}' has data, using cached version", list),
             );
         }
 
@@ -222,7 +231,7 @@ impl Core {
                         // Data not available, show loading screen and fetch
                         self.log.info(
                             SCOPE,
-                            &format!(
+                            format!(
                                 "Feed: page {} not in cache for '{}', showing loading screen",
                                 new_page, list
                             ),
@@ -231,7 +240,7 @@ impl Core {
                         // Show loading screen
                         self.terminal
                             .show(Screen::Loading(ArcStr::from("Loading page...")))
-                            .await?;
+                            .await;
 
                         // Fetch the data (this will trigger on-demand fetching)
                         let items = self.feed_cache.get_slice(list.clone(), start..end).await?;
@@ -244,7 +253,8 @@ impl Core {
                                 page: self.state.feed_page,
                                 selected: self.state.feed_selected,
                             })
-                            .await
+                            .await;
+                        Ok(())
                     }
                 } else {
                     Ok(())
@@ -293,7 +303,7 @@ impl Core {
                         // Data not available, show loading screen and fetch
                         self.log.info(
                             SCOPE,
-                            &format!(
+                            format!(
                                 "Feed: page {} not in cache for '{}', showing loading screen",
                                 new_page, list
                             ),
@@ -302,7 +312,7 @@ impl Core {
                         // Show loading screen
                         self.terminal
                             .show(Screen::Loading(ArcStr::from("Loading page...")))
-                            .await?;
+                            .await;
 
                         // Fetch the data (this will trigger on-demand fetching)
                         let items = self.feed_cache.get_slice(list.clone(), start..end).await?;
@@ -315,7 +325,8 @@ impl Core {
                                 page: self.state.feed_page,
                                 selected: self.state.feed_selected,
                             })
-                            .await
+                            .await;
+                        Ok(())
                     }
                 } else {
                     Ok(())
@@ -330,17 +341,18 @@ impl Core {
         match self.state.view {
             ViewKind::Lists => {
                 // From lists, we quit
-                self.terminal.quit().await
+                self.terminal.quit().await;
+                Ok(())
             }
             ViewKind::Feed => {
                 // From feed back to lists
-                self.log.info(SCOPE, "Feed -> Lists");
+                self.log.info(SCOPE, "Feed -> Lists".to_string());
                 self.state.view = ViewKind::Lists;
                 self.render_lists().await
             }
             ViewKind::Patch => {
                 // From patch back to feed
-                self.log.info(SCOPE, "Patch -> Feed");
+                self.log.info(SCOPE, "Patch -> Feed".to_string());
                 self.state.view = ViewKind::Feed;
                 if let Some(list) = self.state.feed_list.clone() {
                     self.render_feed(list).await
@@ -361,7 +373,7 @@ impl Core {
                 if let Some(selected) = items.get(self.state.list_selected) {
                     self.log.info(
                         SCOPE,
-                        &format!("Lists -> Feed list={} (reset page/sel)", selected.name),
+                        format!("Lists -> Feed list={} (reset page/sel)", selected.name),
                     );
                     Ok(Some(NavigationAction::OpenFeed {
                         list: ArcStr::from(selected.name.clone()),
@@ -378,7 +390,7 @@ impl Core {
                     if let Some(selected) = items.get(self.state.feed_selected) {
                         self.log.info(
                             SCOPE,
-                            &format!(
+                            format!(
                                 "Feed -> Patch title='{}' list={} msg_id={}",
                                 selected.title, list, selected.message_id
                             ),
@@ -405,7 +417,7 @@ impl Core {
         let end = start + 20;
         self.log.info(
             SCOPE,
-            &format!("Lists: fetching items range {}..{}", start, end),
+            format!("Lists: fetching items range {}..{}", start, end),
         );
 
         let items = self.mailing_list_cache.get_slice(start..end).await?;
@@ -413,13 +425,14 @@ impl Core {
         if items.is_empty() {
             self.log.warn(
                 SCOPE,
-                &format!("Lists: empty page for page={}", self.state.list_page),
+                format!("Lists: empty page for page={}", self.state.list_page),
             );
 
             // Check if cache is empty and needs refresh
             let total_items = self.mailing_list_cache.len().await;
             if total_items == 0 {
-                self.log.info(SCOPE, "Lists: cache empty, refreshing");
+                self.log
+                    .info(SCOPE, "Lists: cache empty, refreshing".to_string());
 
                 // Use tokio::timeout to prevent hanging
                 let refresh_result = tokio::time::timeout(
@@ -435,7 +448,7 @@ impl Core {
                         if refreshed_items.is_empty() {
                             self.log.warn(
                                 SCOPE,
-                                &format!(
+                                format!(
                                     "Lists: still empty after refresh for page={}",
                                     self.state.list_page
                                 ),
@@ -443,7 +456,7 @@ impl Core {
                         } else {
                             self.log.info(
                                 SCOPE,
-                                &format!(
+                                format!(
                                     "Lists: refreshed, fetched {} items",
                                     refreshed_items.len()
                                 ),
@@ -456,24 +469,28 @@ impl Core {
                                 page: self.state.list_page,
                                 selected: self.state.list_selected,
                             })
-                            .await
+                            .await;
+                        Ok(())
                     }
                     Ok(Err(e)) => {
                         // Refresh failed
                         self.log
-                            .error(SCOPE, &format!("Lists: refresh failed: {}", e));
+                            .error(SCOPE, format!("Lists: refresh failed: {}", e));
                         self.terminal
                             .show(Screen::Error(ArcStr::from("Failed to load mailing lists")))
-                            .await
+                            .await;
+                        Ok(())
                     }
                     Err(_) => {
                         // Refresh timed out
-                        self.log.error(SCOPE, "Lists: refresh timed out");
+                        self.log
+                            .error(SCOPE, "Lists: refresh timed out".to_string());
                         self.terminal
                             .show(Screen::Error(ArcStr::from(
                                 "Mailing lists loading timed out",
                             )))
-                            .await
+                            .await;
+                        Ok(())
                     }
                 }
             } else {
@@ -484,18 +501,20 @@ impl Core {
                         page: self.state.list_page,
                         selected: self.state.list_selected,
                     })
-                    .await
+                    .await;
+                Ok(())
             }
         } else {
             self.log
-                .info(SCOPE, &format!("Lists: fetched {} items", items.len()));
+                .info(SCOPE, format!("Lists: fetched {} items", items.len()));
             self.terminal
                 .show(Screen::Lists {
                     items,
                     page: self.state.list_page,
                     selected: self.state.list_selected,
                 })
-                .await
+                .await;
+            Ok(())
         }
     }
 
@@ -505,7 +524,7 @@ impl Core {
         let end = start + 20;
         self.log.info(
             SCOPE,
-            &format!("Feed: list={} range {}..{}", list, start, end),
+            format!("Feed: list={} range {}..{}", list, start, end),
         );
 
         // Try to get items from cache
@@ -514,7 +533,7 @@ impl Core {
         if items.is_empty() {
             self.log.warn(
                 SCOPE,
-                &format!(
+                format!(
                     "Feed: empty page for list={} page={}",
                     list, self.state.feed_page
                 ),
@@ -526,7 +545,7 @@ impl Core {
                 // Cache is empty, try to refresh it with timeout
                 self.log.info(
                     SCOPE,
-                    &format!("Feed: cache empty for '{}', refreshing", list),
+                    format!("Feed: cache empty for '{}', refreshing", list),
                 );
 
                 // Use tokio::timeout to prevent hanging
@@ -544,7 +563,7 @@ impl Core {
                         if refreshed_items.is_empty() {
                             self.log.warn(
                                 SCOPE,
-                                &format!(
+                                format!(
                                     "Feed: still empty after refresh for list={} page={}",
                                     list, self.state.feed_page
                                 ),
@@ -552,16 +571,13 @@ impl Core {
                         } else {
                             self.log.info(
                                 SCOPE,
-                                &format!(
-                                    "Feed: refreshed, fetched {} items",
-                                    refreshed_items.len()
-                                ),
+                                format!("Feed: refreshed, fetched {} items", refreshed_items.len()),
                             );
                             // Persist the cache after successful refresh
                             if let Err(e) = self.feed_cache.persist(list.clone()).await {
                                 self.log.warn(
                                     SCOPE,
-                                    &format!("Feed: failed to persist cache for '{}': {}", list, e),
+                                    format!("Feed: failed to persist cache for '{}': {}", list, e),
                                 );
                             }
                         }
@@ -573,25 +589,26 @@ impl Core {
                                 page: self.state.feed_page,
                                 selected: self.state.feed_selected,
                             })
-                            .await
+                            .await;
+                        Ok(())
                     }
                     Ok(Err(e)) => {
                         // Refresh failed
-                        self.log.error(
-                            SCOPE,
-                            &format!("Feed: refresh failed for '{}': {}", list, e),
-                        );
+                        self.log
+                            .error(SCOPE, format!("Feed: refresh failed for '{}': {}", list, e));
                         self.terminal
                             .show(Screen::Error(ArcStr::from("Failed to load feed data")))
-                            .await
+                            .await;
+                        Ok(())
                     }
                     Err(_) => {
                         // Refresh timed out
                         self.log
-                            .error(SCOPE, &format!("Feed: refresh timed out for '{}'", list));
+                            .error(SCOPE, format!("Feed: refresh timed out for '{}'", list));
                         self.terminal
                             .show(Screen::Error(ArcStr::from("Feed loading timed out")))
-                            .await
+                            .await;
+                        Ok(())
                     }
                 }
             } else {
@@ -603,11 +620,12 @@ impl Core {
                         page: self.state.feed_page,
                         selected: self.state.feed_selected,
                     })
-                    .await
+                    .await;
+                Ok(())
             }
         } else {
             self.log
-                .info(SCOPE, &format!("Feed: fetched {} items", items.len()));
+                .info(SCOPE, format!("Feed: fetched {} items", items.len()));
             self.terminal
                 .show(Screen::Feed {
                     list,
@@ -615,7 +633,8 @@ impl Core {
                     page: self.state.feed_page,
                     selected: self.state.feed_selected,
                 })
-                .await
+                .await;
+            Ok(())
         }
     }
 
@@ -623,57 +642,59 @@ impl Core {
     async fn render_patch(&self, list: ArcStr, message_id: ArcStr, title: ArcStr) -> Result<()> {
         self.log.info(
             SCOPE,
-            &format!(
+            format!(
                 "Patch: opening title='{}' list={} msg_id={}",
                 title, list, message_id
             ),
         );
         self.terminal
             .show(Screen::Loading(ArcStr::from("Loading patch...")))
-            .await?;
+            .await;
         match self.patch_cache.get(list.clone(), message_id.clone()).await {
             Ok(raw) => {
                 self.log
-                    .info(SCOPE, &format!("Patch: raw chars={}", raw.len()));
+                    .info(SCOPE, format!("Patch: raw chars={}", raw.len()));
                 match self.render.render_patch(ArcStr::from(raw)).await {
                     Ok(rendered) => {
                         if rendered.is_empty() {
                             self.log.warn(
                                 SCOPE,
-                                &format!(
+                                format!(
                                     "Patch: rendered empty content title='{}' list={} msg_id={}",
                                     title, list, message_id
                                 ),
                             );
                             // Invalidate cache so next attempt refetches
-                            self.feed_cache.invalidate(list).await?;
+                            self.feed_cache.invalidate(list).await;
                         } else {
                             self.log
-                                .info(SCOPE, &format!("Patch: rendered chars={}", rendered.len()));
+                                .info(SCOPE, format!("Patch: rendered chars={}", rendered.len()));
                         }
                         self.terminal
                             .show(Screen::Patch {
                                 title,
                                 content: rendered,
                             })
-                            .await
+                            .await;
+                        Ok(())
                     }
                     Err(e) => {
-                        self.log
-                            .error(SCOPE, &format!("Patch: render error: {}", e));
-                        self.feed_cache.invalidate(list).await?;
+                        self.log.error(SCOPE, format!("Patch: render error: {}", e));
+                        self.feed_cache.invalidate(list).await;
                         self.terminal
                             .show(Screen::Error(ArcStr::from("Failed to render patch")))
-                            .await
+                            .await;
+                        Ok(())
                     }
                 }
             }
             Err(e) => {
-                self.log.error(SCOPE, &format!("Patch: fetch error: {}", e));
-                self.feed_cache.invalidate(list).await?;
+                self.log.error(SCOPE, format!("Patch: fetch error: {}", e));
+                self.feed_cache.invalidate(list).await;
                 self.terminal
                     .show(Screen::Error(ArcStr::from("Failed to load patch")))
-                    .await
+                    .await;
+                Ok(())
             }
         }
     }
