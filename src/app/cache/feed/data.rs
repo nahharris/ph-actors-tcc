@@ -43,31 +43,6 @@ impl FeedData {
         self.last_updated.insert(list, last_updated);
     }
 
-    /// Checks if the cache is valid for a mailing list by comparing the last_updated time.
-    pub fn is_cache_valid(&self, list: &str, api_last_updated: Option<DateTime<Utc>>) -> bool {
-        let cached_last_updated = self.last_updated.get(list).copied().flatten();
-        match (cached_last_updated, api_last_updated) {
-            (Some(cached), Some(api)) => cached >= api,
-            (Some(_), None) => true,  // We have data, API doesn't
-            (None, Some(_)) => false, // We don't have data, API does
-            (None, None) => true,     // Neither has data, consider valid
-        }
-    }
-
-    /// Converts to CacheData for persistence.
-    pub fn to_cache_data(&self) -> CacheData {
-        CacheData {
-            feeds: self.feeds.clone(),
-            last_updated: self.last_updated.clone(),
-        }
-    }
-
-    /// Updates from CacheData after loading from disk.
-    pub fn from_cache_data(&mut self, data: CacheData) {
-        self.feeds = data.feeds;
-        self.last_updated = data.last_updated;
-    }
-
     /// Gets the number of cached items for a mailing list.
     pub fn len(&self, list: &str) -> usize {
         self.feeds.get(list).map(|v| v.len()).unwrap_or(0)

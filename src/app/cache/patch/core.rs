@@ -13,7 +13,6 @@ use crate::{
     fs::mock::MockFs as Fs, log::mock::MockLog as Log,
 };
 
-const BUFFER_SIZE: usize = 100;
 const SCOPE: &str = "app.cache.patch";
 
 /// Core implementation for the Patch Actor.

@@ -15,7 +15,6 @@ use crate::{
     fs::mock::MockFs as Fs, log::mock::MockLog as Log,
 };
 
-const BUFFER_SIZE: usize = 100;
 const SCOPE: &str = "app.cache.feed";
 
 /// Core implementation for the Feed Actor.
@@ -159,18 +158,6 @@ impl Core {
     /// Gets the newest cached item for a mailing list.
     fn get_newest_cached_item(&self, list: &str) -> Option<&LorePatchMetadata> {
         self.data.feeds.get(list)?.first()
-    }
-
-    /// Checks if an item is already in the cache for a mailing list.
-    fn has_item_in_cache(&self, list: &str, item: &LorePatchMetadata) -> bool {
-        self.data
-            .feeds
-            .get(list)
-            .map(|feed| {
-                feed.iter()
-                    .any(|cached| cached.message_id == item.message_id)
-            })
-            .unwrap_or(false)
     }
 
     /// Fetches pages until we have enough data to reach the specified index.

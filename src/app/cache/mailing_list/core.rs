@@ -13,7 +13,6 @@ use crate::{
     fs::mock::MockFs as Fs, log::mock::MockLog as Log,
 };
 
-const BUFFER_SIZE: usize = 100;
 const SCOPE: &str = "app.cache.mailing_list";
 
 /// Core implementation for the Mailing List Actor.
@@ -125,20 +124,6 @@ impl Core {
     /// Handles checking if a range is available.
     fn handle_is_available(&self, range: std::ops::Range<usize>) -> bool {
         range.end <= self.data.lists.len()
-    }
-
-    /// Checks if the cache is still valid.
-    async fn is_cache_valid(&self) -> anyhow::Result<bool> {
-        if self.data.lists.is_empty() {
-            return Ok(false);
-        }
-
-        // Get the first page to check the 0-th item's updated time
-        let first_page = self.lore.get_available_lists_page(0).await?;
-        let api_last_updated =
-            first_page.and_then(|page| page.items.first().map(|item| item.last_update));
-
-        Ok(self.data.is_cache_valid(api_last_updated))
     }
 
     /// Refreshes the cache by fetching all mailing lists and sorting them.
