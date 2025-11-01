@@ -77,18 +77,22 @@ async fn test_shell_result_display() {
 async fn test_shell_actual_integration() {
     // Create a mock log for testing
     let mut log = crate::log::mock::MockLog::new();
-    
+
     // Set up expectations for the log calls that will be made during command execution
     log.expect_info()
-        .withf(|scope, message| scope == "shell" && message.contains("Executing command: echo hello"))
+        .withf(|scope, message| {
+            scope == "shell" && message.contains("Executing command: echo hello")
+        })
         .times(1)
         .returning(|_, _| ());
-    
+
     log.expect_info()
-        .withf(|scope, message| scope == "shell" && message.contains("Command completed successfully: echo hello"))
+        .withf(|scope, message| {
+            scope == "shell" && message.contains("Command completed successfully: echo hello")
+        })
         .times(1)
         .returning(|_, _| ());
-    
+
     let shell = Shell::spawn(log).await.unwrap();
     let result = shell
         .execute(

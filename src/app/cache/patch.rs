@@ -45,11 +45,16 @@ impl PatchCache {
     pub async fn get(&self, list: ArcStr, message_id: ArcStr) -> anyhow::Result<String> {
         let (tx, rx) = tokio::sync::oneshot::channel();
         self.tx
-            .send(Message::Get { list, message_id, tx })
+            .send(Message::Get {
+                list,
+                message_id,
+                tx,
+            })
             .await
             .context("Sending message to PatchCache actor")
             .expect("PatchCache actor died");
-        rx.await.context("Awaiting response from PatchCache actor")
+        rx.await
+            .context("Awaiting response from PatchCache actor")
             .expect("PatchCache actor died")
     }
 
@@ -57,11 +62,16 @@ impl PatchCache {
     pub async fn invalidate(&self, list: ArcStr, message_id: ArcStr) -> anyhow::Result<()> {
         let (tx, rx) = tokio::sync::oneshot::channel();
         self.tx
-            .send(Message::Invalidate { list, message_id, tx })
+            .send(Message::Invalidate {
+                list,
+                message_id,
+                tx,
+            })
             .await
             .context("Sending message to PatchCache actor")
             .expect("PatchCache actor died");
-        rx.await.context("Awaiting response from PatchCache actor")
+        rx.await
+            .context("Awaiting response from PatchCache actor")
             .expect("PatchCache actor died")
     }
 
@@ -69,11 +79,16 @@ impl PatchCache {
     pub async fn is_available(&self, list: ArcStr, message_id: ArcStr) -> bool {
         let (tx, rx) = tokio::sync::oneshot::channel();
         self.tx
-            .send(Message::IsAvailable { list, message_id, tx })
+            .send(Message::IsAvailable {
+                list,
+                message_id,
+                tx,
+            })
             .await
             .context("Sending message to PatchCache actor")
             .expect("PatchCache actor died");
-        rx.await.context("Awaiting response from PatchCache actor")
+        rx.await
+            .context("Awaiting response from PatchCache actor")
             .expect("PatchCache actor died")
     }
 }

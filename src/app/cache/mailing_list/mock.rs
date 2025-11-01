@@ -1,7 +1,7 @@
-use mockall::mock;
 use crate::api::lore::LoreMailingList;
+use mockall::mock;
 
-mock!{
+mock! {
     #[derive(Debug)]
     pub MailingListCache {
         pub async fn get(&self, index: usize) -> anyhow::Result<Option<LoreMailingList>>;

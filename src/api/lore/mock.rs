@@ -1,5 +1,8 @@
 use crate::utils::ArcSlice;
-use crate::{ArcStr, api::lore::{LoreMailingList, LorePage, LorePatchMetadata}};
+use crate::{
+    ArcStr,
+    api::lore::{LoreMailingList, LorePage, LorePatchMetadata},
+};
 
 use mockall::mock;
 

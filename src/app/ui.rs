@@ -1,5 +1,8 @@
 use anyhow::{Context, Result};
-use tokio::sync::{mpsc::{self, Sender}, oneshot};
+use tokio::sync::{
+    mpsc::{self, Sender},
+    oneshot,
+};
 
 use crate::ArcStr;
 
@@ -52,7 +55,14 @@ impl Ui {
         render: Render,
     ) -> Self {
         let (tx, rx) = mpsc::channel(crate::BUFFER_SIZE);
-        let core = core::Core::new(log, terminal, mailing_list_cache, feed_cache, patch_cache, render);
+        let core = core::Core::new(
+            log,
+            terminal,
+            mailing_list_cache,
+            feed_cache,
+            patch_cache,
+            render,
+        );
         let _ = tokio::spawn(async move {
             core.init(rx).await;
         });
@@ -62,7 +72,8 @@ impl Ui {
     /// Show the mailing lists view
     pub async fn show_lists(&self, page: usize) -> Result<()> {
         let (tx, rx) = oneshot::channel();
-        self.tx.send(Message::ShowLists { page, tx })
+        self.tx
+            .send(Message::ShowLists { page, tx })
             .await
             .context("Sending show lists message to UI actor")
             .expect("UI actor died");
@@ -74,7 +85,8 @@ impl Ui {
     /// Show the patch feed view for a specific mailing list
     pub async fn show_feed(&self, list: ArcStr, page: usize) -> Result<()> {
         let (tx, rx) = oneshot::channel();
-        self.tx.send(Message::ShowFeed { list, page, tx })
+        self.tx
+            .send(Message::ShowFeed { list, page, tx })
             .await
             .context("Sending show feed message to UI actor")
             .expect("UI actor died");
@@ -86,15 +98,16 @@ impl Ui {
     /// Show a specific patch content
     pub async fn show_patch(&self, list: ArcStr, message_id: ArcStr, title: ArcStr) -> Result<()> {
         let (tx, rx) = oneshot::channel();
-        self.tx.send(Message::ShowPatch {
-            list,
-            message_id,
-            title,
-            tx,
-        })
-        .await
-        .context("Sending show patch message to UI actor")
-        .expect("UI actor died");
+        self.tx
+            .send(Message::ShowPatch {
+                list,
+                message_id,
+                title,
+                tx,
+            })
+            .await
+            .context("Sending show patch message to UI actor")
+            .expect("UI actor died");
         rx.await
             .context("Awaiting response for show patch from UI actor")
             .expect("UI actor died")
@@ -102,13 +115,14 @@ impl Ui {
 
     /// Update the current selection index
     pub async fn update_selection(&self, index: usize) {
-            let _ = self.tx.send(Message::UpdateSelection { index }).await;
+        let _ = self.tx.send(Message::UpdateSelection { index }).await;
     }
 
     /// Navigate to the previous page
     pub async fn previous_page(&self) -> Result<()> {
         let (tx, rx) = oneshot::channel();
-        self.tx.send(Message::PreviousPage { tx })
+        self.tx
+            .send(Message::PreviousPage { tx })
             .await
             .context("Sending previous page message to UI actor")
             .expect("UI actor died");
@@ -120,7 +134,8 @@ impl Ui {
     /// Navigate to the next page
     pub async fn next_page(&self) -> Result<()> {
         let (tx, rx) = oneshot::channel();
-        self.tx.send(Message::NextPage { tx })
+        self.tx
+            .send(Message::NextPage { tx })
             .await
             .context("Sending next page message to UI actor")
             .expect("UI actor died");
@@ -132,7 +147,8 @@ impl Ui {
     /// Navigate back to previous view
     pub async fn navigate_back(&self) -> Result<()> {
         let (tx, rx) = oneshot::channel();
-        self.tx.send(Message::NavigateBack { tx })
+        self.tx
+            .send(Message::NavigateBack { tx })
             .await
             .context("Sending navigate back message to UI actor")
             .expect("UI actor died");
@@ -144,7 +160,8 @@ impl Ui {
     /// Submit/select the current item
     pub async fn submit_selection(&self) -> Result<Option<NavigationAction>> {
         let (tx, rx) = oneshot::channel();
-        self.tx.send(Message::SubmitSelection { tx })
+        self.tx
+            .send(Message::SubmitSelection { tx })
             .await
             .context("Sending submit selection message to UI actor")
             .expect("UI actor died");

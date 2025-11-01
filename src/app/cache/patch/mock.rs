@@ -1,7 +1,7 @@
-use mockall::mock;
 use crate::ArcStr;
+use mockall::mock;
 
-mock!{
+mock! {
     #[derive(Debug)]
     pub PatchCache {
         pub async fn get(&self, list: ArcStr, message_id: ArcStr) -> anyhow::Result<String>;
