@@ -6,14 +6,19 @@ mod data;
 pub mod message;
 #[cfg(test)]
 pub mod mock;
+#[cfg(test)]
+mod tests;
 
-use crate::{
-    api::{LoreApi, lore::LoreMailingList},
-    app::config::Config,
-    fs::Fs,
-    log::Log,
-};
+use crate::api::lore::LoreMailingList;
 use message::Message;
+
+#[cfg(not(test))]
+use crate::{api::LoreApi, app::config::Config, fs::Fs, log::Log};
+#[cfg(test)]
+use crate::{
+    api::lore::mock::MockLoreApi as LoreApi, app::config::mock::MockConfig as Config,
+    fs::mock::MockFs as Fs, log::mock::MockLog as Log,
+};
 
 /// The Mailing List Actor provides a cached list of mailing lists sorted alphabetically.
 ///

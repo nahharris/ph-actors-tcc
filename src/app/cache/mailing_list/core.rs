@@ -1,12 +1,17 @@
 use super::data::MailingListData;
 use super::message::Message;
 use crate::ArcPath;
-use crate::api::lore::{LoreApi, LoreMailingList};
-use crate::app::config::Config;
-use crate::fs::Fs;
-use crate::log::Log;
+use crate::api::lore::LoreMailingList;
 use anyhow::Context;
 use tokio::sync::mpsc;
+
+#[cfg(not(test))]
+use crate::{api::LoreApi, app::config::Config, fs::Fs, log::Log};
+#[cfg(test)]
+use crate::{
+    api::lore::mock::MockLoreApi as LoreApi, app::config::mock::MockConfig as Config,
+    fs::mock::MockFs as Fs, log::mock::MockLog as Log,
+};
 
 const BUFFER_SIZE: usize = 100;
 const SCOPE: &str = "app.cache.mailing_list";
