@@ -1,8 +1,7 @@
-use anyhow::Context;
 use std::collections::HashMap;
 use tokio::sync::mpsc::Sender;
 
-use crate::{ArcStr, net::core::Core};
+use crate::{error::NetError, error::FatalActorError, ArcStr, net::core::Core};
 #[cfg(not(test))]
 use crate::{app::config::Config, log::Log};
 #[cfg(test)]
@@ -14,6 +13,9 @@ pub mod message;
 pub mod mock;
 #[cfg(test)]
 mod tests;
+
+/// Actor name for error reporting.
+pub const ACTOR_NAME: &'static str = "Net";
 
 /// The networking actor that provides a thread-safe interface for network operations.
 ///
@@ -64,16 +66,25 @@ impl Net {
         &self,
         url: ArcStr,
         headers: Option<HashMap<ArcStr, ArcStr>>,
-    ) -> Result<ArcStr, anyhow::Error> {
+    ) -> Result<ArcStr, NetError> {
         let (tx, rx) = tokio::sync::oneshot::channel();
         self.tx
-            .send(message::Message::Get { url, headers, tx })
+            .send(message::Message::Get { url: url.clone(), headers, tx })
             .await
-            .context("Sending GET message to Net actor")
-            .expect("Net actor died");
+            .map_err(|_e| {
+                NetError::Fatal(FatalActorError::ActorSendFailed {
+                    actor_name: crate::net::ACTOR_NAME,
+                    operation: "GET request".to_string(),
+                })
+            })?;
         rx.await
-            .context("Awaiting GET response from Net actor")
-            .expect("Net actor died")
+            .map_err(|e| {
+                NetError::Fatal(FatalActorError::ActorRecvFailed {
+                    actor_name: crate::net::ACTOR_NAME,
+                    operation: format!("GET request to {}", url),
+                    source: e,
+                })
+            })?
     }
 
     /// Performs an HTTP POST request to the specified URL.
@@ -90,21 +101,30 @@ impl Net {
         url: ArcStr,
         headers: Option<HashMap<ArcStr, ArcStr>>,
         body: Option<ArcStr>,
-    ) -> Result<ArcStr, anyhow::Error> {
+    ) -> Result<ArcStr, NetError> {
         let (tx, rx) = tokio::sync::oneshot::channel();
         self.tx
             .send(message::Message::Post {
-                url,
+                url: url.clone(),
                 headers,
                 body,
                 tx,
             })
             .await
-            .context("Sending POST message to Net actor")
-            .expect("Net actor died");
+            .map_err(|_e| {
+                NetError::Fatal(FatalActorError::ActorSendFailed {
+                    actor_name: crate::net::ACTOR_NAME,
+                    operation: "POST request".to_string(),
+                })
+            })?;
         rx.await
-            .context("Awaiting POST response from Net actor")
-            .expect("Net actor died")
+            .map_err(|e| {
+                NetError::Fatal(FatalActorError::ActorRecvFailed {
+                    actor_name: crate::net::ACTOR_NAME,
+                    operation: format!("POST request to {}", url),
+                    source: e,
+                })
+            })?
     }
 
     /// Performs an HTTP PUT request to the specified URL.
@@ -121,21 +141,30 @@ impl Net {
         url: ArcStr,
         headers: Option<HashMap<ArcStr, ArcStr>>,
         body: Option<ArcStr>,
-    ) -> Result<ArcStr, anyhow::Error> {
+    ) -> Result<ArcStr, NetError> {
         let (tx, rx) = tokio::sync::oneshot::channel();
         self.tx
             .send(message::Message::Put {
-                url,
+                url: url.clone(),
                 headers,
                 body,
                 tx,
             })
             .await
-            .context("Sending PUT message to Net actor")
-            .expect("Net actor died");
+            .map_err(|_e| {
+                NetError::Fatal(FatalActorError::ActorSendFailed {
+                    actor_name: crate::net::ACTOR_NAME,
+                    operation: "PUT request".to_string(),
+                })
+            })?;
         rx.await
-            .context("Awaiting PUT response from Net actor")
-            .expect("Net actor died")
+            .map_err(|e| {
+                NetError::Fatal(FatalActorError::ActorRecvFailed {
+                    actor_name: crate::net::ACTOR_NAME,
+                    operation: format!("PUT request to {}", url),
+                    source: e,
+                })
+            })?
     }
 
     /// Performs an HTTP DELETE request to the specified URL.
@@ -150,16 +179,25 @@ impl Net {
         &self,
         url: ArcStr,
         headers: Option<HashMap<ArcStr, ArcStr>>,
-    ) -> Result<ArcStr, anyhow::Error> {
+    ) -> Result<ArcStr, NetError> {
         let (tx, rx) = tokio::sync::oneshot::channel();
         self.tx
-            .send(message::Message::Delete { url, headers, tx })
+            .send(message::Message::Delete { url: url.clone(), headers, tx })
             .await
-            .context("Sending DELETE message to Net actor")
-            .expect("Net actor died");
+            .map_err(|_e| {
+                NetError::Fatal(FatalActorError::ActorSendFailed {
+                    actor_name: crate::net::ACTOR_NAME,
+                    operation: "DELETE request".to_string(),
+                })
+            })?;
         rx.await
-            .context("Awaiting DELETE response from Net actor")
-            .expect("Net actor died")
+            .map_err(|e| {
+                NetError::Fatal(FatalActorError::ActorRecvFailed {
+                    actor_name: crate::net::ACTOR_NAME,
+                    operation: format!("DELETE request to {}", url),
+                    source: e,
+                })
+            })?
     }
 
     /// Performs an HTTP PATCH request to the specified URL.
@@ -176,20 +214,29 @@ impl Net {
         url: ArcStr,
         headers: Option<HashMap<ArcStr, ArcStr>>,
         body: Option<ArcStr>,
-    ) -> Result<ArcStr, anyhow::Error> {
+    ) -> Result<ArcStr, NetError> {
         let (tx, rx) = tokio::sync::oneshot::channel();
         self.tx
             .send(message::Message::Patch {
-                url,
+                url: url.clone(),
                 headers,
                 body,
                 tx,
             })
             .await
-            .context("Sending PATCH message to Net actor")
-            .expect("Net actor died");
+            .map_err(|_e| {
+                NetError::Fatal(FatalActorError::ActorSendFailed {
+                    actor_name: crate::net::ACTOR_NAME,
+                    operation: "PATCH request".to_string(),
+                })
+            })?;
         rx.await
-            .context("Awaiting PATCH response from Net actor")
-            .expect("Net actor died")
+            .map_err(|e| {
+                NetError::Fatal(FatalActorError::ActorRecvFailed {
+                    actor_name: crate::net::ACTOR_NAME,
+                    operation: format!("PATCH request to {}", url),
+                    source: e,
+                })
+            })?
     }
 }

@@ -3,7 +3,7 @@ use std::fmt::Display;
 use std::str::FromStr;
 use tokio::sync::oneshot::Sender;
 
-use crate::ArcStr;
+use crate::{error::NetError, ArcStr};
 
 /// Represents HTTP methods supported by the networking actor.
 ///
@@ -46,7 +46,7 @@ impl Display for HttpMethod {
 }
 
 impl FromStr for HttpMethod {
-    type Err = anyhow::Error;
+    type Err = crate::error::LoreApiError;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
             "GET" => Ok(HttpMethod::Get),
@@ -54,7 +54,11 @@ impl FromStr for HttpMethod {
             "PUT" => Ok(HttpMethod::Put),
             "DELETE" => Ok(HttpMethod::Delete),
             "PATCH" => Ok(HttpMethod::Patch),
-            _ => Err(anyhow::anyhow!("Invalid HTTP method: {}", s)),
+            _ => Err(crate::error::LoreApiError::ParseFailed {
+                format: "HTTP method".to_string(),
+                operation: "parse HTTP method".to_string(),
+                details: format!("Invalid HTTP method: {}", s),
+            }),
         }
     }
 }
@@ -151,33 +155,33 @@ pub enum Message {
     Get {
         url: ArcStr,
         headers: Option<HashMap<ArcStr, ArcStr>>,
-        tx: Sender<anyhow::Result<ArcStr>>,
+        tx: Sender<Result<ArcStr, NetError>>,
     },
     /// Performs an HTTP POST request to the specified URL
     Post {
         url: ArcStr,
         headers: Option<HashMap<ArcStr, ArcStr>>,
         body: Option<ArcStr>,
-        tx: Sender<anyhow::Result<ArcStr>>,
+        tx: Sender<Result<ArcStr, NetError>>,
     },
     /// Performs an HTTP PUT request to the specified URL
     Put {
         url: ArcStr,
         headers: Option<HashMap<ArcStr, ArcStr>>,
         body: Option<ArcStr>,
-        tx: Sender<anyhow::Result<ArcStr>>,
+        tx: Sender<Result<ArcStr, NetError>>,
     },
     /// Performs an HTTP DELETE request to the specified URL
     Delete {
         url: ArcStr,
         headers: Option<HashMap<ArcStr, ArcStr>>,
-        tx: Sender<anyhow::Result<ArcStr>>,
+        tx: Sender<Result<ArcStr, NetError>>,
     },
     /// Performs an HTTP PATCH request to the specified URL
     Patch {
         url: ArcStr,
         headers: Option<HashMap<ArcStr, ArcStr>>,
         body: Option<ArcStr>,
-        tx: Sender<anyhow::Result<ArcStr>>,
+        tx: Sender<Result<ArcStr, NetError>>,
     },
 }
