@@ -4,6 +4,7 @@
 pub mod api;
 pub mod app;
 pub mod env;
+pub mod error;
 pub mod fs;
 pub mod log;
 pub mod net;
@@ -15,6 +16,10 @@ pub mod utils;
 #[macro_use]
 pub mod macros;
 
+pub use error::{
+    AppError, AppOperationError, CacheError, ConfigError, EnvError, FatalActorError, FsError,
+    LogError, LoreApiError, NetError, RenderError, ShellError, TerminalError, UiError,
+};
 pub use utils::*;
 
 /// Default buffer size used for various operations in the application.
