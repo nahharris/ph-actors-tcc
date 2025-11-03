@@ -293,7 +293,8 @@ pub fn parse_patch_feed_xml(
         .into_iter()
         .filter_map(|entry| {
             // Parse patch title to extract version and sequence information
-            let (version, sequence) = parse_patch_title(&entry.title).unwrap_or((1, None));
+            // Filter out entries that don't have valid patch titles
+            let (version, sequence) = parse_patch_title(&entry.title)?;
 
             let datetime = DateTime::parse_from_rfc3339(&entry.updated)
                 .map(|dt| dt.with_timezone(&Utc))
