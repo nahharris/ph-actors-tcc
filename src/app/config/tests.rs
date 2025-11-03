@@ -119,8 +119,8 @@ async fn test_config_save() {
     let config = Config::spawn(mock_env, mock_fs, config_path);
 
     // Modify some values
-    config.set_log_level(LogLevel::Error).await;
-    config.set_usize(USizeOpt::Timeout, 120).await;
+    config.set_log_level(LogLevel::Error).await.expect("Setting log level to succeed");
+    config.set_usize(USizeOpt::Timeout, 120).await.expect("Setting timeout to succeed");
 
     // Save should succeed (we verify by checking no error occurs)
     let result = config.save().await;
@@ -143,14 +143,15 @@ async fn test_config_get_set_path() {
 
     // Test LogDir
     let new_log_dir = ArcPath::from("/custom/logs");
-    config.set_path(PathOpt::LogDir, new_log_dir.clone()).await;
+    config.set_path(PathOpt::LogDir, new_log_dir.clone()).await.expect("Setting log dir to succeed");
     assert_eq!(config.path(PathOpt::LogDir).await.expect("Getting log dir to succeed"), new_log_dir);
 
     // Test CachePath
     let new_cache_path = ArcPath::from("/custom/cache");
     config
         .set_path(PathOpt::CachePath, new_cache_path.clone())
-        .await;
+        .await
+        .expect("Setting cache path to succeed");
     assert_eq!(config.path(PathOpt::CachePath).await.expect("Getting cache path to succeed"), new_cache_path);
 }
 
@@ -168,13 +169,13 @@ async fn test_config_get_set_log_level() {
     assert_eq!(config.log_level().await.expect("Getting log level to succeed"), LogLevel::Warning);
 
     // Test setting all levels
-    config.set_log_level(LogLevel::Info).await;
+    config.set_log_level(LogLevel::Info).await.expect("Setting log level to succeed");
     assert_eq!(config.log_level().await.expect("Getting log level to succeed"), LogLevel::Info);
 
-    config.set_log_level(LogLevel::Warning).await;
+    config.set_log_level(LogLevel::Warning).await.expect("Setting log level to succeed");
     assert_eq!(config.log_level().await.expect("Getting log level to succeed"), LogLevel::Warning);
 
-    config.set_log_level(LogLevel::Error).await;
+    config.set_log_level(LogLevel::Error).await.expect("Setting log level to succeed");
     assert_eq!(config.log_level().await.expect("Getting log level to succeed"), LogLevel::Error);
 }
 
@@ -190,12 +191,12 @@ async fn test_config_get_set_usize() {
 
     // Test MaxAge
     assert_eq!(config.usize(USizeOpt::MaxAge).await.expect("Getting max age to succeed"), 0); // default
-    config.set_usize(USizeOpt::MaxAge, 30).await;
+    config.set_usize(USizeOpt::MaxAge, 30).await.expect("Setting max age to succeed");
     assert_eq!(config.usize(USizeOpt::MaxAge).await.expect("Getting max age to succeed"), 30);
 
     // Test Timeout
     assert_eq!(config.usize(USizeOpt::Timeout).await.expect("Getting timeout to succeed"), 30); // default
-    config.set_usize(USizeOpt::Timeout, 120).await;
+    config.set_usize(USizeOpt::Timeout, 120).await.expect("Setting timeout to succeed");
     assert_eq!(config.usize(USizeOpt::Timeout).await.expect("Getting timeout to succeed"), 120);
 }
 
@@ -218,7 +219,8 @@ async fn test_config_get_set_renderer() {
     // Test setting all renderers
     config
         .set_renderer(RendererOpt::PatchRenderer, Renderer::Bat)
-        .await;
+        .await
+        .expect("Setting renderer to succeed");
     assert_eq!(
         config.renderer(RendererOpt::PatchRenderer).await.expect("Getting patch renderer to succeed"),
         Renderer::Bat
@@ -226,7 +228,8 @@ async fn test_config_get_set_renderer() {
 
     config
         .set_renderer(RendererOpt::PatchRenderer, Renderer::Delta)
-        .await;
+        .await
+        .expect("Setting renderer to succeed");
     assert_eq!(
         config.renderer(RendererOpt::PatchRenderer).await.expect("Getting patch renderer to succeed"),
         Renderer::Delta
@@ -234,7 +237,8 @@ async fn test_config_get_set_renderer() {
 
     config
         .set_renderer(RendererOpt::PatchRenderer, Renderer::None)
-        .await;
+        .await
+        .expect("Setting renderer to succeed");
     assert_eq!(
         config.renderer(RendererOpt::PatchRenderer).await.expect("Getting patch renderer to succeed"),
         Renderer::None
