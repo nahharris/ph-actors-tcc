@@ -1,7 +1,6 @@
-use anyhow::Context;
 use tokio::sync::{mpsc, oneshot};
 
-use crate::ArcStr;
+use crate::{error::LoreApiError, error::FatalActorError, ArcStr};
 use crate::utils::ArcSlice;
 
 #[cfg(not(test))]
@@ -17,6 +16,9 @@ pub mod mock;
 pub mod parse;
 #[cfg(test)]
 mod tests;
+
+/// Actor name for error reporting.
+pub const ACTOR_NAME: &'static str = "LoreApi";
 
 // Re-export public types for external use
 pub use data::{LoreMailingList, LorePage, LorePatchMetadata};
@@ -73,7 +75,7 @@ impl LoreApi {
         &self,
         target_list: ArcStr,
         min_index: usize,
-    ) -> anyhow::Result<Option<LorePage<LorePatchMetadata>>> {
+    ) -> Result<Option<LorePage<LorePatchMetadata>>, LoreApiError> {
         let (tx, rx) = oneshot::channel();
         self.tx
             .send(LoreApiMessage::GetPatchFeedPage {
@@ -82,11 +84,20 @@ impl LoreApi {
                 tx,
             })
             .await
-            .context("Sending message to LoreApi actor")
-            .expect("LoreApi actor died");
+            .map_err(|_e| {
+                LoreApiError::Fatal(FatalActorError::ActorSendFailed {
+                    actor_name: crate::api::lore::ACTOR_NAME,
+                    operation: "get patch feed page".to_string(),
+                })
+            })?;
         rx.await
-            .context("Awaiting response from LoreApi actor")
-            .expect("LoreApi actor died")
+            .map_err(|e| {
+                LoreApiError::Fatal(FatalActorError::ActorRecvFailed {
+                    actor_name: crate::api::lore::ACTOR_NAME,
+                    operation: "get patch feed page".to_string(),
+                    source: e,
+                })
+            })?
     }
 
     /// Fetches a single page of available mailing lists with pagination.
@@ -102,16 +113,25 @@ impl LoreApi {
     pub async fn get_available_lists_page(
         &self,
         min_index: usize,
-    ) -> anyhow::Result<Option<LorePage<LoreMailingList>>> {
+    ) -> Result<Option<LorePage<LoreMailingList>>, LoreApiError> {
         let (tx, rx) = oneshot::channel();
         self.tx
             .send(LoreApiMessage::GetAvailableListsPage { min_index, tx })
             .await
-            .context("Sending message to LoreApi actor")
-            .expect("LoreApi actor died");
+            .map_err(|_e| {
+                LoreApiError::Fatal(FatalActorError::ActorSendFailed {
+                    actor_name: crate::api::lore::ACTOR_NAME,
+                    operation: "get available lists page".to_string(),
+                })
+            })?;
         rx.await
-            .context("Awaiting response from LoreApi actor")
-            .expect("LoreApi actor died")
+            .map_err(|e| {
+                LoreApiError::Fatal(FatalActorError::ActorRecvFailed {
+                    actor_name: crate::api::lore::ACTOR_NAME,
+                    operation: "get available lists page".to_string(),
+                    source: e,
+                })
+            })?
     }
 
     /// Fetches all available mailing lists, aggregating all paginated results.
@@ -121,16 +141,25 @@ impl LoreApi {
     ///
     /// # Returns
     /// An `ArcSlice<LoreMailingList>` containing all available mailing lists.
-    pub async fn get_available_lists(&self) -> anyhow::Result<ArcSlice<LoreMailingList>> {
+    pub async fn get_available_lists(&self) -> Result<ArcSlice<LoreMailingList>, LoreApiError> {
         let (tx, rx) = oneshot::channel();
         self.tx
             .send(LoreApiMessage::GetAvailableLists { tx })
             .await
-            .context("Sending message to LoreApi actor")
-            .expect("LoreApi actor died");
+            .map_err(|_e| {
+                LoreApiError::Fatal(FatalActorError::ActorSendFailed {
+                    actor_name: crate::api::lore::ACTOR_NAME,
+                    operation: "get available lists".to_string(),
+                })
+            })?;
         rx.await
-            .context("Awaiting response from LoreApi actor")
-            .expect("LoreApi actor died")
+            .map_err(|e| {
+                LoreApiError::Fatal(FatalActorError::ActorRecvFailed {
+                    actor_name: crate::api::lore::ACTOR_NAME,
+                    operation: "get available lists".to_string(),
+                    source: e,
+                })
+            })?
     }
 
     /// Fetches the HTML content of a specific patch.
@@ -153,7 +182,7 @@ impl LoreApi {
         &self,
         target_list: ArcStr,
         message_id: ArcStr,
-    ) -> anyhow::Result<ArcStr> {
+    ) -> Result<ArcStr, LoreApiError> {
         let (tx, rx) = oneshot::channel();
         self.tx
             .send(LoreApiMessage::GetPatchHtml {
@@ -162,11 +191,20 @@ impl LoreApi {
                 tx,
             })
             .await
-            .context("Sending message to LoreApi actor")
-            .expect("LoreApi actor died");
+            .map_err(|_e| {
+                LoreApiError::Fatal(FatalActorError::ActorSendFailed {
+                    actor_name: crate::api::lore::ACTOR_NAME,
+                    operation: "get patch HTML".to_string(),
+                })
+            })?;
         rx.await
-            .context("Awaiting response from LoreApi actor")
-            .expect("LoreApi actor died")
+            .map_err(|e| {
+                LoreApiError::Fatal(FatalActorError::ActorRecvFailed {
+                    actor_name: crate::api::lore::ACTOR_NAME,
+                    operation: "get patch HTML".to_string(),
+                    source: e,
+                })
+            })?
     }
 
     /// Fetches a raw patch in plain text format.
@@ -189,7 +227,7 @@ impl LoreApi {
         &self,
         target_list: ArcStr,
         message_id: ArcStr,
-    ) -> anyhow::Result<ArcStr> {
+    ) -> Result<ArcStr, LoreApiError> {
         let (tx, rx) = oneshot::channel();
         self.tx
             .send(LoreApiMessage::GetRawPatch {
@@ -198,11 +236,20 @@ impl LoreApi {
                 tx,
             })
             .await
-            .context("Sending message to LoreApi actor")
-            .expect("LoreApi actor died");
+            .map_err(|_e| {
+                LoreApiError::Fatal(FatalActorError::ActorSendFailed {
+                    actor_name: crate::api::lore::ACTOR_NAME,
+                    operation: "get raw patch".to_string(),
+                })
+            })?;
         rx.await
-            .context("Awaiting response from LoreApi actor")
-            .expect("LoreApi actor died")
+            .map_err(|e| {
+                LoreApiError::Fatal(FatalActorError::ActorRecvFailed {
+                    actor_name: crate::api::lore::ACTOR_NAME,
+                    operation: "get raw patch".to_string(),
+                    source: e,
+                })
+            })?
     }
 
     /// Fetches patch metadata in JSON format.
@@ -225,7 +272,7 @@ impl LoreApi {
         &self,
         target_list: ArcStr,
         message_id: ArcStr,
-    ) -> anyhow::Result<ArcStr> {
+    ) -> Result<ArcStr, LoreApiError> {
         let (tx, rx) = oneshot::channel();
         self.tx
             .send(LoreApiMessage::GetPatchMetadata {
@@ -234,10 +281,19 @@ impl LoreApi {
                 tx,
             })
             .await
-            .context("Sending message to LoreApi actor")
-            .expect("LoreApi actor died");
+            .map_err(|_e| {
+                LoreApiError::Fatal(FatalActorError::ActorSendFailed {
+                    actor_name: crate::api::lore::ACTOR_NAME,
+                    operation: "get patch metadata".to_string(),
+                })
+            })?;
         rx.await
-            .context("Awaiting response from LoreApi actor")
-            .expect("LoreApi actor died")
+            .map_err(|e| {
+                LoreApiError::Fatal(FatalActorError::ActorRecvFailed {
+                    actor_name: crate::api::lore::ACTOR_NAME,
+                    operation: "get patch metadata".to_string(),
+                    source: e,
+                })
+            })?
     }
 }

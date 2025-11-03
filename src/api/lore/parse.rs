@@ -19,8 +19,7 @@ use serde_xml_rs::from_str;
 pub fn parse_available_lists_html(
     html: &str,
     start_index: usize,
-) -> anyhow::Result<Option<LorePage<LoreMailingList>>> {
-    use anyhow::{Context, anyhow};
+) -> Result<Option<LorePage<LoreMailingList>>, crate::error::LoreApiError> {
 
     let mut items = Vec::new();
     let mut next_page_index = None;
@@ -35,23 +34,38 @@ pub fn parse_available_lists_html(
             parts.next(); // skip '*'
             let date = parts
                 .next()
-                .ok_or_else(|| anyhow!("Missing date in mailing list entry: '{}'", line))?;
+                .ok_or_else(|| crate::error::LoreApiError::ParseFailed {
+                    format: "HTML".to_string(),
+                    operation: "parse available lists".to_string(),
+                    details: format!("Missing date in mailing list entry: '{}'", line),
+                })?;
             let time = parts
                 .next()
-                .ok_or_else(|| anyhow!("Missing time in mailing list entry: '{}'", line))?;
+                .ok_or_else(|| crate::error::LoreApiError::ParseFailed {
+                    format: "HTML".to_string(),
+                    operation: "parse available lists".to_string(),
+                    details: format!("Missing time in mailing list entry: '{}'", line),
+                })?;
             let datetime_str = format!("{date} {time}");
             let last_update = NaiveDateTime::parse_from_str(&datetime_str, "%Y-%m-%d %H:%M")
                 .map(|ndt| DateTime::<Utc>::from_naive_utc_and_offset(ndt, Utc))
-                .with_context(|| {
-                    format!(
-                        "Failed to parse date/time '{datetime_str}' in mailing list entry: '{line}'"
-                    )
+                .map_err(|e| crate::error::LoreApiError::ParseFailed {
+                    format: "HTML".to_string(),
+                    operation: "parse available lists".to_string(),
+                    details: format!(
+                        "Failed to parse date/time '{datetime_str}' in mailing list entry: '{}'. Error: {}",
+                        line, e
+                    ),
                 })?;
 
             // Next line: href="all/">all</a>
             let name_line = lines
                 .next()
-                .ok_or_else(|| anyhow!("Missing name line after entry: '{}'", line))?
+                .ok_or_else(|| crate::error::LoreApiError::ParseFailed {
+                    format: "HTML".to_string(),
+                    operation: "parse available lists".to_string(),
+                    details: format!("Missing name line after entry: '{}'", line),
+                })?
                 .trim();
             let name = if let Some(gt_idx) = name_line.find('>') {
                 let after_gt = &name_line[gt_idx + 1..];
@@ -61,16 +75,21 @@ pub fn parse_available_lists_html(
                     after_gt.trim()
                 }
             } else {
-                return Err(anyhow!(
-                    "Failed to find mailing list name in line: '{}'",
-                    name_line
-                ));
+                return Err(crate::error::LoreApiError::ParseFailed {
+                    format: "HTML".to_string(),
+                    operation: "parse available lists".to_string(),
+                    details: format!("Failed to find mailing list name in line: '{}'", name_line),
+                });
             };
 
             // Next line: description
             let desc_line = lines
                 .next()
-                .ok_or_else(|| anyhow!("Missing description line after entry: '{}'", line))?
+                .ok_or_else(|| crate::error::LoreApiError::ParseFailed {
+                    format: "HTML".to_string(),
+                    operation: "parse available lists".to_string(),
+                    details: format!("Missing description line after entry: '{}'", line),
+                })?
                 .trim();
             let description = desc_line.to_string();
 
@@ -84,24 +103,44 @@ pub fn parse_available_lists_html(
 
     // Regex to find the next page index from the <a rel=next> link
     let next_re = Regex::new(r#"<a[^>]*rel=next[^>]*href="\?&o=([0-9]+)""#)
-        .context("Failed to compile next page regex")?;
+        .map_err(|e| crate::error::LoreApiError::ParseFailed {
+            format: "HTML".to_string(),
+            operation: "parse available lists".to_string(),
+            details: format!("Failed to compile next page regex: {}", e),
+        })?;
     if let Some(cap) = next_re.captures(html) {
         let idx_str = cap
             .get(1)
-            .ok_or_else(|| anyhow!("Failed to capture next page index"))?
+            .ok_or_else(|| crate::error::LoreApiError::ParseFailed {
+                format: "HTML".to_string(),
+                operation: "parse available lists".to_string(),
+                details: "Failed to capture next page index".to_string(),
+            })?
             .as_str();
         let idx = idx_str
             .parse::<usize>()
-            .with_context(|| format!("Failed to parse next page index: '{idx_str}'"))?;
+            .map_err(|e| crate::error::LoreApiError::ParseFailed {
+                format: "HTML".to_string(),
+                operation: "parse available lists".to_string(),
+                details: format!("Failed to parse next page index: '{}'. Error: {}", idx_str, e),
+            })?;
         next_page_index = Some(idx);
     }
 
     // Regex to extract next page index and total items from "Results 1-200 of ~337"
     let total_re = Regex::new(r"Results [0-9]+(-[0-9]+)? of ~?([0-9,]+)")
-        .context("Failed to compile total items regex")?;
+        .map_err(|e| crate::error::LoreApiError::ParseFailed {
+            format: "HTML".to_string(),
+            operation: "parse available lists".to_string(),
+            details: format!("Failed to compile total items regex: {}", e),
+        })?;
     if let Some(cap) = total_re.captures(html) {
         if cap.len() < 2 {
-            return Err(anyhow!("Failed to capture results count information"));
+            return Err(crate::error::LoreApiError::ParseFailed {
+                format: "HTML".to_string(),
+                operation: "parse available lists".to_string(),
+                details: "Failed to capture results count information".to_string(),
+            });
         }
 
         if cap.len() == 3 {
@@ -109,7 +148,11 @@ pub fn parse_available_lists_html(
                 let next_str = next.as_str().replace("-", "");
                 let idx = next_str
                     .parse::<usize>()
-                    .with_context(|| format!("Failed to parse next page index: '{next_str}'"))?;
+                    .map_err(|e| crate::error::LoreApiError::ParseFailed {
+                        format: "HTML".to_string(),
+                        operation: "parse available lists".to_string(),
+                        details: format!("Failed to parse next page index: '{}'. Error: {}", next_str, e),
+                    })?;
                 next_page_index = Some(idx);
             }
         }
@@ -118,7 +161,11 @@ pub fn parse_available_lists_html(
             let total_str = total.as_str().replace(",", "");
             let total_val = total_str
                 .parse::<usize>()
-                .with_context(|| format!("Failed to parse total items: '{total_str}'"))?;
+                .map_err(|e| crate::error::LoreApiError::ParseFailed {
+                    format: "HTML".to_string(),
+                    operation: "parse available lists".to_string(),
+                    details: format!("Failed to parse total items: '{}'. Error: {}", total_str, e),
+                })?;
             total_items = Some(total_val);
         }
     }
@@ -153,49 +200,31 @@ pub fn parse_available_lists_html(
 ///
 /// # Errors
 /// Returns an error if the title doesn't match any expected pattern.
-pub fn parse_patch_title(title: &str) -> anyhow::Result<(usize, Option<SequenceNumber>)> {
-    use anyhow::{Context, anyhow};
-
+pub fn parse_patch_title(title: &str) -> Option<(usize, Option<SequenceNumber>)> {
     // Regex to match patch title patterns with named captures
     let patch_regex = Regex::new(
         r"^\[PATCH\s*(?:v(?P<version>\d+))?\s*(?:(?P<current>\d+)/(?P<total>\d+))?\s*\]",
-    )
-    .context("Failed to compile patch title regex")?;
+    ).ok()?;
 
-    if let Some(captures) = patch_regex.captures(title) {
-        // Extract version (defaults to 1 if not specified)
-        let version = if let Some(version_match) = captures.name("version") {
-            version_match.as_str().parse::<usize>().with_context(|| {
-                format!(
-                    "Failed to parse version number: '{}'",
-                    version_match.as_str()
-                )
-            })?
-        } else {
-            1
-        };
-
-        // Extract sequence information
-        let sequence = if let (Some(current_match), Some(total_match)) =
-            (captures.name("current"), captures.name("total"))
-        {
-            let seq_str = format!("{}/{}", current_match.as_str(), total_match.as_str());
-            seq_str
-                .parse::<SequenceNumber>()
-                .with_context(|| format!("Failed to parse sequence number: '{}'", seq_str))
-                .map(Some)?
-        } else {
-            None
-        };
-
-        Ok((version, sequence))
+    let captures = patch_regex.captures(title)?;
+    // Extract version (defaults to 1 if not specified)
+    let version = if let Some(version_match) = captures.name("version") {
+        version_match.as_str().parse::<usize>().ok()?
     } else {
-        // If the title doesn't match the expected pattern, skip it
-        Err(anyhow!(
-            "Patch title does not match expected format: '{}'",
-            title
-        ))
-    }
+        1
+    };
+
+    // Extract sequence information
+    let sequence = if let (Some(current_match), Some(total_match)) =
+        (captures.name("current"), captures.name("total"))
+    {
+        let seq_str = format!("{}/{}", current_match.as_str(), total_match.as_str());
+        seq_str.parse::<SequenceNumber>().ok()
+    } else {
+        None
+    };
+
+    Some((version, sequence))
 }
 
 /// Parses the XML patch feed into structured data using serde_xml_rs.
@@ -212,7 +241,7 @@ pub fn parse_patch_title(title: &str) -> anyhow::Result<(usize, Option<SequenceN
 pub fn parse_patch_feed_xml(
     xml: &str,
     start_index: usize,
-) -> anyhow::Result<LorePage<LorePatchMetadata>> {
+) -> Result<LorePage<LorePatchMetadata>, crate::error::LoreApiError> {
     #[derive(Debug, Deserialize)]
     struct Feed {
         #[serde(rename = "entry")]
@@ -246,18 +275,25 @@ pub fn parse_patch_feed_xml(
         rel: Option<String>,
     }
 
-    use anyhow::Context;
     use chrono::{DateTime, Utc};
-    let feed: Feed = from_str(xml).context("Failed to parse patch feed XML")?;
+    let feed: Feed = from_str(xml).map_err(|e| crate::error::LoreApiError::ParseFailed {
+        format: "XML".to_string(),
+        operation: "parse patch feed".to_string(),
+        details: format!("Failed to parse patch feed XML: {}", e),
+    })?;
     let list_message_id_regex = Regex::new(r"https://lore.kernel.org/([^/]+)/([^/]+)/")
-        .context("Failed to compile list message ID regex")?;
+        .map_err(|e| crate::error::LoreApiError::ParseFailed {
+            format: "XML".to_string(),
+            operation: "parse patch feed".to_string(),
+            details: format!("Failed to compile list message ID regex: {}", e),
+        })?;
 
     let items = feed
         .entries
         .into_iter()
         .filter_map(|entry| {
             // Parse patch title to extract version and sequence information
-            let (version, sequence) = parse_patch_title(&entry.title).ok()?;
+            let (version, sequence) = parse_patch_title(&entry.title).unwrap_or((1, None));
 
             let datetime = DateTime::parse_from_rfc3339(&entry.updated)
                 .map(|dt| dt.with_timezone(&Utc))
@@ -340,21 +376,21 @@ mod tests {
     fn test_parse_patch_title_invalid_format() {
         let title = "Invalid patch title";
         let result = parse_patch_title(title);
-        assert!(result.is_err());
+        assert!(result.is_none());
     }
 
     #[test]
     fn test_parse_patch_title_malformed_sequence() {
         let title = "[PATCH 1/] Add new feature";
         let result = parse_patch_title(title);
-        assert!(result.is_err());
+        assert!(result.is_none());
     }
 
     #[test]
     fn test_parse_patch_title_malformed_version() {
         let title = "[PATCH v] Add new feature";
         let result = parse_patch_title(title);
-        assert!(result.is_err());
+        assert!(result.is_none());
     }
 
     #[test]

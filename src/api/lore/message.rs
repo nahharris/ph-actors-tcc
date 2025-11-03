@@ -1,7 +1,7 @@
 use tokio::sync::oneshot::Sender;
 
 use super::data::{LoreMailingList, LorePage, LorePatchMetadata};
-use crate::{ArcSlice, ArcStr};
+use crate::{error::LoreApiError, ArcSlice, ArcStr};
 
 /// Messages that can be sent to a [`LoreApiCore`] actor.
 ///
@@ -16,17 +16,17 @@ pub enum LoreApiMessage {
         /// The offset for pagination (0-based)
         min_index: usize,
         /// Response channel for the operation result
-        tx: Sender<anyhow::Result<Option<LorePage<LorePatchMetadata>>>>,
+        tx: Sender<Result<Option<LorePage<LorePatchMetadata>>, LoreApiError>>,
     },
     GetAvailableLists {
-        tx: Sender<anyhow::Result<ArcSlice<LoreMailingList>>>,
+        tx: Sender<Result<ArcSlice<LoreMailingList>, LoreApiError>>,
     },
     /// Fetches available mailing lists with pagination
     GetAvailableListsPage {
         /// The offset for pagination (0-based)
         min_index: usize,
         /// Response channel for the operation result
-        tx: Sender<anyhow::Result<Option<LorePage<LoreMailingList>>>>,
+        tx: Sender<Result<Option<LorePage<LoreMailingList>>, LoreApiError>>,
     },
     /// Fetches the HTML content of a specific patch
     GetPatchHtml {
@@ -35,7 +35,7 @@ pub enum LoreApiMessage {
         /// The unique message ID of the patch
         message_id: ArcStr,
         /// Response channel for the operation result
-        tx: Sender<anyhow::Result<ArcStr>>,
+        tx: Sender<Result<ArcStr, LoreApiError>>,
     },
     /// Fetches a raw patch in plain text format
     GetRawPatch {
@@ -44,7 +44,7 @@ pub enum LoreApiMessage {
         /// The unique message ID of the patch
         message_id: ArcStr,
         /// Response channel for the operation result
-        tx: Sender<anyhow::Result<ArcStr>>,
+        tx: Sender<Result<ArcStr, LoreApiError>>,
     },
     /// Fetches patch metadata in JSON format
     GetPatchMetadata {
@@ -53,6 +53,6 @@ pub enum LoreApiMessage {
         /// The unique message ID of the patch
         message_id: ArcStr,
         /// Response channel for the operation result
-        tx: Sender<anyhow::Result<ArcStr>>,
+        tx: Sender<Result<ArcStr, LoreApiError>>,
     },
 }
