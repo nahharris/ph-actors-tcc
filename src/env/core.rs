@@ -1,8 +1,8 @@
-use std::{env::VarError, ffi::OsString};
+use std::ffi::OsString;
 
 use tokio::sync::mpsc;
 
-use crate::{ArcOsStr, ArcStr};
+use crate::{error::EnvError, ArcOsStr, ArcStr};
 
 use super::message::Message;
 
@@ -53,7 +53,13 @@ impl Core {
         }
     }
 
-    fn get_env(&self, tx: tokio::sync::oneshot::Sender<Result<ArcStr, VarError>>, key: ArcOsStr) {
-        let _ = tx.send(std::env::var(key).map(|s| ArcStr::from(&s)));
+    fn get_env(&self, tx: tokio::sync::oneshot::Sender<Result<ArcStr, EnvError>>, key: ArcOsStr) {
+        let _ = tx.send(
+            std::env::var(key.as_ref())
+                .map(|s| ArcStr::from(&s))
+                .map_err(|_e| EnvError::NotFound {
+                    name: key.to_string_lossy().to_string(),
+                }),
+        );
     }
 }

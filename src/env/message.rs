@@ -23,7 +23,7 @@ pub enum Message {
     /// Gets an environment variable
     Get {
         /// Channel to send the result back to the caller
-        tx: tokio::sync::oneshot::Sender<Result<ArcStr, std::env::VarError>>,
+        tx: tokio::sync::oneshot::Sender<Result<ArcStr, crate::error::EnvError>>,
         /// The environment variable name to retrieve
         key: ArcOsStr,
     },

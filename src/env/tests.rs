@@ -1,6 +1,6 @@
 use std::ops::Deref;
 
-use crate::ArcOsStr;
+use crate::{ArcOsStr, EnvError};
 
 use super::Env;
 
@@ -28,7 +28,7 @@ async fn test_env_operations() {
     // Test unset
     env.unset_env(key.clone()).await;
     let result = env.env(key.clone()).await;
-    assert!(matches!(result, Err(std::env::VarError::NotPresent)));
+    assert!(matches!(result, Err(EnvError::NotFound { name: _ })));
 
     // Verify it's also unset in std::env
     let std_result = std::env::var(key.as_ref());
@@ -49,7 +49,7 @@ async fn test_set_env() {
 
     // Test set
     env.set_env(key.clone(), value).await;
-    let result = env.env(key.clone()).await.unwrap();
+    let result = env.env(key.clone()).await.expect("Getting environment variable to succeed");
     assert_eq!(result.deref(), value);
 
     // Cleanup
@@ -66,13 +66,13 @@ async fn test_unset_env() {
     env.set_env(key.clone(), value).await;
 
     // Verify it's set in the actor
-    let result = env.env(key.clone()).await.unwrap();
+    let result = env.env(key.clone()).await.expect("Getting environment variable to succeed");
     assert_eq!(result.deref(), value);
 
     // Test unset
     env.unset_env(key.clone()).await;
     let result = env.env(key.clone()).await;
-    assert!(matches!(result, Err(std::env::VarError::NotPresent)));
+    assert!(matches!(result, Err(EnvError::NotFound { name: _ })));
 }
 
 #[tokio::test]
@@ -85,7 +85,7 @@ async fn test_get_env() {
     unsafe { std::env::set_var(key.as_ref(), value) };
 
     // Test get
-    let result = env.env(key.clone()).await.unwrap();
+    let result = env.env(key.clone()).await.expect("Getting environment variable to succeed");
     assert_eq!(result.deref(), value);
 
     // Cleanup

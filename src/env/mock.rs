@@ -2,10 +2,7 @@
 use mockall::mock;
 
 #[cfg(test)]
-use std::env::VarError;
-
-#[cfg(test)]
-use crate::{ArcOsStr, ArcStr};
+use crate::{error::EnvError, ArcOsStr, ArcStr};
 
 #[cfg(test)]
 mock! {
@@ -13,7 +10,7 @@ mock! {
     pub Env {
         pub async fn set_env(&self, key: ArcOsStr, value: String);
         pub async fn unset_env(&self, key: ArcOsStr);
-        pub async fn env(&self, key: ArcOsStr) -> Result<ArcStr, VarError>;
+        pub async fn env(&self, key: ArcOsStr) -> Result<ArcStr, EnvError>;
     }
 
     impl Clone for Env {
