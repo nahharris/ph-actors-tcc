@@ -1,8 +1,6 @@
-use anyhow::Context;
-
 use super::data::{LogLevel, LogMessage};
 use super::message::Message;
-use crate::ArcPath;
+use crate::{error::LogError, ArcPath};
 #[cfg(not(test))]
 use crate::{app::config::Config, fs::Fs};
 #[cfg(test)]
@@ -56,11 +54,32 @@ pub struct Core {
 }
 
 impl Core {
-    pub async fn new(fs: Fs, config: Config) -> anyhow::Result<Self> {
+    pub async fn new(fs: Fs, config: Config) -> Result<Self, LogError> {
         // Load configuration values
-        let log_level = config.log_level().await;
-        let max_age = config.usize(crate::app::config::USizeOpt::MaxAge).await;
-        let log_dir = config.path(crate::app::config::PathOpt::LogDir).await;
+        let log_level = config.log_level().await.map_err(|e| match e {
+            crate::error::ConfigError::Fatal(fatal) => LogError::Fatal(fatal),
+            _ => LogError::FileOperationFailed {
+                path: "configuration".to_string(),
+                operation: "get log level".to_string(),
+                source: std::io::Error::from(std::io::ErrorKind::Other),
+            },
+        })?;
+        let max_age = config.usize(crate::app::config::USizeOpt::MaxAge).await.map_err(|e| match e {
+            crate::error::ConfigError::Fatal(fatal) => LogError::Fatal(fatal),
+            _ => LogError::FileOperationFailed {
+                path: "configuration".to_string(),
+                operation: "get max age".to_string(),
+                source: std::io::Error::from(std::io::ErrorKind::Other),
+            },
+        })?;
+        let log_dir = config.path(crate::app::config::PathOpt::LogDir).await.map_err(|e| match e {
+            crate::error::ConfigError::Fatal(fatal) => LogError::Fatal(fatal),
+            _ => LogError::FileOperationFailed {
+                path: "configuration".to_string(),
+                operation: "get log directory".to_string(),
+                source: std::io::Error::from(std::io::ErrorKind::Other),
+            },
+        })?;
 
         let log_path = ArcPath::from(&log_dir.join(format!(
             "patch-hub_{}.log",
@@ -69,19 +88,38 @@ impl Core {
         let latest_log_path = ArcPath::from(&log_dir.join("latest.log"));
 
         // Create log directory and files
-        fs.mkdir(log_dir.clone())
-            .await
-            .with_context(|| format!("Failed to create log directory: {}", log_dir.display()))?;
+        fs.mkdir(log_dir.clone()).await.map_err(|e| match e {
+            crate::error::FsError::Fatal(fatal) => LogError::Fatal(fatal),
+            crate::error::FsError::OperationFailed { path, operation, source, .. } => {
+                LogError::FileOperationFailed {
+                    path: path.unwrap_or_else(|| log_dir.to_string_lossy().to_string()),
+                    operation,
+                    source,
+                }
+            }
+        })?;
 
-        let log_file = fs
-            .write_file(log_path.clone())
-            .await
-            .with_context(|| format!("Failed to create log file: {}", log_path.display()))?;
+        let log_file = fs.write_file(log_path.clone()).await.map_err(|e| match e {
+            crate::error::FsError::Fatal(fatal) => LogError::Fatal(fatal),
+            crate::error::FsError::OperationFailed { path, operation, source, .. } => {
+                LogError::FileOperationFailed {
+                    path: path.unwrap_or_else(|| log_path.to_string_lossy().to_string()),
+                    operation,
+                    source,
+                }
+            }
+        })?;
 
-        let latest_log_file = fs
-            .write_file(latest_log_path)
-            .await
-            .with_context(|| format!("Failed to create latest log file"))?;
+        let latest_log_file = fs.write_file(latest_log_path.clone()).await.map_err(|e| match e {
+            crate::error::FsError::Fatal(fatal) => LogError::Fatal(fatal),
+            crate::error::FsError::OperationFailed { path, operation, source, .. } => {
+                LogError::FileOperationFailed {
+                    path: path.unwrap_or_else(|| latest_log_path.to_string_lossy().to_string()),
+                    operation,
+                    source,
+                }
+            }
+        })?;
 
         Ok(Self {
             fs,
@@ -117,32 +155,33 @@ impl Core {
 
     async fn handle_log(&mut self, message: LogMessage) {
         use tokio::io::AsyncWriteExt;
-        self.log_file
-            .write_all(format!("{}\n", &message).as_bytes())
-            .await
-            .expect("Failed to write to the current log file");
+        let log_path_str = self.log_path.to_string_lossy().to_string();
+        
+        // Write to current log file - if this fails, log an error but continue
+        if let Err(e) = self.log_file.write_all(format!("{}\n", &message).as_bytes()).await {
+            eprintln!("Failed to write to log file {}: {}", log_path_str, e);
+            // Continue anyway - logging should not break the application
+        }
+        
+        if let Err(e) = self.log_file.flush().await {
+            eprintln!("Failed to flush log file {}: {}", log_path_str, e);
+        }
 
-        self.log_file
-            .flush()
-            .await
-            .expect("Failed to flush the current log file");
-
-        self.latest_log_file
-            .write_all(format!("{}\n", &message).as_bytes())
-            .await
-            .expect("Failed to write to the latest log file");
-
-        self.latest_log_file
-            .flush()
-            .await
-            .expect("Failed to flush the latest log file");
+        // Write to latest log file - if this fails, log an error but continue
+        if let Err(e) = self.latest_log_file.write_all(format!("{}\n", &message).as_bytes()).await {
+            eprintln!("Failed to write to latest log file: {}", e);
+        }
+        
+        if let Err(e) = self.latest_log_file.flush().await {
+            eprintln!("Failed to flush latest log file: {}", e);
+        }
 
         if message.level >= self.print_level {
             self.logs_to_print.push(message);
         }
     }
 
-    fn handle_flush(self, tx: tokio::sync::oneshot::Sender<anyhow::Result<()>>) {
+    fn handle_flush(self, tx: tokio::sync::oneshot::Sender<Result<(), LogError>>) {
         for message in &self.logs_to_print {
             eprintln!("{message}");
         }

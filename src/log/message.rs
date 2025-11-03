@@ -1,7 +1,8 @@
-use super::data::LogMessage;
 use tokio::sync::oneshot;
 
-/// Messages that can be sent to a [`LogCore`] actor.
+use super::data::LogMessage;
+
+/// Messages that can be sent to a [`Core`] actor.
 ///
 /// This enum defines the different types of operations that can be performed
 /// through the logging actor system.
@@ -11,7 +12,7 @@ pub enum Message {
     Log(LogMessage),
     /// Flushes the logger by writing buffered messages to stderr and destroying the instance
     Flush {
-        tx: oneshot::Sender<anyhow::Result<()>>,
+        tx: oneshot::Sender<Result<(), crate::error::LogError>>,
     },
     /// Runs the log garbage collector to delete old log files
     CollectGarbage,
