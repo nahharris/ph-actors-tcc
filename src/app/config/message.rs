@@ -14,31 +14,31 @@ pub enum Message {
     /// Load configuration from file
     Load {
         /// Channel to send the result back to the caller
-        tx: oneshot::Sender<anyhow::Result<()>>,
+        tx: oneshot::Sender<Result<(), crate::error::ConfigError>>,
     },
     /// Save configuration to file
     Save {
         /// Channel to send the result back to the caller
-        tx: oneshot::Sender<anyhow::Result<()>>,
+        tx: oneshot::Sender<Result<(), crate::error::ConfigError>>,
     },
     /// Get a path-based configuration value
     GetPath {
         /// The path option to retrieve
         opt: PathOpt,
         /// Channel to send the result back to the caller
-        tx: oneshot::Sender<ArcPath>,
+        tx: oneshot::Sender<Result<ArcPath, crate::error::ConfigError>>,
     },
     /// Get the current log level
     GetLogLevel {
         /// Channel to send the result back to the caller
-        tx: oneshot::Sender<LogLevel>,
+        tx: oneshot::Sender<Result<LogLevel, crate::error::ConfigError>>,
     },
     /// Get a numeric configuration value
     GetUSize {
         /// The numeric option to retrieve
         opt: USizeOpt,
         /// Channel to send the result back to the caller
-        tx: oneshot::Sender<usize>,
+        tx: oneshot::Sender<Result<usize, crate::error::ConfigError>>,
     },
     /// Set a path-based configuration value
     SetPath {
@@ -64,7 +64,7 @@ pub enum Message {
         /// The renderer option to retrieve
         opt: RendererOpt,
         /// Channel to send the result back to the caller
-        tx: oneshot::Sender<Renderer>,
+        tx: oneshot::Sender<Result<Renderer, crate::error::ConfigError>>,
     },
     /// Set a renderer configuration value
     SetRenderer {
