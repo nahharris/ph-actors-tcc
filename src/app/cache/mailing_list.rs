@@ -1,4 +1,3 @@
-use anyhow::Context;
 use tokio::sync::mpsc;
 
 mod core;
@@ -9,7 +8,10 @@ pub mod mock;
 #[cfg(test)]
 mod tests;
 
-use crate::api::lore::LoreMailingList;
+/// Actor name for error reporting.
+pub const ACTOR_NAME: &'static str = "MailingListCache";
+
+use crate::{error::CacheError, error::FatalActorError, api::lore::LoreMailingList};
 use message::Message;
 
 #[cfg(not(test))]
@@ -37,7 +39,7 @@ impl MailingListCache {
     }
 
     /// Creates a new MailingListCache actor.
-    pub async fn spawn(lore: LoreApi, fs: Fs, config: Config, log: Log) -> anyhow::Result<Self> {
+    pub async fn spawn(lore: LoreApi, fs: Fs, config: Config, log: Log) -> Result<Self, CacheError> {
         let (tx, rx) = mpsc::channel(crate::BUFFER_SIZE);
         let core = core::Core::new(lore, fs, config, log).await?;
         let _ = tokio::spawn(async move {
@@ -47,109 +49,181 @@ impl MailingListCache {
     }
 
     /// Fetches a single mailing list by index.
-    pub async fn get(&self, index: usize) -> anyhow::Result<Option<LoreMailingList>> {
+    pub async fn get(&self, index: usize) -> Result<Option<LoreMailingList>, CacheError> {
         let (tx, rx) = tokio::sync::oneshot::channel();
         self.tx
             .send(Message::Get { index, tx })
             .await
-            .context("Sending message to MailingListCache actor")
-            .expect("MailingListCache actor died");
+            .map_err(|_e| {
+                CacheError::Fatal(FatalActorError::ActorSendFailed {
+                    actor_name: crate::app::cache::mailing_list::ACTOR_NAME,
+                    operation: "get".to_string(),
+                })
+            })?;
         rx.await
-            .context("Awaiting response from MailingListCache actor")
-            .expect("MailingListCache actor died")
+            .map_err(|e| {
+                CacheError::Fatal(FatalActorError::ActorRecvFailed {
+                    actor_name: crate::app::cache::mailing_list::ACTOR_NAME,
+                    operation: "get".to_string(),
+                    source: e,
+                })
+            })?
     }
 
     /// Fetches a slice of mailing lists by range.
     pub async fn get_slice(
         &self,
         range: std::ops::Range<usize>,
-    ) -> anyhow::Result<Vec<LoreMailingList>> {
+    ) -> Result<Vec<LoreMailingList>, CacheError> {
         let (tx, rx) = tokio::sync::oneshot::channel();
         self.tx
             .send(Message::GetSlice { range, tx })
             .await
-            .context("Sending message to MailingListCache actor")
-            .expect("MailingListCache actor died");
+            .map_err(|_e| {
+                CacheError::Fatal(FatalActorError::ActorSendFailed {
+                    actor_name: crate::app::cache::mailing_list::ACTOR_NAME,
+                    operation: "get slice".to_string(),
+                })
+            })?;
         rx.await
-            .context("Awaiting response from MailingListCache actor")
-            .expect("MailingListCache actor died")
+            .map_err(|e| {
+                CacheError::Fatal(FatalActorError::ActorRecvFailed {
+                    actor_name: crate::app::cache::mailing_list::ACTOR_NAME,
+                    operation: "get slice".to_string(),
+                    source: e,
+                })
+            })?
     }
 
     /// Refreshes the cache by fetching from the API.
-    pub async fn refresh(&self) -> anyhow::Result<()> {
+    pub async fn refresh(&self) -> Result<(), CacheError> {
         let (tx, rx) = tokio::sync::oneshot::channel();
         self.tx
             .send(Message::Refresh { tx })
             .await
-            .context("Sending message to MailingListCache actor")
-            .expect("MailingListCache actor died");
+            .map_err(|_e| {
+                CacheError::Fatal(FatalActorError::ActorSendFailed {
+                    actor_name: crate::app::cache::mailing_list::ACTOR_NAME,
+                    operation: "refresh".to_string(),
+                })
+            })?;
         rx.await
-            .context("Awaiting response from MailingListCache actor")
-            .expect("MailingListCache actor died")
+            .map_err(|e| {
+                CacheError::Fatal(FatalActorError::ActorRecvFailed {
+                    actor_name: crate::app::cache::mailing_list::ACTOR_NAME,
+                    operation: "refresh".to_string(),
+                    source: e,
+                })
+            })?
     }
 
     /// Invalidates the current cache.
-    pub async fn invalidate(&self) -> anyhow::Result<()> {
+    pub async fn invalidate(&self) -> Result<(), CacheError> {
         let (tx, rx) = tokio::sync::oneshot::channel();
         self.tx
             .send(Message::Invalidate { tx })
             .await
-            .context("Sending message to MailingListCache actor")
-            .expect("MailingListCache actor died");
+            .map_err(|_e| {
+                CacheError::Fatal(FatalActorError::ActorSendFailed {
+                    actor_name: crate::app::cache::mailing_list::ACTOR_NAME,
+                    operation: "invalidate".to_string(),
+                })
+            })?;
         rx.await
-            .context("Awaiting response from MailingListCache actor")
-            .expect("MailingListCache actor died")
+            .map_err(|e| {
+                CacheError::Fatal(FatalActorError::ActorRecvFailed {
+                    actor_name: crate::app::cache::mailing_list::ACTOR_NAME,
+                    operation: "invalidate".to_string(),
+                    source: e,
+                })
+            })?
     }
 
     /// Checks if the requested range is available in cache.
-    pub async fn is_available(&self, range: std::ops::Range<usize>) -> bool {
+    pub async fn is_available(&self, range: std::ops::Range<usize>) -> Result<bool, CacheError> {
         let (tx, rx) = tokio::sync::oneshot::channel();
         self.tx
             .send(Message::IsAvailable { range, tx })
             .await
-            .context("Sending message to MailingListCache actor")
-            .expect("MailingListCache actor died");
+            .map_err(|_e| {
+                CacheError::Fatal(FatalActorError::ActorSendFailed {
+                    actor_name: crate::app::cache::mailing_list::ACTOR_NAME,
+                    operation: "is available".to_string(),
+                })
+            })?;
         rx.await
-            .context("Awaiting response from MailingListCache actor")
-            .expect("MailingListCache actor died")
+            .map_err(|e| {
+                CacheError::Fatal(FatalActorError::ActorRecvFailed {
+                    actor_name: crate::app::cache::mailing_list::ACTOR_NAME,
+                    operation: "is available".to_string(),
+                    source: e,
+                })
+            })?
     }
 
     /// Returns the number of cached mailing lists.
-    pub async fn len(&self) -> usize {
+    pub async fn len(&self) -> Result<usize, CacheError> {
         let (tx, rx) = tokio::sync::oneshot::channel();
         self.tx
             .send(Message::Len { tx })
             .await
-            .context("Sending message to MailingListCache actor")
-            .expect("MailingListCache actor died");
+            .map_err(|_e| {
+                CacheError::Fatal(FatalActorError::ActorSendFailed {
+                    actor_name: crate::app::cache::mailing_list::ACTOR_NAME,
+                    operation: "len".to_string(),
+                })
+            })?;
         rx.await
-            .context("Awaiting response from MailingListCache actor")
-            .expect("MailingListCache actor died")
+            .map_err(|e| {
+                CacheError::Fatal(FatalActorError::ActorRecvFailed {
+                    actor_name: crate::app::cache::mailing_list::ACTOR_NAME,
+                    operation: "len".to_string(),
+                    source: e,
+                })
+            })?
     }
 
     /// Persists the cache to the filesystem.
-    pub async fn persist(&self) -> anyhow::Result<()> {
+    pub async fn persist(&self) -> Result<(), CacheError> {
         let (tx, rx) = tokio::sync::oneshot::channel();
         self.tx
             .send(Message::Persist { tx })
             .await
-            .context("Sending message to MailingListCache actor")
-            .expect("MailingListCache actor died");
+            .map_err(|_e| {
+                CacheError::Fatal(FatalActorError::ActorSendFailed {
+                    actor_name: crate::app::cache::mailing_list::ACTOR_NAME,
+                    operation: "persist".to_string(),
+                })
+            })?;
         rx.await
-            .context("Awaiting response from MailingListCache actor")
-            .expect("MailingListCache actor died")
+            .map_err(|e| {
+                CacheError::Fatal(FatalActorError::ActorRecvFailed {
+                    actor_name: crate::app::cache::mailing_list::ACTOR_NAME,
+                    operation: "persist".to_string(),
+                    source: e,
+                })
+            })?
     }
 
     /// Loads the cache from the filesystem.
-    pub async fn load(&self) -> anyhow::Result<()> {
+    pub async fn load(&self) -> Result<(), CacheError> {
         let (tx, rx) = tokio::sync::oneshot::channel();
         self.tx
             .send(Message::Load { tx })
             .await
-            .context("Sending message to MailingListCache actor")
-            .expect("MailingListCache actor died");
+            .map_err(|_e| {
+                CacheError::Fatal(FatalActorError::ActorSendFailed {
+                    actor_name: crate::app::cache::mailing_list::ACTOR_NAME,
+                    operation: "load".to_string(),
+                })
+            })?;
         rx.await
-            .context("Awaiting response from MailingListCache actor")
-            .expect("MailingListCache actor died")
+            .map_err(|e| {
+                CacheError::Fatal(FatalActorError::ActorRecvFailed {
+                    actor_name: crate::app::cache::mailing_list::ACTOR_NAME,
+                    operation: "load".to_string(),
+                    source: e,
+                })
+            })?
     }
 }

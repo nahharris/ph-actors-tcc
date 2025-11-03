@@ -1,7 +1,7 @@
 use super::*;
 use crate::{
-    ArcPath, api::lore::mock::MockLoreApi, app::config::mock::MockConfig, fs::mock::MockFs,
-    log::mock::MockLog,
+    ArcPath, FsError, api::lore::mock::MockLoreApi, app::config::mock::MockConfig,
+    fs::mock::MockFs, log::mock::MockLog,
 };
 use tokio::fs::File;
 
@@ -20,26 +20,28 @@ async fn test_mailing_list_cache_len_empty() {
         .with(mockall::predicate::eq(
             crate::app::config::PathOpt::CachePath,
         ))
-        .returning(move |_| cache_dir.clone());
+        .returning(move |_| Ok(cache_dir.clone()));
 
     mock_log.expect_info().returning(|_, _| ());
     mock_log.expect_error().returning(|_, _| ());
 
     // Mock read_file to return file not found (cache doesn't exist)
     mock_fs.expect_read_file().returning(|_| {
-        Err(std::io::Error::new(
-            std::io::ErrorKind::NotFound,
-            "File not found",
-        ))
+        Err(FsError::OperationFailed {
+            path: None,
+            operation: "read file".to_string(),
+            source: std::io::Error::new(std::io::ErrorKind::NotFound, "File not found"),
+            retryable: false,
+        })
     });
 
     let cache = MailingListCache::spawn(mock_lore, mock_fs, mock_config, mock_log)
         .await
-        .unwrap();
+        .expect("Spawning mailing list cache to succeed");
 
     // Length of empty cache should be 0
     let len = cache.len().await;
-    assert_eq!(len, 0);
+    assert_eq!(len.expect("Getting mailing list length to succeed"), 0);
 }
 
 #[tokio::test]
@@ -57,26 +59,28 @@ async fn test_mailing_list_cache_get_from_empty() {
         .with(mockall::predicate::eq(
             crate::app::config::PathOpt::CachePath,
         ))
-        .returning(move |_| cache_dir.clone());
+        .returning(move |_| Ok(cache_dir.clone()));
 
     mock_log.expect_info().returning(|_, _| ());
     mock_log.expect_error().returning(|_, _| ());
 
     mock_fs.expect_read_file().returning(|_| {
-        Err(std::io::Error::new(
-            std::io::ErrorKind::NotFound,
-            "File not found",
-        ))
+        Err(FsError::OperationFailed {
+            path: None,
+            operation: "read file".to_string(),
+            source: std::io::Error::new(std::io::ErrorKind::NotFound, "File not found"),
+            retryable: false,
+        })
     });
 
     let cache = MailingListCache::spawn(mock_lore, mock_fs, mock_config, mock_log)
         .await
-        .unwrap();
+        .expect("Spawning mailing list cache to succeed");
 
     // Get from empty cache should return None
     let result = cache.get(0).await;
     assert!(result.is_ok());
-    assert_eq!(result.unwrap(), None);
+    assert_eq!(result.expect("Getting mailing list to succeed"), None);
 }
 
 #[tokio::test]
@@ -94,25 +98,27 @@ async fn test_mailing_list_cache_is_available_empty() {
         .with(mockall::predicate::eq(
             crate::app::config::PathOpt::CachePath,
         ))
-        .returning(move |_| cache_dir.clone());
+        .returning(move |_| Ok(cache_dir.clone()));
 
     mock_log.expect_info().returning(|_, _| ());
     mock_log.expect_error().returning(|_, _| ());
 
     mock_fs.expect_read_file().returning(|_| {
-        Err(std::io::Error::new(
-            std::io::ErrorKind::NotFound,
-            "File not found",
-        ))
+        Err(FsError::OperationFailed {
+            path: None,
+            operation: "read file".to_string(),
+            source: std::io::Error::new(std::io::ErrorKind::NotFound, "File not found"),
+            retryable: false,
+        })
     });
 
     let cache = MailingListCache::spawn(mock_lore, mock_fs, mock_config, mock_log)
         .await
-        .unwrap();
+        .expect("Spawning mailing list cache to succeed");
 
     // Range should not be available in empty cache
     let is_available = cache.is_available(0..10).await;
-    assert!(!is_available);
+    assert!(matches!(is_available, Ok(false)));
 }
 
 #[tokio::test]
@@ -130,27 +136,29 @@ async fn test_mailing_list_cache_get_slice_empty() {
         .with(mockall::predicate::eq(
             crate::app::config::PathOpt::CachePath,
         ))
-        .returning(move |_| cache_dir.clone());
+        .returning(move |_| Ok(cache_dir.clone()));
 
     mock_log.expect_info().returning(|_, _| ());
     mock_log.expect_error().returning(|_, _| ());
 
     mock_fs.expect_read_file().returning(|_| {
-        Err(std::io::Error::new(
-            std::io::ErrorKind::NotFound,
-            "File not found",
-        ))
+        Err(FsError::OperationFailed {
+            path: None,
+            operation: "read file".to_string(),
+            source: std::io::Error::new(std::io::ErrorKind::NotFound, "File not found"),
+            retryable: false,
+        })
     });
 
     let cache = MailingListCache::spawn(mock_lore, mock_fs, mock_config, mock_log)
         .await
-        .unwrap();
+        .expect("Spawning mailing list cache to succeed");
 
     // Get slice from empty cache should return empty vec
     let result = cache.get_slice(0..10).await;
     assert!(result.is_ok());
     assert_eq!(
-        result.unwrap(),
+        result.expect("Getting mailing list slice to succeed"),
         Vec::<crate::api::lore::LoreMailingList>::new()
     );
 }
@@ -170,16 +178,18 @@ async fn test_mailing_list_cache_invalidate() {
         .with(mockall::predicate::eq(
             crate::app::config::PathOpt::CachePath,
         ))
-        .returning(move |_| cache_dir.clone());
+        .returning(move |_| Ok(cache_dir.clone()));
 
     mock_log.expect_info().returning(|_, _| ());
     mock_log.expect_error().returning(|_, _| ());
 
     mock_fs.expect_read_file().returning(|_| {
-        Err(std::io::Error::new(
-            std::io::ErrorKind::NotFound,
-            "File not found",
-        ))
+        Err(FsError::OperationFailed {
+            path: None,
+            operation: "read file".to_string(),
+            source: std::io::Error::new(std::io::ErrorKind::NotFound, "File not found"),
+            retryable: false,
+        })
     });
 
     // Mock mkdir and write_file for persistence during invalidate
@@ -191,7 +201,7 @@ async fn test_mailing_list_cache_invalidate() {
 
     let cache = MailingListCache::spawn(mock_lore, mock_fs, mock_config, mock_log)
         .await
-        .unwrap();
+        .expect("Spawning mailing list cache to succeed");
 
     // Invalidate should complete without error
     let result = cache.invalidate().await;
@@ -213,16 +223,18 @@ async fn test_mailing_list_cache_persist() {
         .with(mockall::predicate::eq(
             crate::app::config::PathOpt::CachePath,
         ))
-        .returning(move |_| cache_dir.clone());
+        .returning(move |_| Ok(cache_dir.clone()));
 
     mock_log.expect_info().returning(|_, _| ());
     mock_log.expect_error().returning(|_, _| ());
 
     mock_fs.expect_read_file().returning(|_| {
-        Err(std::io::Error::new(
-            std::io::ErrorKind::NotFound,
-            "File not found",
-        ))
+        Err(FsError::OperationFailed {
+            path: None,
+            operation: "read file".to_string(),
+            source: std::io::Error::new(std::io::ErrorKind::NotFound, "File not found"),
+            retryable: false,
+        })
     });
 
     // Mock mkdir and write_file for persistence
@@ -234,7 +246,7 @@ async fn test_mailing_list_cache_persist() {
 
     let cache = MailingListCache::spawn(mock_lore, mock_fs, mock_config, mock_log)
         .await
-        .unwrap();
+        .expect("Spawning mailing list cache to succeed");
 
     // Persist should complete without error
     let result = cache.persist().await;
@@ -256,7 +268,7 @@ async fn test_mailing_list_cache_load_nonexistent_file() {
         .with(mockall::predicate::eq(
             crate::app::config::PathOpt::CachePath,
         ))
-        .returning(move |_| cache_dir.clone());
+        .returning(move |_| Ok(cache_dir.clone()));
 
     mock_log.expect_info().returning(|_, _| ());
     mock_log.expect_error().returning(|_, _| ());
@@ -266,15 +278,16 @@ async fn test_mailing_list_cache_load_nonexistent_file() {
         .expect_read_file()
         .times(2) // Called once during spawn (load_cache), once during explicit load
         .returning(|_| {
-            Err(std::io::Error::new(
-                std::io::ErrorKind::NotFound,
-                "File not found",
-            ))
+            Err(FsError::OperationFailed {
+                path: None,
+                operation: "read file".to_string(),
+                source: std::io::Error::new(std::io::ErrorKind::NotFound, "File not found"),
+                retryable: false,
+            })
         });
-
     let cache = MailingListCache::spawn(mock_lore, mock_fs, mock_config, mock_log)
         .await
-        .unwrap();
+        .expect("Spawning mailing list cache to succeed");
 
     // Loading non-existent file should succeed (returns Ok(()))
     let result = cache.load().await;
@@ -296,16 +309,18 @@ async fn test_mailing_list_cache_refresh() {
         .with(mockall::predicate::eq(
             crate::app::config::PathOpt::CachePath,
         ))
-        .returning(move |_| cache_dir.clone());
+        .returning(move |_| Ok(cache_dir.clone()));
 
     mock_log.expect_info().returning(|_, _| ());
     mock_log.expect_error().returning(|_, _| ());
 
     mock_fs.expect_read_file().returning(|_| {
-        Err(std::io::Error::new(
-            std::io::ErrorKind::NotFound,
-            "File not found",
-        ))
+        Err(FsError::OperationFailed {
+            path: None,
+            operation: "read file".to_string(),
+            source: std::io::Error::new(std::io::ErrorKind::NotFound, "File not found"),
+            retryable: false,
+        })
     });
 
     // Mock API to return empty result (refresh uses pagination)
@@ -322,7 +337,7 @@ async fn test_mailing_list_cache_refresh() {
 
     let cache = MailingListCache::spawn(mock_lore, mock_fs, mock_config, mock_log)
         .await
-        .unwrap();
+        .expect("Spawning mailing list cache to succeed");
 
     // Refresh should complete successfully
     let result = cache.refresh().await;
