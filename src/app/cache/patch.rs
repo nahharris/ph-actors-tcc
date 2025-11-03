@@ -1,4 +1,3 @@
-use anyhow::Context;
 use tokio::sync::mpsc;
 
 mod core;
@@ -9,7 +8,10 @@ pub mod mock;
 #[cfg(test)]
 mod tests;
 
-use crate::ArcStr;
+/// Actor name for error reporting.
+pub const ACTOR_NAME: &'static str = "PatchCache";
+
+use crate::{error::CacheError, error::FatalActorError, ArcStr};
 use message::Message;
 
 #[cfg(not(test))]
@@ -38,7 +40,7 @@ impl PatchCache {
     }
 
     /// Spawns a new PatchCache actor.
-    pub async fn spawn(lore: LoreApi, fs: Fs, config: Config, log: Log) -> anyhow::Result<Self> {
+    pub async fn spawn(lore: LoreApi, fs: Fs, config: Config, log: Log) -> Result<Self, CacheError> {
         let (tx, rx) = mpsc::channel(crate::BUFFER_SIZE);
         let core = core::Core::new(lore, fs, config, log).await?;
         let _ = tokio::spawn(async move {
@@ -48,7 +50,7 @@ impl PatchCache {
     }
 
     /// Fetches a patch by mailing list and message ID.
-    pub async fn get(&self, list: ArcStr, message_id: ArcStr) -> anyhow::Result<String> {
+    pub async fn get(&self, list: ArcStr, message_id: ArcStr) -> Result<String, CacheError> {
         let (tx, rx) = tokio::sync::oneshot::channel();
         self.tx
             .send(Message::Get {
@@ -57,15 +59,24 @@ impl PatchCache {
                 tx,
             })
             .await
-            .context("Sending message to PatchCache actor")
-            .expect("PatchCache actor died");
+            .map_err(|_e| {
+                CacheError::Fatal(FatalActorError::ActorSendFailed {
+                    actor_name: crate::app::cache::patch::ACTOR_NAME,
+                    operation: "get".to_string(),
+                })
+            })?;
         rx.await
-            .context("Awaiting response from PatchCache actor")
-            .expect("PatchCache actor died")
+            .map_err(|e| {
+                CacheError::Fatal(FatalActorError::ActorRecvFailed {
+                    actor_name: crate::app::cache::patch::ACTOR_NAME,
+                    operation: "get".to_string(),
+                    source: e,
+                })
+            })?
     }
 
     /// Invalidates a specific patch.
-    pub async fn invalidate(&self, list: ArcStr, message_id: ArcStr) -> anyhow::Result<()> {
+    pub async fn invalidate(&self, list: ArcStr, message_id: ArcStr) -> Result<(), CacheError> {
         let (tx, rx) = tokio::sync::oneshot::channel();
         self.tx
             .send(Message::Invalidate {
@@ -74,15 +85,24 @@ impl PatchCache {
                 tx,
             })
             .await
-            .context("Sending message to PatchCache actor")
-            .expect("PatchCache actor died");
+            .map_err(|_e| {
+                CacheError::Fatal(FatalActorError::ActorSendFailed {
+                    actor_name: crate::app::cache::patch::ACTOR_NAME,
+                    operation: "invalidate".to_string(),
+                })
+            })?;
         rx.await
-            .context("Awaiting response from PatchCache actor")
-            .expect("PatchCache actor died")
+            .map_err(|e| {
+                CacheError::Fatal(FatalActorError::ActorRecvFailed {
+                    actor_name: crate::app::cache::patch::ACTOR_NAME,
+                    operation: "invalidate".to_string(),
+                    source: e,
+                })
+            })?
     }
 
     /// Checks if a patch is available in cache.
-    pub async fn is_available(&self, list: ArcStr, message_id: ArcStr) -> bool {
+    pub async fn is_available(&self, list: ArcStr, message_id: ArcStr) -> Result<bool, CacheError> {
         let (tx, rx) = tokio::sync::oneshot::channel();
         self.tx
             .send(Message::IsAvailable {
@@ -91,10 +111,19 @@ impl PatchCache {
                 tx,
             })
             .await
-            .context("Sending message to PatchCache actor")
-            .expect("PatchCache actor died");
+            .map_err(|_e| {
+                CacheError::Fatal(FatalActorError::ActorSendFailed {
+                    actor_name: crate::app::cache::patch::ACTOR_NAME,
+                    operation: "is available".to_string(),
+                })
+            })?;
         rx.await
-            .context("Awaiting response from PatchCache actor")
-            .expect("PatchCache actor died")
+            .map_err(|e| {
+                CacheError::Fatal(FatalActorError::ActorRecvFailed {
+                    actor_name: crate::app::cache::patch::ACTOR_NAME,
+                    operation: "is available".to_string(),
+                    source: e,
+                })
+            })?
     }
 }

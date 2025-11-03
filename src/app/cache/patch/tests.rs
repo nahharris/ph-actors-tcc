@@ -1,7 +1,7 @@
 use super::*;
 use crate::{
-    ArcPath, ArcStr, api::lore::mock::MockLoreApi, app::config::mock::MockConfig, fs::mock::MockFs,
-    log::mock::MockLog,
+    ArcPath, ArcStr, FsError, api::lore::mock::MockLoreApi, app::config::mock::MockConfig,
+    fs::mock::MockFs, log::mock::MockLog,
 };
 
 #[tokio::test]
@@ -19,19 +19,21 @@ async fn test_patch_cache_is_available_empty() {
         .with(mockall::predicate::eq(
             crate::app::config::PathOpt::CachePath,
         ))
-        .returning(move |_| cache_dir.clone());
+        .returning(move |_| Ok(cache_dir.clone()));
 
     // Mock read_file to return file not found (patch not on disk)
     mock_fs.expect_read_file().returning(|_| {
-        Err(std::io::Error::new(
-            std::io::ErrorKind::NotFound,
-            "File not found",
-        ))
+        Err(FsError::OperationFailed {
+            path: None,
+            operation: "read file".to_string(),
+            source: std::io::Error::new(std::io::ErrorKind::NotFound, "File not found"),
+            retryable: false,
+        })
     });
 
     let cache = PatchCache::spawn(mock_lore, mock_fs, mock_config, mock_log)
         .await
-        .unwrap();
+        .expect("Spawning patch cache to succeed");
 
     let list = ArcStr::from("test-list");
     let message_id = ArcStr::from("test-msg");
@@ -41,7 +43,7 @@ async fn test_patch_cache_is_available_empty() {
     // that the method works, even though the logic may need improvement.
     let is_available = cache.is_available(list, message_id).await;
     // Current implementation returns true even if file doesn't exist
-    assert!(is_available);
+    assert!(matches!(is_available, Ok(false)));
 }
 
 #[tokio::test]
@@ -59,16 +61,18 @@ async fn test_patch_cache_get_not_in_cache() {
         .with(mockall::predicate::eq(
             crate::app::config::PathOpt::CachePath,
         ))
-        .returning(move |_| cache_dir.clone());
+        .returning(move |_| Ok(cache_dir.clone()));
 
     mock_log.expect_info().returning(|_, _| ());
 
     // Mock read_file to return file not found (patch not on disk)
     mock_fs.expect_read_file().returning(|_| {
-        Err(std::io::Error::new(
-            std::io::ErrorKind::NotFound,
-            "File not found",
-        ))
+        Err(FsError::OperationFailed {
+            path: None,
+            operation: "read file".to_string(),
+            source: std::io::Error::new(std::io::ErrorKind::NotFound, "File not found"),
+            retryable: false,
+        })
     });
 
     // Mock API to return patch content
@@ -85,7 +89,7 @@ async fn test_patch_cache_get_not_in_cache() {
 
     let cache = PatchCache::spawn(mock_lore, mock_fs, mock_config, mock_log)
         .await
-        .unwrap();
+        .expect("Spawning patch cache to succeed");
 
     let list = ArcStr::from("test-list");
     let message_id = ArcStr::from("test-msg");
@@ -93,7 +97,10 @@ async fn test_patch_cache_get_not_in_cache() {
     // Get should fetch from API and return content
     let result = cache.get(list, message_id).await;
     assert!(result.is_ok());
-    assert_eq!(result.unwrap(), "test patch content");
+    assert_eq!(
+        result.expect("Getting patch content to succeed"),
+        "test patch content"
+    );
 }
 
 #[tokio::test]
@@ -111,14 +118,16 @@ async fn test_patch_cache_invalidate() {
         .with(mockall::predicate::eq(
             crate::app::config::PathOpt::CachePath,
         ))
-        .returning(move |_| cache_dir.clone());
+        .returning(move |_| Ok(cache_dir.clone()));
 
     // Mock read_file to return file not found (file doesn't exist, so invalidate succeeds)
     mock_fs.expect_read_file().returning(|_| {
-        Err(std::io::Error::new(
-            std::io::ErrorKind::NotFound,
-            "File not found",
-        ))
+        Err(FsError::OperationFailed {
+            path: None,
+            operation: "read file".to_string(),
+            source: std::io::Error::new(std::io::ErrorKind::NotFound, "File not found"),
+            retryable: false,
+        })
     });
 
     // Mock remove_file for invalidation
@@ -126,7 +135,7 @@ async fn test_patch_cache_invalidate() {
 
     let cache = PatchCache::spawn(mock_lore, mock_fs, mock_config, mock_log)
         .await
-        .unwrap();
+        .expect("Spawning patch cache to succeed");
 
     let list = ArcStr::from("test-list");
     let message_id = ArcStr::from("test-msg");
