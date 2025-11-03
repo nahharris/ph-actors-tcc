@@ -1,9 +1,7 @@
 use super::data::FeedData;
 use super::message::Message;
-use crate::ArcPath;
-use crate::ArcStr;
+use crate::{error::CacheError, ArcPath, ArcStr};
 use crate::api::lore::LorePatchMetadata;
-use anyhow::Context;
 use std::collections::HashMap;
 use tokio::sync::mpsc;
 
@@ -33,8 +31,17 @@ pub struct Core {
 
 impl Core {
     /// Creates a new Core instance.
-    pub async fn new(lore: LoreApi, fs: Fs, config: Config, log: Log) -> anyhow::Result<Self> {
-        let cache_dir = config.path(crate::app::config::PathOpt::CachePath).await;
+    pub async fn new(lore: LoreApi, fs: Fs, config: Config, log: Log) -> Result<Self, CacheError> {
+        let cache_dir = config.path(crate::app::config::PathOpt::CachePath).await.map_err(|e| match e {
+            crate::error::ConfigError::Fatal(fatal) => CacheError::Fatal(fatal),
+            crate::error::ConfigError::ParseFailed { .. } | crate::error::ConfigError::InvalidValue { .. } | crate::error::ConfigError::FileOperationFailed { .. } => {
+                CacheError::FileOperationFailed {
+                    path: "config".to_string(),
+                    operation: "get cache path".to_string(),
+                    source: std::io::Error::new(std::io::ErrorKind::NotFound, format!("{}", e)),
+                }
+            }
+        })?;
         let feed_cache_dir = ArcPath::from(&cache_dir.join("feed"));
         let data = FeedData::new(feed_cache_dir);
 
@@ -68,11 +75,11 @@ impl Core {
                     let _ = tx.send(result);
                 }
                 Message::IsAvailable { list, range, tx } => {
-                    let result = self.handle_is_available(&list, range);
+                    let result = Ok(self.handle_is_available(&list, range));
                     let _ = tx.send(result);
                 }
                 Message::Len { list, tx } => {
-                    let result = self.data.len(&list);
+                    let result = Ok(self.data.len(&list));
                     let _ = tx.send(result);
                 }
                 Message::Persist { list, tx } => {
@@ -84,7 +91,7 @@ impl Core {
                     let _ = tx.send(result);
                 }
                 Message::IsLoaded { list, tx } => {
-                    let result = self.data.feeds.contains_key(&list.to_string());
+                    let result = Ok(self.data.feeds.contains_key(&list.to_string()));
                     let _ = tx.send(result);
                 }
             }
@@ -96,7 +103,7 @@ impl Core {
         &mut self,
         list: &str,
         index: usize,
-    ) -> anyhow::Result<Option<LorePatchMetadata>> {
+    ) -> Result<Option<LorePatchMetadata>, CacheError> {
         // Check if we have the item in cache
         if let Some(item) = self.data.feeds.get(list).and_then(|v| v.get(index)) {
             return Ok(Some(item.clone()));
@@ -119,7 +126,7 @@ impl Core {
         &mut self,
         list: &str,
         range: std::ops::Range<usize>,
-    ) -> anyhow::Result<Vec<LorePatchMetadata>> {
+    ) -> Result<Vec<LorePatchMetadata>, CacheError> {
         // Check if we have the entire range in cache
         if self.data.contains_range(list, range.clone()) {
             let feed = self.data.feeds.get(list).unwrap();
@@ -144,7 +151,7 @@ impl Core {
     }
 
     /// Handles invalidating the cache for a specific mailing list.
-    async fn handle_invalidate(&mut self, list: &str) -> anyhow::Result<()> {
+    async fn handle_invalidate(&mut self, list: &str) -> Result<(), CacheError> {
         self.data.feeds.remove(list);
         self.data.last_updated.remove(list);
         self.persist_cache(list).await
@@ -161,7 +168,7 @@ impl Core {
     }
 
     /// Fetches pages until we have enough data to reach the specified index.
-    async fn fetch_until_index(&mut self, list: &str, target_index: usize) -> anyhow::Result<()> {
+    async fn fetch_until_index(&mut self, list: &str, target_index: usize) -> Result<(), CacheError> {
         let mut min_index = self.data.len(list);
 
         // If we already have enough data, no need to fetch
@@ -182,7 +189,23 @@ impl Core {
             let page = self
                 .lore
                 .get_patch_feed_page(ArcStr::from(list), min_index)
-                .await?;
+                .await
+                .map_err(|e| match e {
+                    crate::error::LoreApiError::Fatal(fatal) => CacheError::Fatal(fatal),
+                    crate::error::LoreApiError::RequestFailed { endpoint, message, retryable: _ } => {
+                        CacheError::FileOperationFailed {
+                            path: endpoint,
+                            operation: "fetch patch feed".to_string(),
+                            source: std::io::Error::new(std::io::ErrorKind::Other, message),
+                        }
+                    }
+                    crate::error::LoreApiError::ParseFailed { format, operation, details } => {
+                        CacheError::SerializationFailed {
+                            message: format!("Failed to parse {} for {}: {}", format, operation, details),
+                            source: None,
+                        }
+                    }
+                })?;
 
             match page {
                 Some(page) => {
@@ -238,7 +261,7 @@ impl Core {
     }
 
     /// Refreshes the cache for a specific mailing list with smart pagination.
-    async fn refresh_cache(&mut self, list: &str) -> anyhow::Result<()> {
+    async fn refresh_cache(&mut self, list: &str) -> Result<(), CacheError> {
         self.log
             .info(SCOPE, format!("Refreshing feed cache for list: {}", list));
 
@@ -282,7 +305,23 @@ impl Core {
             let page = self
                 .lore
                 .get_patch_feed_page(ArcStr::from(list), min_index)
-                .await?;
+                .await
+                .map_err(|e| match e {
+                    crate::error::LoreApiError::Fatal(fatal) => CacheError::Fatal(fatal),
+                    crate::error::LoreApiError::RequestFailed { endpoint, message, retryable: _ } => {
+                        CacheError::FileOperationFailed {
+                            path: endpoint,
+                            operation: "fetch patch feed".to_string(),
+                            source: std::io::Error::new(std::io::ErrorKind::Other, message),
+                        }
+                    }
+                    crate::error::LoreApiError::ParseFailed { format, operation, details } => {
+                        CacheError::SerializationFailed {
+                            message: format!("Failed to parse {} for {}: {}", format, operation, details),
+                            source: None,
+                        }
+                    }
+                })?;
 
             match page {
                 Some(page) => {
@@ -354,7 +393,7 @@ impl Core {
     }
 
     /// Persists the cache for a specific mailing list to the filesystem.
-    async fn persist_cache(&self, list: &str) -> anyhow::Result<()> {
+    async fn persist_cache(&self, list: &str) -> Result<(), CacheError> {
         let cache_path = self.data.get_cache_path(list);
 
         // Create parent directory if it doesn't exist
@@ -362,7 +401,16 @@ impl Core {
             self.fs
                 .mkdir(ArcPath::from(parent))
                 .await
-                .context("Failed to create cache directory")?;
+                .map_err(|e| match e {
+                    crate::error::FsError::Fatal(fatal) => CacheError::Fatal(fatal),
+                    crate::error::FsError::OperationFailed { path, operation, source, .. } => {
+                        CacheError::FileOperationFailed {
+                            path: path.unwrap_or_else(|| cache_path.to_string_lossy().to_string()),
+                            operation,
+                            source,
+                        }
+                    }
+                })?;
         }
 
         // Create cache data for this list only
@@ -383,32 +431,59 @@ impl Core {
             },
         };
 
-        let content =
-            toml::to_string_pretty(&cache_data).context("Failed to serialize cache data")?;
+        let content = toml::to_string_pretty(&cache_data).map_err(|e| {
+            CacheError::SerializationFailed {
+                message: format!("Failed to serialize cache data: {}", e),
+                source: Some(Box::new(e)),
+            }
+        })?;
 
         // Write the file
         let mut file = self
             .fs
-            .write_file(cache_path)
+            .write_file(cache_path.clone())
             .await
-            .context("Failed to open cache file for writing")?;
+            .map_err(|e| match e {
+                crate::error::FsError::Fatal(fatal) => CacheError::Fatal(fatal),
+                crate::error::FsError::OperationFailed { path, operation, source, .. } => {
+                    CacheError::FileOperationFailed {
+                        path: path.unwrap_or_else(|| cache_path.to_string_lossy().to_string()),
+                        operation,
+                        source,
+                    }
+                }
+            })?;
 
         use tokio::io::AsyncWriteExt;
         file.write_all(content.as_bytes())
             .await
-            .context("Failed to write cache file")?;
+            .map_err(|e| {
+                CacheError::FileOperationFailed {
+                    path: cache_path.to_string_lossy().to_string(),
+                    operation: "write cache file".to_string(),
+                    source: e,
+                }
+            })?;
 
         Ok(())
     }
 
     /// Loads the cache for a specific mailing list from the filesystem.
-    async fn load_cache(&mut self, list: &str) -> anyhow::Result<()> {
+    async fn load_cache(&mut self, list: &str) -> Result<(), CacheError> {
         let cache_path = self.data.get_cache_path(list);
 
         // Check if file exists by trying to read it
-        let file = match self.fs.read_file(cache_path).await {
+        let file = match self.fs.read_file(cache_path.clone()).await {
             Ok(file) => file,
-            Err(_) => return Ok(()), // File doesn't exist, that's ok
+            Err(e) => {
+                match e {
+                    crate::error::FsError::Fatal(fatal) => return Err(CacheError::Fatal(fatal)),
+                    crate::error::FsError::OperationFailed { .. } => {
+                        // File doesn't exist, that's ok
+                        return Ok(());
+                    }
+                }
+            }
         };
 
         // Read the content
@@ -417,10 +492,20 @@ impl Core {
         let mut file = file;
         file.read_to_string(&mut content)
             .await
-            .context("Failed to read cache file content")?;
+            .map_err(|e| {
+                CacheError::FileOperationFailed {
+                    path: cache_path.to_string_lossy().to_string(),
+                    operation: "read cache file content".to_string(),
+                    source: e,
+                }
+            })?;
 
-        let cache_data: super::data::CacheData =
-            toml::from_str(&content).context("Failed to deserialize cache data")?;
+        let cache_data: super::data::CacheData = toml::from_str(&content).map_err(|e| {
+            CacheError::SerializationFailed {
+                message: format!("Failed to deserialize cache data: {}", e),
+                source: Some(Box::new(e)),
+            }
+        })?;
 
         // Merge with existing data
         self.data.feeds.extend(cache_data.feeds);

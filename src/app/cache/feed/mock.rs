@@ -1,21 +1,21 @@
 use mockall::mock;
 
-use crate::ArcStr;
+use crate::{error::CacheError, ArcStr};
 use crate::api::lore::LorePatchMetadata;
 
 mock! {
     #[derive(Debug)]
     pub FeedCache {
-        pub async fn get(&self, list: ArcStr, index: usize) -> anyhow::Result<Option<LorePatchMetadata>>;
-        pub async fn get_slice(&self, list: ArcStr, range: std::ops::Range<usize>) -> anyhow::Result<Vec<LorePatchMetadata>>;
-        pub async fn refresh(&self, list: ArcStr) -> anyhow::Result<()>;
-        pub async fn invalidate(&self, list: ArcStr) -> anyhow::Result<()>;
-        pub async fn is_available(&self, list: ArcStr, range: std::ops::Range<usize>) -> bool;
-        pub async fn len(&self, list: ArcStr) -> usize;
-        pub async fn persist(&self, list: ArcStr) -> anyhow::Result<()>;
-        pub async fn load(&self, list: ArcStr) -> anyhow::Result<()>;
-        pub async fn is_loaded(&self, list: ArcStr) -> bool;
-        pub async fn ensure_loaded(&self, list: ArcStr) -> anyhow::Result<()>;
+        pub async fn get(&self, list: ArcStr, index: usize) -> Result<Option<LorePatchMetadata>, CacheError>;
+        pub async fn get_slice(&self, list: ArcStr, range: std::ops::Range<usize>) -> Result<Vec<LorePatchMetadata>, CacheError>;
+        pub async fn refresh(&self, list: ArcStr) -> Result<(), CacheError>;
+        pub async fn invalidate(&self, list: ArcStr) -> Result<(), CacheError>;
+        pub async fn is_available(&self, list: ArcStr, range: std::ops::Range<usize>) -> Result<bool, CacheError>;
+        pub async fn len(&self, list: ArcStr) -> Result<usize, CacheError>;
+        pub async fn persist(&self, list: ArcStr) -> Result<(), CacheError>;
+        pub async fn load(&self, list: ArcStr) -> Result<(), CacheError>;
+        pub async fn is_loaded(&self, list: ArcStr) -> Result<bool, CacheError>;
+        pub async fn ensure_loaded(&self, list: ArcStr) -> Result<(), CacheError>;
     }
 
     impl Clone for FeedCache {
