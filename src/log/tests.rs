@@ -145,7 +145,7 @@ async fn test_log_collect_garbage_with_max_age_zero() {
     let log = Log::spawn(mock_fs, mock_config).await.expect("Spawning log to succeed");
 
     // With max_age=0, collect_garbage should return immediately without reading directory
-    log.collect_garbage().await;
+    log.collect_garbage().await.expect("Collecting garbage to succeed");
 
     // Wait a bit to ensure the message is processed
     tokio::time::sleep(Duration::from_millis(100)).await;
@@ -213,7 +213,7 @@ async fn test_log_collect_garbage_with_old_files() {
 
     let log = Log::spawn(mock_fs, mock_config).await.expect("Spawning log to succeed");
 
-    log.collect_garbage().await;
+    log.collect_garbage().await.expect("Collecting garbage to succeed");
     tokio::time::sleep(Duration::from_millis(100)).await;
 
     // Cleanup
@@ -264,7 +264,7 @@ async fn test_log_collect_garbage_read_dir_error() {
     let log = Log::spawn(mock_fs, mock_config).await.expect("Spawning log to succeed");
 
     // collect_garbage should handle the error gracefully and log it
-    log.collect_garbage().await;
+    log.collect_garbage().await.expect("Collecting garbage to succeed");
     tokio::time::sleep(Duration::from_millis(100)).await;
 
     // Cleanup
