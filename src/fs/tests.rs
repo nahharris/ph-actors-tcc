@@ -81,13 +81,14 @@ async fn test_fs_mkdir_rmdir() {
         .expect("Reading directory to succeed");
     assert!(entries.is_empty());
 
+    let path_to_read = path.clone();
     fs.rmdir(path.clone())
         .await
         .expect("Removing directory to succeed");
-    let Err(FsError::OperationFailed { path, operation, retryable, source }) = fs.read_dir(path).await else {
+    let Err(FsError::OperationFailed { path: error_path, operation, retryable, source }) = fs.read_dir(path_to_read.clone()).await else {
         panic!("Reading directory to fail");
     };
-    assert_eq!(path, None);
+    assert_eq!(error_path, Some(path_to_read.to_string_lossy().to_string()));
     assert_eq!(operation, "read directory");
     assert_eq!(retryable, false);
     assert!(matches!(source, e if e.kind() == std::io::ErrorKind::NotFound));
