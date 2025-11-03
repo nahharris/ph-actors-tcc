@@ -1,11 +1,14 @@
 mod core;
 pub mod data;
 mod message;
+#[cfg(test)]
 pub mod mock;
 #[cfg(test)]
 mod tests;
 
-use anyhow::Context;
+/// Actor name for error reporting.
+pub const ACTOR_NAME: &'static str = "Shell";
+
 use tokio::sync::mpsc;
 
 #[cfg(not(test))]
@@ -13,7 +16,7 @@ use crate::log::Log;
 #[cfg(test)]
 use crate::log::mock::MockLog as Log;
 
-use crate::{ArcSlice, ArcStr};
+use crate::{error::ShellError, error::FatalActorError, ArcSlice, ArcStr};
 
 /// The shell actor that provides a thread-safe interface for executing external programs.
 ///
@@ -43,7 +46,7 @@ impl Shell {
     ///
     /// # Returns
     /// A new shell instance with a spawned actor.
-    pub async fn spawn(log: Log) -> anyhow::Result<Self> {
+    pub async fn spawn(log: Log) -> Result<Self, ShellError> {
         let (tx, rx) = mpsc::channel(crate::BUFFER_SIZE);
         let core = core::Core::new(log);
         let _ = tokio::spawn(async move {
@@ -66,7 +69,7 @@ impl Shell {
         program: ArcStr,
         args: ArcSlice<ArcStr>,
         stdin: Option<ArcStr>,
-    ) -> anyhow::Result<data::Result> {
+    ) -> Result<data::Result, crate::error::ShellError> {
         let (tx, rx) = tokio::sync::oneshot::channel();
         let command = data::Command {
             program,
@@ -76,10 +79,19 @@ impl Shell {
         self.tx
             .send(message::Message::Execute { tx, command })
             .await
-            .context("Executing command with Shell")
-            .expect("shell actor died");
+            .map_err(|_e| {
+                ShellError::Fatal(FatalActorError::ActorSendFailed {
+                    actor_name: crate::shell::ACTOR_NAME,
+                    operation: "execute command".to_string(),
+                })
+            })?;
         rx.await
-            .context("Awaiting response for command execution with Shell")
-            .expect("shell actor died")
+            .map_err(|e| {
+                ShellError::Fatal(FatalActorError::ActorRecvFailed {
+                    actor_name: crate::shell::ACTOR_NAME,
+                    operation: "execute command".to_string(),
+                    source: e,
+                })
+            })?
     }
 }
