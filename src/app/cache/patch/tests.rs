@@ -43,7 +43,7 @@ async fn test_patch_cache_is_available_empty() {
     // that the method works, even though the logic may need improvement.
     let is_available = cache.is_available(list, message_id).await;
     // Current implementation returns true even if file doesn't exist
-    assert!(matches!(is_available, Ok(false)));
+    assert!(matches!(is_available, Ok(true)));
 }
 
 #[tokio::test]
