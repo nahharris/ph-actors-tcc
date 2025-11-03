@@ -1,5 +1,6 @@
-use anyhow::{Context, Result};
 use tokio::sync::{mpsc, oneshot};
+
+use crate::error::{AppOperationError, FatalActorError};
 
 pub mod cache;
 pub mod config;
@@ -34,6 +35,8 @@ use crate::{
 
 pub use data::{AppState, MockData};
 use message::Message;
+
+pub const ACTOR_NAME: &'static str = "App";
 
 /// App actor - Central coordinator for the entire application
 ///
@@ -87,15 +90,24 @@ impl App {
     }
 
     /// Shutdown the App actor gracefully
-    pub async fn shutdown(&self) -> Result<()> {
+    pub async fn shutdown(&self) -> Result<(), AppOperationError> {
         let (tx, rx) = oneshot::channel();
         self.tx
             .send(Message::Shutdown { tx })
             .await
-            .context("Sending shutdown message to App actor")
-            .expect("App actor died");
+            .map_err(|_e| {
+                AppOperationError::Fatal(FatalActorError::ActorSendFailed {
+                    actor_name: crate::app::ACTOR_NAME,
+                    operation: "shutdown".to_string(),
+                })
+            })?;
         rx.await
-            .context("Awaiting response for shutdown from App actor")
-            .expect("App actor died")
+            .map_err(|e| {
+                AppOperationError::Fatal(FatalActorError::ActorRecvFailed {
+                    actor_name: crate::app::ACTOR_NAME,
+                    operation: "shutdown".to_string(),
+                    source: e,
+                })
+            })?
     }
 }
