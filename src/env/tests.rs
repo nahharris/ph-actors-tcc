@@ -17,7 +17,7 @@ async fn test_env_operations() {
     assert!(std::env::var(key.as_ref()).is_err());
 
     // Test set and get
-    env.set_env(key.clone(), value).await;
+    env.set_env(key.clone(), value).await.expect("Setting environment variable to succeed");
     let result = env.env(key.clone()).await.unwrap();
     assert_eq!(result.deref(), value);
 
@@ -26,7 +26,7 @@ async fn test_env_operations() {
     assert_eq!(std_result, value);
 
     // Test unset
-    env.unset_env(key.clone()).await;
+    env.unset_env(key.clone()).await.expect("Unsetting environment variable to succeed");
     let result = env.env(key.clone()).await;
     assert!(matches!(result, Err(EnvError::NotFound { name: _ })));
 
@@ -48,12 +48,12 @@ async fn test_set_env() {
     assert!(env.env(key.clone()).await.is_err());
 
     // Test set
-    env.set_env(key.clone(), value).await;
+    env.set_env(key.clone(), value).await.expect("Setting environment variable to succeed");
     let result = env.env(key.clone()).await.expect("Getting environment variable to succeed");
     assert_eq!(result.deref(), value);
 
     // Cleanup
-    env.unset_env(key.clone()).await;
+    env.unset_env(key.clone()).await.expect("Unsetting environment variable to succeed");
 }
 
 #[tokio::test]
@@ -63,14 +63,14 @@ async fn test_unset_env() {
     let value = "test_value";
 
     // Set env var
-    env.set_env(key.clone(), value).await;
+    env.set_env(key.clone(), value).await.expect("Setting environment variable to succeed");
 
     // Verify it's set in the actor
     let result = env.env(key.clone()).await.expect("Getting environment variable to succeed");
     assert_eq!(result.deref(), value);
 
     // Test unset
-    env.unset_env(key.clone()).await;
+    env.unset_env(key.clone()).await.expect("Unsetting environment variable to succeed");
     let result = env.env(key.clone()).await;
     assert!(matches!(result, Err(EnvError::NotFound { name: _ })));
 }
