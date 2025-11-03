@@ -1,7 +1,6 @@
-use anyhow::Result;
 use tokio::sync::oneshot;
 
-use crate::ArcStr;
+use crate::{error::UiError, ArcStr};
 
 /// Messages for communicating with the UI actor
 #[derive(Debug)]
@@ -9,32 +8,32 @@ pub enum Message {
     /// Show the mailing lists view
     ShowLists {
         page: usize,
-        tx: oneshot::Sender<Result<()>>,
+        tx: oneshot::Sender<Result<(), UiError>>,
     },
     /// Show the patch feed view for a specific mailing list
     ShowFeed {
         list: ArcStr,
         page: usize,
-        tx: oneshot::Sender<Result<()>>,
+        tx: oneshot::Sender<Result<(), UiError>>,
     },
     /// Show a specific patch content
     ShowPatch {
         list: ArcStr,
         message_id: ArcStr,
         title: ArcStr,
-        tx: oneshot::Sender<Result<()>>,
+        tx: oneshot::Sender<Result<(), UiError>>,
     },
     /// Update the current selection index
     UpdateSelection { index: usize },
     /// Navigate to the previous page
-    PreviousPage { tx: oneshot::Sender<Result<()>> },
+    PreviousPage { tx: oneshot::Sender<Result<(), UiError>> },
     /// Navigate to the next page
-    NextPage { tx: oneshot::Sender<Result<()>> },
+    NextPage { tx: oneshot::Sender<Result<(), UiError>> },
     /// Navigate back to previous view
-    NavigateBack { tx: oneshot::Sender<Result<()>> },
+    NavigateBack { tx: oneshot::Sender<Result<(), UiError>> },
     /// Submit/select the current item
     SubmitSelection {
-        tx: oneshot::Sender<Result<Option<NavigationAction>>>,
+        tx: oneshot::Sender<Result<Option<NavigationAction>, UiError>>,
     },
     /// Get current UI state
     GetState {
