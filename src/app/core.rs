@@ -1,6 +1,6 @@
 use tokio::sync::mpsc;
 
-use crate::error::AppOperationError;
+use crate::error::AppError;
 
 use crate::ArcStr;
 #[cfg(not(test))]
@@ -225,7 +225,7 @@ impl Core {
         log: &Log,
         mailing_list_cache: &MailingListCache,
         feed_cache: &FeedCache,
-    ) -> Result<(), AppOperationError> {
+    ) -> Result<(), AppError> {
         log.info(SCOPE, "Shutting down application".to_string());
 
         // Persist cache data before exiting

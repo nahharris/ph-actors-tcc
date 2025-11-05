@@ -8,7 +8,6 @@ use ph::{
         ui::Ui,
     },
     env::Env,
-    error::AppError,
     fs::Fs,
     log::Log,
     net::Net,
@@ -40,22 +39,22 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
 
     let log = Log::spawn(fs.clone(), config.clone())
         .await
-        .map_err(AppError::from)?;
+        .map_err(Box::new)?;
     let net = Net::spawn(config.clone(), log.clone());
-    let shell = Shell::spawn(log.clone()).await.map_err(AppError::from)?;
+    let shell = Shell::spawn(log.clone()).await.map_err(Box::new)?;
     let render = Render::spawn(shell.clone(), config.clone());
     let lore = LoreApi::spawn(net);
 
     let mailing_list_cache =
         MailingListCache::spawn(lore.clone(), fs.clone(), config.clone(), log.clone())
             .await
-            .map_err(AppError::from)?;
+            .map_err(Box::new)?;
     let feed_cache = FeedCache::spawn(lore.clone(), fs.clone(), config.clone(), log.clone())
         .await
-        .map_err(AppError::from)?;
+        .map_err(Box::new)?;
     let patch_cache = PatchCache::spawn(lore.clone(), fs.clone(), config.clone(), log.clone())
         .await
-        .map_err(AppError::from)?;
+        .map_err(Box::new)?;
 
     let (terminal, terminal_handle) = Terminal::spawn(log.clone());
     let ui = Ui::spawn(

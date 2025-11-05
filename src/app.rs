@@ -1,6 +1,6 @@
 use tokio::sync::{mpsc, oneshot};
 
-use crate::error::{AppOperationError, FatalActorError};
+use crate::error::{AppError, FatalActorError};
 
 pub mod cache;
 pub mod config;
@@ -90,20 +90,20 @@ impl App {
     }
 
     /// Shutdown the App actor gracefully
-    pub async fn shutdown(&self) -> Result<(), AppOperationError> {
+    pub async fn shutdown(&self) -> Result<(), AppError> {
         let (tx, rx) = oneshot::channel();
         self.tx
             .send(Message::Shutdown { tx })
             .await
             .map_err(|_e| {
-                AppOperationError::Fatal(FatalActorError::ActorSendFailed {
+                AppError::Fatal(FatalActorError::ActorSendFailed {
                     actor_name: crate::app::ACTOR_NAME,
                     operation: "shutdown".to_string(),
                 })
             })?;
         rx.await
             .map_err(|e| {
-                AppOperationError::Fatal(FatalActorError::ActorRecvFailed {
+                AppError::Fatal(FatalActorError::ActorRecvFailed {
                     actor_name: crate::app::ACTOR_NAME,
                     operation: "shutdown".to_string(),
                     source: e,
