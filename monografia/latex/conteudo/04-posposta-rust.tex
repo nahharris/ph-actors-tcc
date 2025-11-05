@@ -364,7 +364,7 @@ As garantias acima não se aplicam à implementação do Modelo de Atores em Eli
 
 \subsection{Lógica}
 
-Toda a lógica de processamento de mensagens para um ator ficará dentro de uma \emph{struct} chamada de \texttt{Core}. Ela será também onde será feito o gerenciamento de estado do ator e pelos detalhes específicos para criação da \emph{task} e do canal \texttt{mspc} dedicado para a comunicação.
+Toda a lógica de processamento de mensagens para um ator ficará dentro de uma \emph{struct} chamada de \texttt{Core}. Ela será também onde será feito o gerenciamento de estado do ator e pelos detalhes específicos para criação da \emph{task} e do canal \texttt{mpsc} dedicado para a comunicação.
 
 No contexto do exemplo dado, a \emph{struct} a ser criada no arquivo \texttt{app/core.rs} seria:
 
@@ -392,7 +392,7 @@ Deverá ser fornecido um método de instância \texttt{init} responsável por co
 \begin{lstlisting}[language=Rust, caption=Exemplo de construtor]
     impl Core {
         // ...
-        pub fn init(self, mut rx: mspc::Receiver<Message>) {
+        pub async fn init(mut self, mut rx: mpsc::Receiver<Message>) {
             while let Some(message) = rx.recv().await {
                 match message {
                     Message::SetThing { value } => {
@@ -426,6 +426,7 @@ Para se aproveitar ao máximo dos recursos que a linguagem Rust oferece, é idea
 
 \begin{lstlisting}[language=Rust, caption=Exemplo de struct para endereço do ator]
 use tokio::sync::{mpsc, oneshot};
+use crate::error::{AppError, FatalActorError};
 
 pub struct App {
     tx: mpsc::Sender<Message>,
@@ -433,40 +434,61 @@ pub struct App {
 
 impl App {
     pub fn spawn(value: i32) -> Self {
-        let (tx, rx) = mpsc::channel(crate::CHANNEL_SIZE);
+        let (tx, rx) = mpsc::channel(crate::BUFFER_SIZE);
         let core = Core::new(value);
         let _ = tokio::spawn(async move {
             core.init(rx).await;
         });
 
-        return Self { tx };
+        Self { tx }
     }
 
-    pub async fn thing(&self) -> i32 {
+    pub async fn thing(&self) -> Result<i32, AppError> {
         let (tx, rx) = oneshot::channel();
         let message = Message::GetThing { tx };
         
         self.tx.send(message).await
-            .expect("Ator não deve morrer");
+            .map_err(|_| {
+                AppError::Fatal(FatalActorError::ActorSendFailed {
+                    actor_name: "App",
+                    operation: "get thing".to_string(),
+                })
+            })?;
         
-        rx.await.expect("Ator não deve morrer")
+        rx.await
+            .map_err(|_| {
+                AppError::Fatal(FatalActorError::ActorRecvFailed {
+                    actor_name: "App",
+                    operation: "get thing".to_string(),
+                })
+            })?
     }
     
-    pub async fn thing_alt(&self) -> oneshot::Receiver<i32> {
+    pub async fn thing_alt(&self) -> Result<oneshot::Receiver<Result<i32, AppError>>, AppError> {
         let (tx, rx) = oneshot::channel();
         let message = Message::GetThing { tx };
         
         self.tx.send(message).await
-            .expect("Ator não deve morrer");
+            .map_err(|_| {
+                AppError::Fatal(FatalActorError::ActorSendFailed {
+                    actor_name: "App",
+                    operation: "get thing".to_string(),
+                })
+            })?;
         
-        rx
+        Ok(rx)
     }
     
-    pub async fn set_thing(&self, value: i32) {
+    pub async fn set_thing(&self, value: i32) -> Result<(), AppError> {
         let message = Message::SetThing { value };
         
         self.tx.send(message).await
-            .expect("Ator não deve morrer");
+            .map_err(|_| {
+                AppError::Fatal(FatalActorError::ActorSendFailed {
+                    actor_name: "App",
+                    operation: "set thing".to_string(),
+                })
+            })
     }
 }
 \end{lstlisting}
@@ -474,6 +496,179 @@ impl App {
 No exemplo acima, a struct \texttt{App} encapsula o \texttt{Sender} do canal \texttt{mpsc} e fornece métodos públicos que abstraem completamente a lógica de envio de mensagens. O método \texttt{thing()} cria um canal \texttt{oneshot} para receber a resposta, envia a mensagem \texttt{GetThing} e aguarda a resposta. O método \texttt{thing\_alt()} oferece uma alternativa onde retorna o \texttt{Receiver} diretamente, permitindo que o invocador decida quando aguardar pela resposta. O método \texttt{set\_thing()} simplesmente envia a mensagem \texttt{SetThing} com o valor fornecido.
 
 Essa abstração permite que outros atores interajam com o ator sem precisar se preocupar com detalhes de comunicação por canais, mantendo a interface limpa e tipada.
+
+\section{Tratamento de Erros}
+
+Um aspecto fundamental do modelo de atores proposto é o tratamento de erros de forma consistente e tipada. Diferente de linguagens como Elixir, onde erros são tratados principalmente através de padrões de matching com tuplas \texttt{\{:ok, value\}} ou \texttt{\{:error, reason\}}, Rust oferece o tipo \texttt{Result<T, E>} que força, em tempo de compilação, o tratamento explícito de erros.
+
+Para facilitar a definição e manipulação de erros, este trabalho utiliza duas bibliotecas complementares: \texttt{thiserror}, que permite criar hierarquias de tipos de erro usando derive macros, e \texttt{miette}, que fornece diagnósticos ricos e informativos para erros, facilitando o debugging e a experiência do desenvolvedor.
+
+\subsection{Hierarquia de Erros}
+
+O sistema de erros é organizado hierarquicamente, com três níveis principais:
+
+\begin{itemize}
+    \item \textbf{Erros Fatais}: Falhas de nível de sistema que indicam que um ator morreu ou que a comunicação falhou de forma irreversível
+    \item \textbf{Erros Específicos de Ator}: Cada ator define apenas os erros que ele pode emitir, garantindo uma interface de erro bem definida
+\end{itemize}
+
+\subsection{Erros Fatais}
+
+Erros fatais representam falhas de comunicação que não podem ser recuperadas sem reiniciar o componente afetado. Esses erros são comuns a todos os atores e indicam problemas com o sistema de passagem de mensagens:
+
+\begin{lstlisting}[language=Rust, caption=Definição de erros fatais]
+use miette::Diagnostic;
+use thiserror::Error;
+
+#[derive(Debug, Error, Diagnostic)]
+#[error("Fatal actor error")]
+pub enum FatalActorError {
+    /// Falha ao enviar mensagem para o ator
+    #[error("Failed to send message to actor '{actor_name}' for operation '{operation}'")]
+    #[diagnostic(
+        code(fatal::actor_send_failed),
+        help("The message could not be sent to the actor. The actor may have died or the channel may be closed.")
+    )]
+    ActorSendFailed {
+        actor_name: &'static str,
+        operation: String,
+    },
+    
+    /// Falha ao receber resposta do ator
+    #[error("Failed to receive response from actor '{actor_name}' for operation '{operation}'")]
+    #[diagnostic(
+        code(fatal::actor_recv_failed),
+        help("The response could not be received from the actor. The actor may have died or the channel may be closed.")
+    )]
+    ActorRecvFailed {
+        actor_name: &'static str,
+        operation: String,
+        #[source]
+        source: tokio::sync::oneshot::error::RecvError,
+    },
+}
+\end{lstlisting}
+
+Erros fatais ocorrem quando o canal de comunicação é fechado, o que acontece quando não há mais extremidades \texttt{Sender} ativas para o ator. Isso pode indicar que o ator terminou inesperadamente ou que todas as referências a ele foram liberadas.
+
+\subsection{Erros Específicos de Ator}
+
+Cada ator define seu próprio tipo de erro, que encapsula tanto os erros específicos do domínio quanto os erros fatais de comunicação. Por exemplo, o ator (\texttt{Env}) define:
+
+\begin{lstlisting}[language=Rust, caption=Exemplo de erro específico de ator]
+#[derive(Debug, Error, Diagnostic)]
+pub enum EnvError {
+    /// Variável de ambiente não encontrada
+    NotFound {
+        name: String,
+    },
+    
+    /// Erro fatal ocorrido durante operações do ator
+    #[error(transparent)]
+    #[diagnostic(transparent)]
+    Fatal(#[from] FatalActorError),
+}
+\end{lstlisting}
+
+A variante \texttt{Fatal} permite que erros fatais sejam propagados automaticamente através do operador \texttt{?}, mantendo a hierarquia de erros enquanto permite tratamento específico quando necessário.
+
+\subsection{Propagação de Erros através de Canais}
+
+Quando um ator precisa retornar um resultado que pode falhar, o tipo de retorno deve ser \texttt{Result<T, E>}, onde \texttt{E} é o tipo de erro específico do ator. O resultado é enviado através do canal \texttt{oneshot} como parte da resposta:
+
+\begin{lstlisting}[language=Rust, caption=Processamento de mensagens com tratamento de erros]
+impl Core {
+    pub async fn init(self, mut rx: mpsc::Receiver<Message>) {
+        while let Some(msg) = rx.recv().await {
+            match msg {
+                Message::Get { tx, key } => {
+                    // Processa a operação e pode retornar um erro
+                    let result = self.handle_get_env(key);
+                    let _ = tx.send(result);
+                }
+                // ...
+            }
+        }
+    }
+    
+    fn handle_get_env(&self, key: ArcOsStr) -> Result<ArcStr, EnvError> {
+        std::env::var(key.as_ref())
+            .map(|s| ArcStr::from(&s))
+            .map_err(|_| EnvError::NotFound {
+                name: key.to_string_lossy().to_string(),
+            })
+    }
+}
+\end{lstlisting}
+
+\subsection{Tratamento de Erros na Interface Pública}
+
+Na interface pública do ator, erros podem ocorrer em dois pontos:
+
+\begin{enumerate}
+    \item Ao enviar a mensagem para o ator (falha de comunicação)
+    \item Ao receber a resposta do ator (falha de comunicação ou erro de domínio)
+\end{enumerate}
+
+Ambos os casos devem ser tratados e convertidos em erros fatais quando apropriado:
+
+\begin{lstlisting}[language=Rust, caption=Tratamento de erros na interface pública do ator]
+impl Env {
+    pub async fn env(&self, key: ArcOsStr) -> Result<ArcStr, EnvError> {
+        let (tx, rx) = tokio::sync::oneshot::channel();
+        
+        // Erro ao enviar mensagem -> Erro fatal
+        self.tx
+            .send(Message::Get { tx, key })
+            .await
+            .map_err(|_e| {
+                EnvError::Fatal(FatalActorError::ActorSendFailed {
+                    actor_name: "Env",
+                    operation: "get environment variable".to_string(),
+                })
+            })?;
+        
+        // Erro ao receber resposta -> Erro fatal ou erro de domínio
+        rx.await
+            .map_err(|e| {
+                EnvError::Fatal(FatalActorError::ActorRecvFailed {
+                    actor_name: "Env",
+                    operation: "get environment variable".to_string(),
+                    source: e,
+                })
+            })?
+    }
+}
+\end{lstlisting}
+
+Note que o operador \texttt{?} é usado para propagar erros automaticamente. Se o envio da mensagem falhar (por exemplo, porque o canal foi fechado), o erro é convertido em um \texttt{FatalActorError}. Se a recepção falhar, também é convertido em um erro fatal. Caso contrário, o resultado (que pode conter um erro de domínio como \texttt{NotFound}) é retornado.
+
+\subsection{Erros Recuperáveis e Não-Recuperáveis}
+
+O sistema distingue entre erros recuperáveis e não-recuperáveis através de um atributo \texttt{retryable} que indica se a operação pode ser tentada novamente.
+
+Essa distinção permite que a aplicação tome decisões inteligentes sobre como lidar com erros, como implementar retry automático para erros, ou desligar graciosamente para erros fatais.
+
+\subsection{Funções Auxiliares para Criação de Erros}
+
+Para simplificar a criação de erros específicos de domínio a partir de erros de bibliotecas externas, o sistema fornece funções auxiliares. Por exemplo, para converter erros de IO do sistema de arquivos em \texttt{FsError}:
+
+\begin{lstlisting}[language=Rust, caption=Função auxiliar para criação de erros de sistema de arquivos]
+pub fn fs_error(
+    path: Option<impl Into<String>>,
+    operation: impl Into<String>,
+    source: std::io::Error,
+) -> FsError {
+    FsError::OperationFailed {
+        path: path.map(|p| p.into()),
+        operation: operation.into(),
+        retryable: source.is_retryable(),
+        source,
+    }
+}
+\end{lstlisting}
+
+Essas funções auxiliares garantem que informações relevantes sobre o contexto do erro sejam preservadas e que a informação sobre recuperabilidade seja determinada automaticamente baseada nas características do erro subjacente.
 
 \section{Testabilidade e Mocks}
 
