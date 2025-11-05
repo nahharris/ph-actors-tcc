@@ -1,9 +1,8 @@
-use std::{collections::LinkedList, io};
+use std::collections::LinkedList;
 
-use anyhow::Context;
 use tokio::sync::mpsc::{self, Sender};
 
-use crate::ArcPath;
+use crate::{error::FsError, error::FatalActorError, ArcPath};
 
 mod core;
 mod message;
@@ -11,6 +10,9 @@ mod message;
 pub mod mock;
 #[cfg(test)]
 mod tests;
+
+/// Actor name for error reporting.
+pub const ACTOR_NAME: &'static str = "Fs";
 
 /// The filesystem actor that provides a thread-safe interface for filesystem operations.
 ///
@@ -46,93 +48,163 @@ impl Fs {
     }
 
     /// Opens a file for reading only (does not create if it doesn't exist).
-    pub async fn read_file(&self, path: ArcPath) -> Result<tokio::fs::File, io::Error> {
+    pub async fn read_file(&self, path: ArcPath) -> Result<tokio::fs::File, FsError> {
+        let path_str = path.to_string_lossy().to_string();
         let (tx, rx) = tokio::sync::oneshot::channel();
         self.tx
             .send(message::Message::ReadFile { tx, path })
             .await
-            .context("Opening file for reading with Fs")
-            .expect("fs actor died");
+            .map_err(|_e| {
+                FsError::Fatal(FatalActorError::ActorSendFailed {
+                    actor_name: crate::fs::ACTOR_NAME,
+                    operation: format!("read file: {}", path_str),
+                })
+            })?;
         rx.await
-            .context("Awaiting response for file read with Fs")
-            .expect("fs actor died")
+            .map_err(|e| {
+                FsError::Fatal(FatalActorError::ActorRecvFailed {
+                    actor_name: crate::fs::ACTOR_NAME,
+                    operation: format!("read file: {}", path_str),
+                    source: e,
+                })
+            })?
     }
 
     /// Opens a file for writing (truncates content, creates if needed).
-    pub async fn write_file(&self, path: ArcPath) -> Result<tokio::fs::File, io::Error> {
+    pub async fn write_file(&self, path: ArcPath) -> Result<tokio::fs::File, FsError> {
+        let path_str = path.to_string_lossy().to_string();
         let (tx, rx) = tokio::sync::oneshot::channel();
         self.tx
             .send(message::Message::WriteFile { tx, path })
             .await
-            .context("Opening file for writing with Fs")
-            .expect("fs actor died");
+            .map_err(|_e| {
+                FsError::Fatal(FatalActorError::ActorSendFailed {
+                    actor_name: crate::fs::ACTOR_NAME,
+                    operation: format!("write file: {}", path_str),
+                })
+            })?;
         rx.await
-            .context("Awaiting response for file write with Fs")
-            .expect("fs actor died")
+            .map_err(|e| {
+                FsError::Fatal(FatalActorError::ActorRecvFailed {
+                    actor_name: crate::fs::ACTOR_NAME,
+                    operation: format!("write file: {}", path_str),
+                    source: e,
+                })
+            })?
     }
 
     /// Opens a file for appending (creates if needed).
-    pub async fn append_file(&self, path: ArcPath) -> Result<tokio::fs::File, io::Error> {
+    pub async fn append_file(&self, path: ArcPath) -> Result<tokio::fs::File, FsError> {
+        let path_str = path.to_string_lossy().to_string();
         let (tx, rx) = tokio::sync::oneshot::channel();
         self.tx
             .send(message::Message::AppendFile { tx, path })
             .await
-            .context("Opening file for appending with Fs")
-            .expect("fs actor died");
+            .map_err(|_e| {
+                FsError::Fatal(FatalActorError::ActorSendFailed {
+                    actor_name: crate::fs::ACTOR_NAME,
+                    operation: format!("append file: {}", path_str),
+                })
+            })?;
         rx.await
-            .context("Awaiting response for file append with Fs")
-            .expect("fs actor died")
+            .map_err(|e| {
+                FsError::Fatal(FatalActorError::ActorRecvFailed {
+                    actor_name: crate::fs::ACTOR_NAME,
+                    operation: format!("append file: {}", path_str),
+                    source: e,
+                })
+            })?
     }
 
     /// Removes a file from the filesystem
-    pub async fn remove_file(&self, path: ArcPath) -> Result<(), io::Error> {
+    pub async fn remove_file(&self, path: ArcPath) -> Result<(), FsError> {
+        let path_str = path.to_string_lossy().to_string();
         let (tx, rx) = tokio::sync::oneshot::channel();
         self.tx
             .send(message::Message::RemoveFile { tx, path })
             .await
-            .context("Removing file with Fs")
-            .expect("fs actor died");
+            .map_err(|_e| {
+                FsError::Fatal(FatalActorError::ActorSendFailed {
+                    actor_name: crate::fs::ACTOR_NAME,
+                    operation: format!("remove file: {}", path_str),
+                })
+            })?;
         rx.await
-            .context("Awaiting response for file removal with Fs")
-            .expect("fs actor died")
+            .map_err(|e| {
+                FsError::Fatal(FatalActorError::ActorRecvFailed {
+                    actor_name: crate::fs::ACTOR_NAME,
+                    operation: format!("remove file: {}", path_str),
+                    source: e,
+                })
+            })?
     }
 
     /// Reads a directory
-    pub async fn read_dir(&self, path: ArcPath) -> Result<LinkedList<ArcPath>, io::Error> {
+    pub async fn read_dir(&self, path: ArcPath) -> Result<LinkedList<ArcPath>, FsError> {
+        let path_str = path.to_string_lossy().to_string();
         let (tx, rx) = tokio::sync::oneshot::channel();
         self.tx
             .send(message::Message::ReadDir { tx, path })
             .await
-            .context("Reading directory with Fs")
-            .expect("fs actor died");
+            .map_err(|_e| {
+                FsError::Fatal(FatalActorError::ActorSendFailed {
+                    actor_name: crate::fs::ACTOR_NAME,
+                    operation: format!("read directory: {}", path_str),
+                })
+            })?;
         rx.await
-            .context("Awaiting response for directory read with Fs")
-            .expect("fs actor died")
+            .map_err(|e| {
+                FsError::Fatal(FatalActorError::ActorRecvFailed {
+                    actor_name: crate::fs::ACTOR_NAME,
+                    operation: format!("read directory: {}", path_str),
+                    source: e,
+                })
+            })?
     }
 
     /// Creates a directory if it doesn't exist
-    pub async fn mkdir(&self, path: ArcPath) -> Result<(), io::Error> {
+    pub async fn mkdir(&self, path: ArcPath) -> Result<(), FsError> {
+        let path_str = path.to_string_lossy().to_string();
         let (tx, rx) = tokio::sync::oneshot::channel();
         self.tx
             .send(message::Message::MkDir { tx, path })
             .await
-            .context("Creating directory with Fs")
-            .expect("fs actor died");
+            .map_err(|_e| {
+                FsError::Fatal(FatalActorError::ActorSendFailed {
+                    actor_name: crate::fs::ACTOR_NAME,
+                    operation: format!("create directory: {}", path_str),
+                })
+            })?;
         rx.await
-            .context("Awaiting response for directory creation with Fs")
-            .expect("fs actor died")
+            .map_err(|e| {
+                FsError::Fatal(FatalActorError::ActorRecvFailed {
+                    actor_name: crate::fs::ACTOR_NAME,
+                    operation: format!("create directory: {}", path_str),
+                    source: e,
+                })
+            })?
     }
 
     /// Removes a directory
-    pub async fn rmdir(&self, path: ArcPath) -> Result<(), io::Error> {
+    pub async fn rmdir(&self, path: ArcPath) -> Result<(), FsError> {
+        let path_str = path.to_string_lossy().to_string();
         let (tx, rx) = tokio::sync::oneshot::channel();
         self.tx
             .send(message::Message::RmDir { tx, path })
             .await
-            .context("Removing directory with Fs")
-            .expect("fs actor died");
+            .map_err(|_e| {
+                FsError::Fatal(FatalActorError::ActorSendFailed {
+                    actor_name: crate::fs::ACTOR_NAME,
+                    operation: format!("remove directory: {}", path_str),
+                })
+            })?;
         rx.await
-            .context("Awaiting response for directory removal with Fs")
-            .expect("fs actor died")
+            .map_err(|e| {
+                FsError::Fatal(FatalActorError::ActorRecvFailed {
+                    actor_name: crate::fs::ACTOR_NAME,
+                    operation: format!("remove directory: {}", path_str),
+                    source: e,
+                })
+            })?
     }
 }

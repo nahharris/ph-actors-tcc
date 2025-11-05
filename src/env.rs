@@ -1,9 +1,8 @@
-use std::{env::VarError, fmt::Display};
+use std::fmt::Display;
 
-use anyhow::Context;
 use tokio::sync::mpsc::{self, Sender};
 
-use crate::{ArcOsStr, ArcStr};
+use crate::{error::EnvError, error::FatalActorError, ArcOsStr, ArcStr};
 
 mod core;
 mod message;
@@ -11,6 +10,9 @@ mod message;
 pub mod mock;
 #[cfg(test)]
 mod tests;
+
+/// Actor name for error reporting.
+pub const ACTOR_NAME: &'static str = "Env";
 
 /// The environment actor that provides a thread-safe interface for environment variable operations.
 ///
@@ -46,7 +48,7 @@ impl Env {
     }
 
     /// Sets an environment variable
-    pub async fn set_env<V>(&self, key: ArcOsStr, value: V)
+    pub async fn set_env<V>(&self, key: ArcOsStr, value: V) -> Result<(), EnvError>
     where
         V: Display,
     {
@@ -54,29 +56,46 @@ impl Env {
         self.tx
             .send(message::Message::Set { key, value })
             .await
-            .context("Setting environment variable with Env")
-            .expect("env actor died")
+            .map_err(|_e| {
+                EnvError::Fatal(FatalActorError::ActorSendFailed {
+                    actor_name: crate::env::ACTOR_NAME,
+                    operation: "set environment variable".to_string(),
+                })
+            })
     }
 
     /// Unsets an environment variable
-    pub async fn unset_env(&self, key: ArcOsStr) {
+    pub async fn unset_env(&self, key: ArcOsStr) -> Result<(), EnvError> {
         self.tx
             .send(message::Message::Unset { key })
             .await
-            .context("Unsetting environment variable with Env")
-            .expect("env actor died")
+            .map_err(|_e| {
+                EnvError::Fatal(FatalActorError::ActorSendFailed {
+                    actor_name: crate::env::ACTOR_NAME,
+                    operation: "unset environment variable".to_string(),
+                })
+            })
     }
 
     /// Gets an environment variable
-    pub async fn env(&self, key: ArcOsStr) -> Result<ArcStr, VarError> {
+    pub async fn env(&self, key: ArcOsStr) -> Result<ArcStr, EnvError> {
         let (tx, rx) = tokio::sync::oneshot::channel();
         self.tx
             .send(message::Message::Get { tx, key })
             .await
-            .context("Getting environment variable with Env")
-            .expect("env actor died");
+            .map_err(|_e| {
+                EnvError::Fatal(FatalActorError::ActorSendFailed {
+                    actor_name: crate::env::ACTOR_NAME,
+                    operation: "get environment variable".to_string(),
+                })
+            })?;
         rx.await
-            .context("Awaiting response for environment variable get with Env")
-            .expect("env actor died")
+            .map_err(|e| {
+                EnvError::Fatal(FatalActorError::ActorRecvFailed {
+                    actor_name: crate::env::ACTOR_NAME,
+                    operation: "get environment variable".to_string(),
+                    source: e,
+                })
+            })?
     }
 }

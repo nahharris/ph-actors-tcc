@@ -3,7 +3,7 @@ use tokio::sync::mpsc;
 
 use super::data::{Command as ShellCommand, Result, Status};
 use super::message::Message;
-use crate::ArcStr;
+use crate::{error::ShellError, ArcStr};
 #[cfg(not(test))]
 use crate::log::Log;
 #[cfg(test)]
@@ -64,7 +64,7 @@ impl Core {
     /// are any issues with the channel communication.
     async fn handle_execute(
         &mut self,
-        tx: tokio::sync::oneshot::Sender<anyhow::Result<Result>>,
+        tx: tokio::sync::oneshot::Sender<std::result::Result<Result, ShellError>>,
         command: ShellCommand,
     ) {
         let command_str = command.to_string();
@@ -99,8 +99,12 @@ impl Core {
                         {
                             self.log
                                 .error(SCOPE, format!("Failed to write to stdin: {e}"));
-                            let _ =
-                                tx.send(Err(anyhow::anyhow!("Failed to write to stdin: {}", e)));
+                            let _ = tx.send(Err(ShellError::ExecutionFailed {
+                                command: command.program.to_string(),
+                                args: command.args.iter().map(|a| a.to_string()).collect(),
+                                message: format!("Failed to write to stdin: {}", e),
+                                exit_code: None,
+                            }));
                             return;
                         }
                     }
@@ -153,7 +157,12 @@ impl Core {
                             SCOPE,
                             format!("Failed to wait for command: {command_str} - {e}"),
                         );
-                        Err(anyhow::anyhow!("Failed to wait for command: {}", e))
+                        Err(ShellError::ExecutionFailed {
+                            command: command.program.to_string(),
+                            args: command.args.iter().map(|a| a.to_string()).collect(),
+                            message: format!("Failed to wait for command: {}", e),
+                            exit_code: None,
+                        })
                     }
                 }
             }
@@ -162,7 +171,12 @@ impl Core {
                     SCOPE,
                     format!("Failed to spawn command: {command_str} - {e}"),
                 );
-                Err(anyhow::anyhow!("Failed to spawn command: {}", e))
+                Err(ShellError::ExecutionFailed {
+                    command: command.program.to_string(),
+                    args: command.args.iter().map(|a| a.to_string()).collect(),
+                    message: format!("Failed to spawn command: {}", e),
+                    exit_code: None,
+                })
             }
         };
 

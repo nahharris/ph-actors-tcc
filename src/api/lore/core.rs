@@ -1,9 +1,8 @@
-use anyhow::Context;
 use std::collections::HashMap;
 
 use super::data::{LoreMailingList, LorePage, LorePatchMetadata};
 use super::parse;
-use crate::ArcSlice;
+use crate::{error::LoreApiError, ArcSlice};
 use crate::{ArcStr, api::lore::message::LoreApiMessage};
 
 #[cfg(not(test))]
@@ -80,24 +79,19 @@ impl Core {
                 } => {
                     let response = self
                         .handle_get_patch_feed_page(&target_list, min_index)
-                        .await
-                        .with_context(|| format!("GET patch feed failed for list: {target_list}"));
+                        .await;
                     let _ = tx.send(response);
                 }
                 LoreApiMessage::GetAvailableLists { tx } => {
                     let response = self
                         .handle_get_available_lists()
-                        .await
-                        .with_context(|| "GET available lists failed");
+                        .await;
                     let _ = tx.send(response);
                 }
                 LoreApiMessage::GetAvailableListsPage { min_index, tx } => {
                     let response = self
                         .handle_get_available_lists_page(min_index)
-                        .await
-                        .with_context(|| {
-                            format!("GET available lists failed for index: {min_index}")
-                        });
+                        .await;
                     let _ = tx.send(response);
                 }
                 LoreApiMessage::GetPatchHtml {
@@ -107,12 +101,7 @@ impl Core {
                 } => {
                     let response = self
                             .handle_get_patch_html(&target_list, &message_id)
-                            .await
-                            .with_context(|| {
-                                format!(
-                                    "GET patch HTML failed for list: {target_list}, message: {message_id}"
-                                )
-                            });
+                            .await;
                     let _ = tx.send(response);
                 }
                 LoreApiMessage::GetRawPatch {
@@ -122,12 +111,7 @@ impl Core {
                 } => {
                     let response = self
                             .handle_get_raw_patch(&target_list, &message_id)
-                            .await
-                            .with_context(|| {
-                                format!(
-                                    "GET raw patch failed for list: {target_list}, message: {message_id}"
-                                )
-                            });
+                            .await;
                     let _ = tx.send(response);
                 }
                 LoreApiMessage::GetPatchMetadata {
@@ -137,12 +121,7 @@ impl Core {
                 } => {
                     let response = self
                             .handle_get_patch_metadata(&target_list, &message_id)
-                            .await
-                            .with_context(|| {
-                                format!(
-                                    "GET patch metadata failed for list: {target_list}, message: {message_id}"
-                                )
-                            });
+                            .await;
                     let _ = tx.send(response);
                 }
             }
@@ -154,7 +133,7 @@ impl Core {
         &self,
         target_list: &str,
         min_index: usize,
-    ) -> anyhow::Result<Option<LorePage<LorePatchMetadata>>> {
+    ) -> Result<Option<LorePage<LorePatchMetadata>>, LoreApiError> {
         let url = format!(
             "{}/{}/?x=A&q=((s:patch+OR+s:rfc)+AND+NOT+s:re:)&o={}",
             self.domain, target_list, min_index
@@ -166,7 +145,16 @@ impl Core {
             ArcStr::from("text/html,application/xhtml+xml,application/xml"),
         );
 
-        let response = self.net.get(ArcStr::from(&url), Some(headers)).await?;
+        let response = self.net.get(ArcStr::from(&url), Some(headers)).await.map_err(|e| match e {
+            crate::error::NetError::Fatal(fatal) => LoreApiError::Fatal(fatal),
+            crate::error::NetError::RequestFailed { url,  message, retryable, .. } => {
+                LoreApiError::RequestFailed {
+                    endpoint: url,
+                    message,
+                    retryable,
+                }
+            }
+        })?;
         // Check for end of feed indicator
         if <ArcStr as AsRef<str>>::as_ref(&response) == "</feed>"
             || response.contains("[No results found]")
@@ -180,7 +168,7 @@ impl Core {
     }
 
     /// Handles GET available lists requests
-    async fn handle_get_available_lists(&self) -> anyhow::Result<ArcSlice<LoreMailingList>> {
+    async fn handle_get_available_lists(&self) -> Result<ArcSlice<LoreMailingList>, LoreApiError> {
         let mut all_items = Vec::new();
         let mut min_index = 0;
         loop {
@@ -204,7 +192,7 @@ impl Core {
     async fn handle_get_available_lists_page(
         &self,
         min_index: usize,
-    ) -> anyhow::Result<Option<LorePage<LoreMailingList>>> {
+    ) -> Result<Option<LorePage<LoreMailingList>>, LoreApiError> {
         let url = ArcStr::from(&format!("{}/?&o={}", self.domain, min_index));
 
         let mut headers = HashMap::new();
@@ -213,9 +201,17 @@ impl Core {
             ArcStr::from("text/html,application/xhtml+xml,application/xml"),
         );
 
-        let html = self.net.get(url, Some(headers)).await?;
+        let html = self.net.get(url, Some(headers)).await.map_err(|e| match e {
+            crate::error::NetError::Fatal(fatal) => LoreApiError::Fatal(fatal),
+            crate::error::NetError::RequestFailed { url,  message, retryable, .. } => {
+                LoreApiError::RequestFailed {
+                    endpoint: url,
+                    message,
+                    retryable,
+                }
+            }
+        })?;
         parse::parse_available_lists_html(&html, min_index)
-            .context("Failed to parse available lists page")
     }
 
     /// Handles GET patch HTML requests
@@ -223,7 +219,7 @@ impl Core {
         &self,
         target_list: &str,
         message_id: &str,
-    ) -> anyhow::Result<ArcStr> {
+    ) -> Result<ArcStr, LoreApiError> {
         let url = format!("{}/{}/{}/", self.domain, target_list, message_id);
 
         let mut headers = HashMap::new();
@@ -232,7 +228,16 @@ impl Core {
             ArcStr::from("text/html,application/xhtml+xml,application/xml"),
         );
 
-        self.net.get(ArcStr::from(&url), Some(headers)).await
+        self.net.get(ArcStr::from(&url), Some(headers)).await.map_err(|e| match e {
+            crate::error::NetError::Fatal(fatal) => LoreApiError::Fatal(fatal),
+            crate::error::NetError::RequestFailed { url,  message, retryable, .. } => {
+                LoreApiError::RequestFailed {
+                    endpoint: url,
+                    message,
+                    retryable,
+                }
+            }
+        })
     }
 
     /// Handles GET raw patch requests
@@ -240,13 +245,22 @@ impl Core {
         &self,
         target_list: &str,
         message_id: &str,
-    ) -> anyhow::Result<ArcStr> {
+    ) -> Result<ArcStr, LoreApiError> {
         let url = format!("{}/{}/{}/raw", self.domain, target_list, message_id);
 
         let mut headers = HashMap::new();
         headers.insert(ArcStr::from("Accept"), ArcStr::from("text/plain"));
 
-        self.net.get(ArcStr::from(&url), Some(headers)).await
+        self.net.get(ArcStr::from(&url), Some(headers)).await.map_err(|e| match e {
+            crate::error::NetError::Fatal(fatal) => LoreApiError::Fatal(fatal),
+            crate::error::NetError::RequestFailed { url,  message, retryable, .. } => {
+                LoreApiError::RequestFailed {
+                    endpoint: url,
+                    message,
+                    retryable,
+                }
+            }
+        })
     }
 
     /// Handles GET patch metadata requests
@@ -254,12 +268,21 @@ impl Core {
         &self,
         target_list: &str,
         message_id: &str,
-    ) -> anyhow::Result<ArcStr> {
+    ) -> Result<ArcStr, LoreApiError> {
         let url = format!("{}/{}/{}/json", self.domain, target_list, message_id);
 
         let mut headers = HashMap::new();
         headers.insert(ArcStr::from("Accept"), ArcStr::from("application/json"));
 
-        self.net.get(ArcStr::from(&url), Some(headers)).await
+        self.net.get(ArcStr::from(&url), Some(headers)).await.map_err(|e| match e {
+            crate::error::NetError::Fatal(fatal) => LoreApiError::Fatal(fatal),
+            crate::error::NetError::RequestFailed { url,  message, retryable, .. } => {
+                LoreApiError::RequestFailed {
+                    endpoint: url,
+                    message,
+                    retryable,
+                }
+            }
+        })
     }
 }

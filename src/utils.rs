@@ -19,7 +19,7 @@ use std::{ffi::OsStr, fmt::Display, ops::Deref, path::Path, str::FromStr, sync::
 /// ```ignore
 /// install_panic_hook()?;
 /// ```
-pub fn install_panic_hook() -> anyhow::Result<()> {
+pub fn install_panic_hook() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     Ok(())
 }
 
@@ -456,16 +456,29 @@ where
     }
 }
 
+#[derive(Debug)]
+pub struct ParseSequenceNumberError(String);
+
+impl std::fmt::Display for ParseSequenceNumberError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Invalid sequence number format: {}", self.0)
+    }
+}
+
+impl std::error::Error for ParseSequenceNumberError {}
+
 impl FromStr for SequenceNumber {
-    type Err = anyhow::Error;
+    type Err = ParseSequenceNumberError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let parts: Vec<&str> = s.split('/').collect();
         if parts.len() != 2 {
-            return Err(anyhow::anyhow!("Invalid sequence number format"));
+            return Err(ParseSequenceNumberError(s.to_string()));
         }
-        let current = parts[0].parse::<usize>()?;
-        let total = parts[1].parse::<usize>()?;
+        let current = parts[0].parse::<usize>()
+            .map_err(|e| ParseSequenceNumberError(format!("Invalid current number: {}", e)))?;
+        let total = parts[1].parse::<usize>()
+            .map_err(|e| ParseSequenceNumberError(format!("Invalid total number: {}", e)))?;
         Ok(Self { current, total })
     }
 }

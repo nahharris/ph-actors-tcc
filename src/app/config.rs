@@ -1,9 +1,8 @@
 pub use data::{PathOpt, Renderer, RendererOpt, USizeOpt};
 
-use anyhow::Context;
 use tokio::sync::mpsc::Sender;
 
-use crate::{ArcPath, log::LogLevel};
+use crate::{error::ConfigError, error::FatalActorError, ArcPath, log::LogLevel};
 #[cfg(not(test))]
 use crate::{env::Env, fs::Fs};
 #[cfg(test)]
@@ -18,6 +17,9 @@ mod message;
 pub mod mock;
 #[cfg(test)]
 mod tests;
+
+/// Actor name for error reporting.
+pub const ACTOR_NAME: &'static str = "Config";
 
 /// The configuration actor that provides a thread-safe interface for configuration operations.
 ///
@@ -65,30 +67,48 @@ impl Config {
     ///
     /// # Returns
     /// `Ok(())` for mock implementation.
-    pub async fn load(&self) -> anyhow::Result<()> {
+    pub async fn load(&self) -> Result<(), ConfigError> {
         let (tx, rx) = tokio::sync::oneshot::channel();
         self.tx
             .send(Message::Load { tx })
             .await
-            .context("Loading config with Config actor")
-            .expect("Config actor is dead");
+            .map_err(|_e| {
+                ConfigError::Fatal(FatalActorError::ActorSendFailed {
+                    actor_name: crate::app::config::ACTOR_NAME,
+                    operation: "load config".to_string(),
+                })
+            })?;
         rx.await
-            .context("Awaiting response for config load with Config actor")
-            .expect("Config actor is dead")
+            .map_err(|e| {
+                ConfigError::Fatal(FatalActorError::ActorRecvFailed {
+                    actor_name: crate::app::config::ACTOR_NAME,
+                    operation: "load config".to_string(),
+                    source: e,
+                })
+            })?
     }
 
     /// Saves the current configuration to the file.
     ///
-    pub async fn save(&self) -> anyhow::Result<()> {
+    pub async fn save(&self) -> Result<(), ConfigError> {
         let (tx, rx) = tokio::sync::oneshot::channel();
         self.tx
             .send(Message::Save { tx })
             .await
-            .context("Saving config with Config actor")
-            .expect("Config actor is dead");
+            .map_err(|_e| {
+                ConfigError::Fatal(FatalActorError::ActorSendFailed {
+                    actor_name: crate::app::config::ACTOR_NAME,
+                    operation: "save config".to_string(),
+                })
+            })?;
         rx.await
-            .context("Awaiting response for config save with Config actor")
-            .expect("Config actor is dead")
+            .map_err(|e| {
+                ConfigError::Fatal(FatalActorError::ActorRecvFailed {
+                    actor_name: crate::app::config::ACTOR_NAME,
+                    operation: "save config".to_string(),
+                    source: e,
+                })
+            })?
     }
 
     /// Gets a path-based configuration value.
@@ -98,16 +118,25 @@ impl Config {
     ///
     /// # Returns
     /// The requested path value.
-    pub async fn path(&self, opt: PathOpt) -> ArcPath {
+    pub async fn path(&self, opt: PathOpt) -> Result<ArcPath, ConfigError> {
         let (tx, rx) = tokio::sync::oneshot::channel();
         self.tx
             .send(Message::GetPath { opt, tx })
             .await
-            .context("Getting path with Config actor")
-            .expect("Config actor is dead");
+            .map_err(|_e| {
+                ConfigError::Fatal(FatalActorError::ActorSendFailed {
+                    actor_name: crate::app::config::ACTOR_NAME,
+                    operation: "get path".to_string(),
+                })
+            })?;
         rx.await
-            .context("Awaiting response for path with Config actor")
-            .expect("Config actor is dead")
+            .map_err(|e| {
+                ConfigError::Fatal(FatalActorError::ActorRecvFailed {
+                    actor_name: crate::app::config::ACTOR_NAME,
+                    operation: "get path".to_string(),
+                    source: e,
+                })
+            })?
     }
 
     /// Sets a path-based configuration value.
@@ -115,36 +144,57 @@ impl Config {
     /// # Arguments
     /// * `opt` - The path option to set
     /// * `path` - The new path value
-    pub async fn set_path(&self, opt: PathOpt, path: ArcPath) {
+    pub async fn set_path(&self, opt: PathOpt, path: ArcPath) -> Result<(), ConfigError> {
         self.tx
             .send(Message::SetPath { opt, path })
             .await
-            .context("Setting path with Config actor")
-            .expect("Config actor is dead");
+            .map_err(|_e| {
+                ConfigError::Fatal(FatalActorError::ActorSendFailed {
+                    actor_name: crate::app::config::ACTOR_NAME,
+                    operation: "set path".to_string(),
+                })
+            })
     }
 
     /// Gets the current log level.
     ///
     /// # Returns
     /// The current log level.
-    pub async fn log_level(&self) -> LogLevel {
+    pub async fn log_level(&self) -> Result<LogLevel, ConfigError> {
         let (tx, rx) = tokio::sync::oneshot::channel();
         self.tx
             .send(Message::GetLogLevel { tx })
             .await
-            .context("Getting log level with Config actor")
-            .expect("Config actor died");
+            .map_err(|_e| {
+                ConfigError::Fatal(FatalActorError::ActorSendFailed {
+                    actor_name: crate::app::config::ACTOR_NAME,
+                    operation: "get log level".to_string(),
+                })
+            })?;
         rx.await
-            .context("Awaiting response for log level with Config actor")
-            .expect("Config actor died")
+            .map_err(|e| {
+                ConfigError::Fatal(FatalActorError::ActorRecvFailed {
+                    actor_name: crate::app::config::ACTOR_NAME,
+                    operation: "get log level".to_string(),
+                    source: e,
+                })
+            })?
     }
 
     /// Sets the log level.
     ///
     /// # Arguments
     /// * `level` - The new log level value
-    pub async fn set_log_level(&self, level: LogLevel) {
-        let _ = self.tx.send(Message::SetLogLevel { level }).await;
+    pub async fn set_log_level(&self, level: LogLevel) -> Result<(), ConfigError> {
+        self.tx
+            .send(Message::SetLogLevel { level })
+            .await
+            .map_err(|_e| {
+                ConfigError::Fatal(FatalActorError::ActorSendFailed {
+                    actor_name: crate::app::config::ACTOR_NAME,
+                    operation: "set log level".to_string(),
+                })
+            })
     }
 
     /// Gets a numeric configuration value.
@@ -154,16 +204,25 @@ impl Config {
     ///
     /// # Returns
     /// The requested numeric value.
-    pub async fn usize(&self, opt: USizeOpt) -> usize {
+    pub async fn usize(&self, opt: USizeOpt) -> Result<usize, ConfigError> {
         let (tx, rx) = tokio::sync::oneshot::channel();
         self.tx
             .send(Message::GetUSize { opt, tx })
             .await
-            .context("Getting numeric value with Config actor")
-            .expect("Config actor died");
+            .map_err(|_e| {
+                ConfigError::Fatal(FatalActorError::ActorSendFailed {
+                    actor_name: crate::app::config::ACTOR_NAME,
+                    operation: "get usize".to_string(),
+                })
+            })?;
         rx.await
-            .context("Awaiting response for numeric value with Config actor")
-            .expect("Config actor died")
+            .map_err(|e| {
+                ConfigError::Fatal(FatalActorError::ActorRecvFailed {
+                    actor_name: crate::app::config::ACTOR_NAME,
+                    operation: "get usize".to_string(),
+                    source: e,
+                })
+            })?
     }
 
     /// Sets a numeric configuration value.
@@ -171,8 +230,16 @@ impl Config {
     /// # Arguments
     /// * `opt` - The numeric option to set
     /// * `value` - The new numeric value
-    pub async fn set_usize(&self, opt: USizeOpt, value: usize) {
-        let _ = self.tx.send(Message::SetUSize { opt, size: value }).await;
+    pub async fn set_usize(&self, opt: USizeOpt, value: usize) -> Result<(), ConfigError> {
+        self.tx
+            .send(Message::SetUSize { opt, size: value })
+            .await
+            .map_err(|_e| {
+                ConfigError::Fatal(FatalActorError::ActorSendFailed {
+                    actor_name: crate::app::config::ACTOR_NAME,
+                    operation: "set usize".to_string(),
+                })
+            })
     }
 
     /// Gets a renderer configuration value.
@@ -182,16 +249,25 @@ impl Config {
     ///
     /// # Returns
     /// The requested renderer value.
-    pub async fn renderer(&self, opt: RendererOpt) -> Renderer {
+    pub async fn renderer(&self, opt: RendererOpt) -> Result<Renderer, ConfigError> {
         let (tx, rx) = tokio::sync::oneshot::channel();
         self.tx
             .send(Message::GetRenderer { opt, tx })
             .await
-            .context("Getting renderer value with Config actor")
-            .expect("Config actor died");
+            .map_err(|_e| {
+                ConfigError::Fatal(FatalActorError::ActorSendFailed {
+                    actor_name: crate::app::config::ACTOR_NAME,
+                    operation: "get renderer".to_string(),
+                })
+            })?;
         rx.await
-            .context("Awaiting response for renderer value with Config actor")
-            .expect("Config actor died")
+            .map_err(|e| {
+                ConfigError::Fatal(FatalActorError::ActorRecvFailed {
+                    actor_name: crate::app::config::ACTOR_NAME,
+                    operation: "get renderer".to_string(),
+                    source: e,
+                })
+            })?
     }
 
     /// Sets a renderer configuration value.
@@ -199,7 +275,15 @@ impl Config {
     /// # Arguments
     /// * `opt` - The renderer option to set
     /// * `renderer` - The new renderer value
-    pub async fn set_renderer(&self, opt: RendererOpt, renderer: Renderer) {
-        let _ = self.tx.send(Message::SetRenderer { opt, renderer }).await;
+    pub async fn set_renderer(&self, opt: RendererOpt, renderer: Renderer) -> Result<(), ConfigError> {
+        self.tx
+            .send(Message::SetRenderer { opt, renderer })
+            .await
+            .map_err(|_e| {
+                ConfigError::Fatal(FatalActorError::ActorSendFailed {
+                    actor_name: crate::app::config::ACTOR_NAME,
+                    operation: "set renderer".to_string(),
+                })
+            })
     }
 }

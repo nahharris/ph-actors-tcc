@@ -1,11 +1,11 @@
 use ph::{
     ArcPath,
     api::lore::LoreApi,
-    app::ui::Ui,
     app::{
         App,
         cache::{feed::FeedCache, mailing_list::MailingListCache, patch::PatchCache},
         config::Config,
+        ui::Ui,
     },
     env::Env,
     fs::Fs,
@@ -18,7 +18,7 @@ use ph::{
 };
 
 #[tokio::main]
-async fn main() -> anyhow::Result<()> {
+async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     install_panic_hook()?;
 
     // Build actors in dependency order
@@ -37,18 +37,24 @@ async fn main() -> anyhow::Result<()> {
     let config = Config::spawn(env.clone(), fs.clone(), config_path);
     config.load().await.ok(); // Try to load, ignore errors if file doesn't exist
 
-    let log = Log::spawn(fs.clone(), config.clone()).await?;
+    let log = Log::spawn(fs.clone(), config.clone())
+        .await
+        .map_err(Box::new)?;
     let net = Net::spawn(config.clone(), log.clone());
-    let shell = Shell::spawn(log.clone()).await?;
+    let shell = Shell::spawn(log.clone()).await.map_err(Box::new)?;
     let render = Render::spawn(shell.clone(), config.clone());
     let lore = LoreApi::spawn(net);
 
     let mailing_list_cache =
-        MailingListCache::spawn(lore.clone(), fs.clone(), config.clone(), log.clone()).await?;
-    let feed_cache =
-        FeedCache::spawn(lore.clone(), fs.clone(), config.clone(), log.clone()).await?;
-    let patch_cache =
-        PatchCache::spawn(lore.clone(), fs.clone(), config.clone(), log.clone()).await?;
+        MailingListCache::spawn(lore.clone(), fs.clone(), config.clone(), log.clone())
+            .await
+            .map_err(Box::new)?;
+    let feed_cache = FeedCache::spawn(lore.clone(), fs.clone(), config.clone(), log.clone())
+        .await
+        .map_err(Box::new)?;
+    let patch_cache = PatchCache::spawn(lore.clone(), fs.clone(), config.clone(), log.clone())
+        .await
+        .map_err(Box::new)?;
 
     let (terminal, terminal_handle) = Terminal::spawn(log.clone());
     let ui = Ui::spawn(

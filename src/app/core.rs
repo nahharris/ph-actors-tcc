@@ -1,5 +1,6 @@
-use anyhow::Result;
 use tokio::sync::mpsc;
+
+use crate::error::AppError;
 
 use crate::ArcStr;
 #[cfg(not(test))]
@@ -153,15 +154,22 @@ impl Core {
                     }
                 }
                 event = terminal_for_events.get_ui_event() => {
-                    if let Some(event) = event {
-                        Self::handle_key_event_static(&ui, event).await;
+                    match event {
+                        Ok(Some(event)) => {
+                            Self::handle_key_event_static(&ui, event).await;
+                        }
+                        Ok(None) => {
+                            // No event, continue polling
+                        }
+                        Err(e) => {
+                            log.error(SCOPE, format!("Error getting UI event: {}", e));
+                        }
                     }
-                    // If no event, continue polling
                 }
                 result = terminal_handle.as_mut() => {
                     // Terminal exited, check for panics
                     if let Err(e) = result {
-                        eprintln!("Terminal task panicked: {:?}", e);
+                        log.error(SCOPE, format!("Terminal task panicked: {:?}", e));
                     }
                     // Shutdown the application
                     let _ = Self::handle_shutdown_static(
@@ -217,7 +225,7 @@ impl Core {
         log: &Log,
         mailing_list_cache: &MailingListCache,
         feed_cache: &FeedCache,
-    ) -> Result<()> {
+    ) -> Result<(), AppError> {
         log.info(SCOPE, "Shutting down application".to_string());
 
         // Persist cache data before exiting

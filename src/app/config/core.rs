@@ -1,4 +1,4 @@
-use crate::ArcPath;
+use crate::{error::ConfigError, ArcPath};
 
 #[cfg(not(test))]
 use crate::{env::Env, fs::Fs};
@@ -66,15 +66,15 @@ impl Core {
                     let _ = tx.send(res);
                 }
                 GetPath { opt, tx } => {
-                    let res = self.data.path(opt);
+                    let res = Ok(self.data.path(opt));
                     let _ = tx.send(res);
                 }
                 GetLogLevel { tx } => {
-                    let res = self.data.log_level();
+                    let res = Ok(self.data.log_level());
                     let _ = tx.send(res);
                 }
                 GetUSize { opt, tx } => {
-                    let res = self.data.usize(opt);
+                    let res = Ok(self.data.usize(opt));
                     let _ = tx.send(res);
                 }
                 SetPath { opt, path } => {
@@ -87,7 +87,7 @@ impl Core {
                     self.data.set_usize(opt, size);
                 }
                 GetRenderer { opt, tx } => {
-                    let res = self.data.renderer(opt);
+                    let res = Ok(self.data.renderer(opt));
                     let _ = tx.send(res);
                 }
                 SetRenderer { opt, renderer } => {
@@ -101,12 +101,38 @@ impl Core {
     ///
     /// # Returns
     /// `Ok(())` if the configuration was loaded successfully.
-    async fn handle_load(&mut self) -> anyhow::Result<()> {
-        let mut file = self.fs.read_file(self.path.clone()).await?;
+    async fn handle_load(&mut self) -> Result<(), ConfigError> {
+        let path_str = self.path.to_string_lossy().to_string();
+        let mut file = self.fs.read_file(self.path.clone()).await.map_err(|e| match e {
+            crate::error::FsError::Fatal(fatal) => ConfigError::Fatal(fatal),
+            crate::error::FsError::OperationFailed { path, operation, source, .. } => {
+                ConfigError::FileOperationFailed {
+                    path: path.unwrap_or_else(|| path_str.clone()),
+                    operation,
+                    source,
+                }
+            }
+        })?;
         let mut contents = String::new();
         use tokio::io::AsyncReadExt;
-        file.read_to_string(&mut contents).await?;
-        let data = toml::from_str(&contents)?;
+        file.read_to_string(&mut contents)
+            .await
+            .map_err(|e| {
+                ConfigError::FileOperationFailed {
+                    path: path_str.clone(),
+                    operation: "read config file".to_string(),
+                    source: e,
+                }
+            })?;
+        
+        // Convert FsError to ConfigError::FileOperationFailed
+        let data = toml::from_str(&contents).map_err(|e| {
+            ConfigError::ParseFailed {
+                key: None,
+                source: e,
+                message: format!("Failed to parse TOML configuration file: {}", path_str),
+            }
+        })?;
         self.data = data;
         Ok(())
     }
@@ -115,11 +141,36 @@ impl Core {
     ///
     /// # Returns
     /// `Ok(())` if the configuration was saved successfully.
-    async fn handle_save(&self) -> anyhow::Result<()> {
-        let contents = toml::to_string(&self.data)?;
-        let mut file = self.fs.write_file(self.path.clone()).await?;
+    async fn handle_save(&self) -> Result<(), ConfigError> {
+        let path_str = self.path.to_string_lossy().to_string();
+        let contents = toml::to_string_pretty(&self.data).map_err(|e| {
+            // Serialization error - create a parse error with a message
+            let error_msg = e.to_string();
+            ConfigError::InvalidValue {
+                key: None,
+                message: format!("Failed to serialize configuration to TOML: {}. Error: {}", path_str, error_msg),
+            }
+        })?;
+        let mut file = self.fs.write_file(self.path.clone()).await.map_err(|e| match e {
+            crate::error::FsError::Fatal(fatal) => ConfigError::Fatal(fatal),
+            crate::error::FsError::OperationFailed { path, operation, source, .. } => {
+                ConfigError::FileOperationFailed {
+                    path: path.unwrap_or_else(|| path_str.clone()),
+                    operation,
+                    source,
+                }
+            }
+        })?;
         use tokio::io::AsyncWriteExt;
-        file.write_all(contents.as_bytes()).await?;
+        file.write_all(contents.as_bytes())
+            .await
+            .map_err(|e| {
+                ConfigError::FileOperationFailed {
+                    path: path_str,
+                    operation: "write config file".to_string(),
+                    source: e,
+                }
+            })?;
         Ok(())
     }
 }

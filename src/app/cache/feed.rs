@@ -1,4 +1,3 @@
-use anyhow::Context;
 use tokio::sync::mpsc;
 
 mod core;
@@ -9,7 +8,10 @@ pub mod mock;
 #[cfg(test)]
 mod tests;
 
-use crate::ArcStr;
+/// Actor name for error reporting.
+pub const ACTOR_NAME: &'static str = "FeedCache";
+
+use crate::{error::CacheError, error::FatalActorError, ArcStr};
 use crate::api::lore::LorePatchMetadata;
 use message::Message;
 
@@ -38,7 +40,7 @@ impl FeedCache {
     }
 
     /// Spawns a new FeedCache actor.
-    pub async fn spawn(lore: LoreApi, fs: Fs, config: Config, log: Log) -> anyhow::Result<Self> {
+    pub async fn spawn(lore: LoreApi, fs: Fs, config: Config, log: Log) -> Result<Self, CacheError> {
         let (tx, rx) = mpsc::channel(crate::BUFFER_SIZE);
         let core = core::Core::new(lore, fs, config, log).await?;
         let _ = tokio::spawn(async move {
@@ -52,16 +54,25 @@ impl FeedCache {
         &self,
         list: ArcStr,
         index: usize,
-    ) -> anyhow::Result<Option<LorePatchMetadata>> {
+    ) -> Result<Option<LorePatchMetadata>, CacheError> {
         let (tx, rx) = tokio::sync::oneshot::channel();
         self.tx
             .send(Message::Get { list, index, tx })
             .await
-            .context("Sending message to FeedCache actor")
-            .expect("FeedCache actor died");
+            .map_err(|_e| {
+                CacheError::Fatal(FatalActorError::ActorSendFailed {
+                    actor_name: crate::app::cache::feed::ACTOR_NAME,
+                    operation: "get patch metadata".to_string(),
+                })
+            })?;
         rx.await
-            .context("Awaiting response from FeedCache actor")
-            .expect("FeedCache actor died")
+            .map_err(|e| {
+                CacheError::Fatal(FatalActorError::ActorRecvFailed {
+                    actor_name: crate::app::cache::feed::ACTOR_NAME,
+                    operation: "get patch metadata".to_string(),
+                    source: e,
+                })
+            })?
     }
 
     /// Fetches a slice of patch metadata items by range for a given mailing list.
@@ -69,116 +80,188 @@ impl FeedCache {
         &self,
         list: ArcStr,
         range: std::ops::Range<usize>,
-    ) -> anyhow::Result<Vec<LorePatchMetadata>> {
+    ) -> Result<Vec<LorePatchMetadata>, CacheError> {
         let (tx, rx) = tokio::sync::oneshot::channel();
         self.tx
             .send(Message::GetSlice { list, range, tx })
             .await
-            .context("Sending message to FeedCache actor")
-            .expect("FeedCache actor died");
+            .map_err(|_e| {
+                CacheError::Fatal(FatalActorError::ActorSendFailed {
+                    actor_name: crate::app::cache::feed::ACTOR_NAME,
+                    operation: "get slice".to_string(),
+                })
+            })?;
         rx.await
-            .context("Awaiting response from FeedCache actor")
-            .expect("FeedCache actor died")
+            .map_err(|e| {
+                CacheError::Fatal(FatalActorError::ActorRecvFailed {
+                    actor_name: crate::app::cache::feed::ACTOR_NAME,
+                    operation: "get slice".to_string(),
+                    source: e,
+                })
+            })?
     }
 
     /// Refreshes the cache for a specific mailing list.
-    pub async fn refresh(&self, list: ArcStr) -> anyhow::Result<()> {
+    pub async fn refresh(&self, list: ArcStr) -> Result<(), CacheError> {
         let (tx, rx) = tokio::sync::oneshot::channel();
         self.tx
             .send(Message::Refresh { list, tx })
             .await
-            .context("Sending message to FeedCache actor")
-            .expect("FeedCache actor died");
+            .map_err(|_e| {
+                CacheError::Fatal(FatalActorError::ActorSendFailed {
+                    actor_name: crate::app::cache::feed::ACTOR_NAME,
+                    operation: "refresh".to_string(),
+                })
+            })?;
         rx.await
-            .context("Awaiting response from FeedCache actor")
-            .expect("FeedCache actor died")
+            .map_err(|e| {
+                CacheError::Fatal(FatalActorError::ActorRecvFailed {
+                    actor_name: crate::app::cache::feed::ACTOR_NAME,
+                    operation: "refresh".to_string(),
+                    source: e,
+                })
+            })?
     }
 
     /// Invalidates the cache for a specific mailing list.
-    pub async fn invalidate(&self, list: ArcStr) -> anyhow::Result<()> {
+    pub async fn invalidate(&self, list: ArcStr) -> Result<(), CacheError> {
         let (tx, rx) = tokio::sync::oneshot::channel();
         self.tx
             .send(Message::Invalidate { list, tx })
             .await
-            .context("Sending message to FeedCache actor")
-            .expect("FeedCache actor died");
+            .map_err(|_e| {
+                CacheError::Fatal(FatalActorError::ActorSendFailed {
+                    actor_name: crate::app::cache::feed::ACTOR_NAME,
+                    operation: "invalidate".to_string(),
+                })
+            })?;
         rx.await
-            .context("Awaiting response from FeedCache actor")
-            .expect("FeedCache actor died")
+            .map_err(|e| {
+                CacheError::Fatal(FatalActorError::ActorRecvFailed {
+                    actor_name: crate::app::cache::feed::ACTOR_NAME,
+                    operation: "invalidate".to_string(),
+                    source: e,
+                })
+            })?
     }
 
     /// Checks if the requested range is available in cache for a mailing list.
-    pub async fn is_available(&self, list: ArcStr, range: std::ops::Range<usize>) -> bool {
+    pub async fn is_available(&self, list: ArcStr, range: std::ops::Range<usize>) -> Result<bool, CacheError> {
         let (tx, rx) = tokio::sync::oneshot::channel();
         self.tx
             .send(Message::IsAvailable { list, range, tx })
             .await
-            .context("Sending message to FeedCache actor")
-            .expect("FeedCache actor died");
+            .map_err(|_e| {
+                CacheError::Fatal(FatalActorError::ActorSendFailed {
+                    actor_name: crate::app::cache::feed::ACTOR_NAME,
+                    operation: "is available".to_string(),
+                })
+            })?;
         rx.await
-            .context("Awaiting response from FeedCache actor")
-            .expect("FeedCache actor died")
+            .map_err(|e| {
+                CacheError::Fatal(FatalActorError::ActorRecvFailed {
+                    actor_name: crate::app::cache::feed::ACTOR_NAME,
+                    operation: "is available".to_string(),
+                    source: e,
+                })
+            })?
     }
 
     /// Returns the number of cached items for a given mailing list.
-    pub async fn len(&self, list: ArcStr) -> usize {
+    pub async fn len(&self, list: ArcStr) -> Result<usize, CacheError> {
         let (tx, rx) = tokio::sync::oneshot::channel();
         self.tx
             .send(Message::Len { list, tx })
             .await
-            .context("Sending message to FeedCache actor")
-            .expect("FeedCache actor died");
+            .map_err(|_e| {
+                CacheError::Fatal(FatalActorError::ActorSendFailed {
+                    actor_name: crate::app::cache::feed::ACTOR_NAME,
+                    operation: "len".to_string(),
+                })
+            })?;
         rx.await
-            .context("Awaiting response from FeedCache actor")
-            .expect("FeedCache actor died")
+            .map_err(|e| {
+                CacheError::Fatal(FatalActorError::ActorRecvFailed {
+                    actor_name: crate::app::cache::feed::ACTOR_NAME,
+                    operation: "len".to_string(),
+                    source: e,
+                })
+            })?
     }
 
     /// Checks if the cache has been loaded from disk for a given mailing list.
     /// This is different from is_empty() - a cache can be loaded but empty.
-    pub async fn is_loaded(&self, list: ArcStr) -> bool {
+    pub async fn is_loaded(&self, list: ArcStr) -> Result<bool, CacheError> {
         let (tx, rx) = tokio::sync::oneshot::channel();
         self.tx
             .send(Message::IsLoaded { list, tx })
             .await
-            .context("Sending message to FeedCache actor")
-            .expect("FeedCache actor died");
+            .map_err(|_e| {
+                CacheError::Fatal(FatalActorError::ActorSendFailed {
+                    actor_name: crate::app::cache::feed::ACTOR_NAME,
+                    operation: "is loaded".to_string(),
+                })
+            })?;
         rx.await
-            .context("Awaiting response from FeedCache actor")
-            .expect("FeedCache actor died")
+            .map_err(|e| {
+                CacheError::Fatal(FatalActorError::ActorRecvFailed {
+                    actor_name: crate::app::cache::feed::ACTOR_NAME,
+                    operation: "is loaded".to_string(),
+                    source: e,
+                })
+            })?
     }
 
     /// Ensures the cache is loaded for a given mailing list.
     /// This will load from disk if not already loaded.
-    pub async fn ensure_loaded(&self, list: ArcStr) -> anyhow::Result<()> {
-        if !self.is_loaded(list.clone()).await {
+    pub async fn ensure_loaded(&self, list: ArcStr) -> Result<(), CacheError> {
+        if !self.is_loaded(list.clone()).await? {
             self.load(list).await?;
         }
         Ok(())
     }
 
     /// Persists the cache for a specific mailing list to the filesystem.
-    pub async fn persist(&self, list: ArcStr) -> anyhow::Result<()> {
+    pub async fn persist(&self, list: ArcStr) -> Result<(), CacheError> {
         let (tx, rx) = tokio::sync::oneshot::channel();
         self.tx
             .send(Message::Persist { list, tx })
             .await
-            .context("Sending message to FeedCache actor")
-            .expect("FeedCache actor died");
+            .map_err(|_e| {
+                CacheError::Fatal(FatalActorError::ActorSendFailed {
+                    actor_name: crate::app::cache::feed::ACTOR_NAME,
+                    operation: "persist".to_string(),
+                })
+            })?;
         rx.await
-            .context("Awaiting response from FeedCache actor")
-            .expect("FeedCache actor died")
+            .map_err(|e| {
+                CacheError::Fatal(FatalActorError::ActorRecvFailed {
+                    actor_name: crate::app::cache::feed::ACTOR_NAME,
+                    operation: "persist".to_string(),
+                    source: e,
+                })
+            })?
     }
 
     /// Loads the cache for a specific mailing list from the filesystem.
-    pub async fn load(&self, list: ArcStr) -> anyhow::Result<()> {
+    pub async fn load(&self, list: ArcStr) -> Result<(), CacheError> {
         let (tx, rx) = tokio::sync::oneshot::channel();
         self.tx
             .send(Message::Load { list, tx })
             .await
-            .context("Sending message to FeedCache actor")
-            .expect("FeedCache actor died");
+            .map_err(|_e| {
+                CacheError::Fatal(FatalActorError::ActorSendFailed {
+                    actor_name: crate::app::cache::feed::ACTOR_NAME,
+                    operation: "load".to_string(),
+                })
+            })?;
         rx.await
-            .context("Awaiting response from FeedCache actor")
-            .expect("FeedCache actor died")
+            .map_err(|e| {
+                CacheError::Fatal(FatalActorError::ActorRecvFailed {
+                    actor_name: crate::app::cache::feed::ACTOR_NAME,
+                    operation: "load".to_string(),
+                    source: e,
+                })
+            })?
     }
 }

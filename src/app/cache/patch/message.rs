@@ -1,4 +1,4 @@
-use crate::ArcStr;
+use crate::{error::CacheError, ArcStr};
 use tokio::sync::oneshot;
 
 /// Messages for the Patch Actor.
@@ -8,18 +8,18 @@ pub enum Message {
     Get {
         list: ArcStr,
         message_id: ArcStr,
-        tx: oneshot::Sender<anyhow::Result<String>>,
+        tx: oneshot::Sender<Result<String, CacheError>>,
     },
     /// Invalidate a specific patch
     Invalidate {
         list: ArcStr,
         message_id: ArcStr,
-        tx: oneshot::Sender<anyhow::Result<()>>,
+        tx: oneshot::Sender<Result<(), CacheError>>,
     },
     /// Check if a patch is available in cache
     IsAvailable {
         list: ArcStr,
         message_id: ArcStr,
-        tx: oneshot::Sender<bool>,
+        tx: oneshot::Sender<Result<bool, CacheError>>,
     },
 }

@@ -1,6 +1,6 @@
 use tokio::fs::File;
 
-use crate::ArcPath;
+use crate::{ArcPath, error::FsError};
 
 use super::Fs;
 use super::mock::MockFs;
@@ -36,17 +36,22 @@ async fn test_mock_fs_operations() {
         .with(mockall::predicate::eq(path.clone()))
         .times(1)
         .returning(|_| {
-            Err(std::io::Error::new(
-                std::io::ErrorKind::NotFound,
-                "File not found",
-            ))
+            Err(FsError::OperationFailed {
+                path: None,
+                operation: "read file".to_string(),
+                source: std::io::Error::new(std::io::ErrorKind::NotFound, "File not found"),
+                retryable: false,
+            })
         });
-
     mock_fs
         .expect_write_file()
         .with(mockall::predicate::eq(path.clone()))
         .times(1)
-        .returning(|_| Ok(File::from_std(std::fs::File::create("temp").unwrap())));
+        .returning(|_| {
+            Ok(File::from_std(
+                std::fs::File::create("temp").expect("Creating temp file to succeed"),
+            ))
+        });
 
     // Test the mock
     let result = mock_fs.read_file(path.clone()).await;
@@ -61,19 +66,32 @@ async fn test_mock_fs_operations() {
 
 #[tokio::test]
 async fn test_fs_mkdir_rmdir() {
-    let temp_dir = tempfile::tempdir().unwrap();
+    let temp_dir = tempfile::tempdir().expect("Creating temp directory to succeed");
     let dir_path = temp_dir.path().join("test_fs_mkdir_rmdir");
     let path = ArcPath::from(&dir_path);
 
     let fs = Fs::spawn();
 
-    fs.mkdir(path.clone()).await.unwrap();
-    let entries = fs.read_dir(path.clone()).await.unwrap();
+    fs.mkdir(path.clone())
+        .await
+        .expect("Creating directory to succeed");
+    let entries = fs
+        .read_dir(path.clone())
+        .await
+        .expect("Reading directory to succeed");
     assert!(entries.is_empty());
 
-    fs.rmdir(path.clone()).await.unwrap();
-    let result = fs.read_dir(path).await;
-    assert!(matches!(result, Err(e) if e.kind() == std::io::ErrorKind::NotFound));
+    let path_to_read = path.clone();
+    fs.rmdir(path.clone())
+        .await
+        .expect("Removing directory to succeed");
+    let Err(FsError::OperationFailed { path: error_path, operation, retryable, source }) = fs.read_dir(path_to_read.clone()).await else {
+        panic!("Reading directory to fail");
+    };
+    assert_eq!(error_path, Some(path_to_read.to_string_lossy().to_string()));
+    assert_eq!(operation, "read directory");
+    assert_eq!(retryable, false);
+    assert!(matches!(source, e if e.kind() == std::io::ErrorKind::NotFound));
 
     // Cleanup
     temp_dir.close().unwrap();

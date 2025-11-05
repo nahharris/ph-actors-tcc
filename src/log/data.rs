@@ -75,15 +75,26 @@ impl Display for LogLevel {
     }
 }
 
+#[derive(Debug)]
+pub struct ParseLogLevelError(String);
+
+impl std::fmt::Display for ParseLogLevelError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Invalid log level: {}", self.0)
+    }
+}
+
+impl std::error::Error for ParseLogLevelError {}
+
 impl FromStr for LogLevel {
-    type Err = anyhow::Error;
+    type Err = ParseLogLevelError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s.to_lowercase().as_str() {
             "info" => Ok(LogLevel::Info),
             "warn" | "warning" => Ok(LogLevel::Warning),
             "error" => Ok(LogLevel::Error),
-            _ => Err(anyhow::anyhow!("Invalid log level: {}", s)),
+            _ => Err(ParseLogLevelError(s.to_string())),
         }
     }
 }

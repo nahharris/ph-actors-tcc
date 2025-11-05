@@ -54,7 +54,7 @@ async fn test_render_with_bat_renderer() {
         .expect_renderer()
         .with(mockall::predicate::eq(RendererOpt::PatchRenderer))
         .times(1)
-        .returning(|_| Renderer::Bat);
+        .returning(|_| Ok(Renderer::Bat));
 
     mock_shell
         .expect_execute()
@@ -99,7 +99,7 @@ async fn test_render_with_delta_renderer() {
         .expect_renderer()
         .with(mockall::predicate::eq(RendererOpt::PatchRenderer))
         .times(1)
-        .returning(|_| Renderer::Delta);
+        .returning(|_| Ok(Renderer::Delta));
 
     mock_shell
         .expect_execute()
@@ -147,7 +147,7 @@ async fn test_render_with_none_renderer() {
         .expect_renderer()
         .with(mockall::predicate::eq(RendererOpt::PatchRenderer))
         .times(1)
-        .returning(|_| Renderer::None);
+        .returning(|_| Ok(Renderer::None));
 
     // Shell should never be called when renderer is None
     let render = Render::spawn(mock_shell, mock_config);
@@ -168,7 +168,7 @@ async fn test_render_shell_error_handling() {
         .expect_renderer()
         .with(mockall::predicate::eq(RendererOpt::PatchRenderer))
         .times(1)
-        .returning(|_| Renderer::Bat);
+        .returning(|_| Ok(Renderer::Bat));
 
     mock_shell.expect_execute().times(1).returning(|_, _, _| {
         Ok(Result::new(
@@ -199,7 +199,7 @@ async fn test_render_command_with_stdin() {
         .expect_renderer()
         .with(mockall::predicate::eq(RendererOpt::PatchRenderer))
         .times(1)
-        .returning(|_| Renderer::Bat);
+        .returning(|_| Ok(Renderer::Bat));
 
     mock_shell
         .expect_execute()

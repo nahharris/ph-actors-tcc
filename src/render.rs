@@ -5,10 +5,9 @@ pub mod mock;
 #[cfg(test)]
 mod tests;
 
-use anyhow::Context;
 use tokio::sync::mpsc::{self, Sender};
 
-use crate::ArcStr;
+use crate::{error::RenderError, error::FatalActorError, ArcStr};
 
 // Actors it depends on
 #[cfg(not(test))]
@@ -38,6 +37,8 @@ pub struct Render {
 /// Re-export the renderer type from config for convenience
 pub use crate::app::config::Renderer;
 
+pub const ACTOR_NAME: &'static str = "Render";
+
 impl Render {
     /// Creates a new render instance and spawns its actor.
     ///
@@ -63,15 +64,24 @@ impl Render {
     ///
     /// # Returns
     /// The rendered patch content as a string.
-    pub async fn render_patch(&self, content: ArcStr) -> anyhow::Result<ArcStr> {
+    pub async fn render_patch(&self, content: ArcStr) -> Result<ArcStr, RenderError> {
         let (tx, rx) = tokio::sync::oneshot::channel();
         self.tx
             .send(message::Message::Render { tx, content })
             .await
-            .context("Rendering patch with Render actor")
-            .expect("render actor died");
+            .map_err(|_e| {
+                RenderError::Fatal(FatalActorError::ActorSendFailed {
+                    actor_name: crate::render::ACTOR_NAME,
+                    operation: "render patch".to_string(),
+                })
+            })?;
         rx.await
-            .context("Awaiting response for patch rendering with Render actor")
-            .expect("render actor died")
+            .map_err(|e| {
+                RenderError::Fatal(FatalActorError::ActorRecvFailed {
+                    actor_name: crate::render::ACTOR_NAME,
+                    operation: "render patch".to_string(),
+                    source: e,
+                })
+            })?
     }
 }

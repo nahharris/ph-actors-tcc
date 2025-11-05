@@ -2,7 +2,7 @@ use std::collections::LinkedList;
 
 use tokio::sync::oneshot;
 
-use crate::ArcPath;
+use crate::{error::FsError, ArcPath};
 
 /// Messages that can be sent to a [`Fs`] actor.
 ///
@@ -13,49 +13,49 @@ pub enum Message {
     /// Opens a file for reading only (does not create if it doesn't exist)
     ReadFile {
         /// Channel to send the result back to the caller
-        tx: oneshot::Sender<Result<tokio::fs::File, tokio::io::Error>>,
+        tx: oneshot::Sender<Result<tokio::fs::File, FsError>>,
         /// The path of the file to open for reading
         path: ArcPath,
     },
     /// Opens a file for writing (truncates content, creates if needed)
     WriteFile {
         /// Channel to send the result back to the caller
-        tx: oneshot::Sender<Result<tokio::fs::File, tokio::io::Error>>,
+        tx: oneshot::Sender<Result<tokio::fs::File, FsError>>,
         /// The path of the file to open for writing
         path: ArcPath,
     },
     /// Opens a file for appending (creates if needed)
     AppendFile {
         /// Channel to send the result back to the caller
-        tx: oneshot::Sender<Result<tokio::fs::File, tokio::io::Error>>,
+        tx: oneshot::Sender<Result<tokio::fs::File, FsError>>,
         /// The path of the file to open for appending
         path: ArcPath,
     },
     /// Removes a file from the filesystem
     RemoveFile {
         /// Channel to send the result back to the caller
-        tx: oneshot::Sender<Result<(), tokio::io::Error>>,
+        tx: oneshot::Sender<Result<(), FsError>>,
         /// The path of the file to remove
         path: ArcPath,
     },
     /// Reads the contents of a directory
     ReadDir {
         /// Channel to send the result back to the caller
-        tx: oneshot::Sender<Result<LinkedList<ArcPath>, std::io::Error>>,
+        tx: oneshot::Sender<Result<LinkedList<ArcPath>, FsError>>,
         /// The path of the directory to read
         path: ArcPath,
     },
     /// Creates a directory and its parents
     MkDir {
         /// Channel to send the result back to the caller
-        tx: oneshot::Sender<Result<(), std::io::Error>>,
+        tx: oneshot::Sender<Result<(), FsError>>,
         /// The path of the directory to create
         path: ArcPath,
     },
     /// Removes a directory and its contents
     RmDir {
         /// Channel to send the result back to the caller
-        tx: oneshot::Sender<Result<(), std::io::Error>>,
+        tx: oneshot::Sender<Result<(), FsError>>,
         /// The path of the directory to remove
         path: ArcPath,
     },

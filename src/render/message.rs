@@ -1,6 +1,6 @@
 use tokio::sync::oneshot::Sender;
 
-use crate::ArcStr;
+use crate::{error::RenderError, ArcStr};
 
 /// Messages that can be sent to the render actor.
 ///
@@ -11,7 +11,7 @@ pub enum Message {
     /// Render patch content using the specified renderer
     Render {
         /// Response channel for the rendered content
-        tx: Sender<anyhow::Result<ArcStr>>,
+        tx: Sender<Result<ArcStr, RenderError>>,
         /// The render request containing content and renderer
         content: ArcStr,
     },

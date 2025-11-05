@@ -1,6 +1,6 @@
 use tokio::sync::mpsc;
 
-use crate::{ArcSlice, ArcStr};
+use crate::{error::RenderError, ArcSlice, ArcStr};
 
 use super::message::Message;
 
@@ -61,12 +61,21 @@ impl Core {
     ///
     /// # Returns
     /// The rendered content or an error
-    async fn handle_render_request(&self, content: ArcStr) -> anyhow::Result<ArcStr> {
+    async fn handle_render_request(&self, content: ArcStr) -> Result<ArcStr, RenderError> {
         // Get the renderer from config
         let renderer = self
             .config
             .renderer(crate::app::config::RendererOpt::PatchRenderer)
-            .await;
+            .await
+            .map_err(|e| match e {
+                crate::error::ConfigError::Fatal(fatal) => RenderError::Fatal(fatal),
+                crate::error::ConfigError::FileOperationFailed { .. } | crate::error::ConfigError::ParseFailed { .. } | crate::error::ConfigError::InvalidValue { .. } => {
+                    RenderError::RenderingFailed {
+                        message: format!("Failed to get renderer configuration: {}", e),
+                        source: Some(Box::new(e)),
+                    }
+                }
+            })?;
 
         if matches!(renderer, crate::app::config::Renderer::None) {
             // No external renderer: return raw content
@@ -82,17 +91,37 @@ impl Core {
         let args = ArcSlice::from(args);
 
         // Execute the renderer program with the content as stdin
-        let result = self.shell.execute(program, args, Some(content)).await?;
+        let result = self.shell.execute(program, args, Some(content)).await
+            .map_err(|e| {
+                match e {
+                    crate::error::ShellError::Fatal(fatal) => RenderError::Fatal(fatal),
+                    crate::error::ShellError::ExecutionFailed { ref message, .. } => {
+                        RenderError::RenderingFailed {
+                            message: format!("Renderer execution failed: {}", message),
+                            source: Some(Box::new(e)),
+                        }
+                    }
+                    crate::error::ShellError::EncodingFailed { ref command, .. } => {
+                        RenderError::RenderingFailed {
+                            message: format!("Renderer encoding failed for command: {}", command),
+                            source: Some(Box::new(e)),
+                        }
+                    }
+                }
+            })?;
 
         if result.is_success() {
             Ok(result.stdout)
         } else {
-            anyhow::bail!(
-                "Renderer '{}' failed with status: {}, stderr: {}",
-                renderer.program_name(),
-                result.status,
-                result.stderr
-            )
+            Err(RenderError::RenderingFailed {
+                message: format!(
+                    "Renderer '{}' failed with status: {}, stderr: {}",
+                    renderer.program_name(),
+                    result.status,
+                    result.stderr
+                ),
+                source: None,
+            })
         }
     }
 }

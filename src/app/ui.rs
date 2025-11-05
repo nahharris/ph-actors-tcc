@@ -1,10 +1,12 @@
-use anyhow::{Context, Result};
 use tokio::sync::{
     mpsc::{self, Sender},
     oneshot,
 };
 
-use crate::ArcStr;
+/// Actor name for error reporting.
+pub const ACTOR_NAME: &'static str = "Ui";
+
+use crate::{error::UiError, error::FatalActorError, ArcStr};
 
 #[cfg(not(test))]
 use crate::{
@@ -70,33 +72,51 @@ impl Ui {
     }
 
     /// Show the mailing lists view
-    pub async fn show_lists(&self, page: usize) -> Result<()> {
+    pub async fn show_lists(&self, page: usize) -> Result<(), UiError> {
         let (tx, rx) = oneshot::channel();
         self.tx
             .send(Message::ShowLists { page, tx })
             .await
-            .context("Sending show lists message to UI actor")
-            .expect("UI actor died");
+            .map_err(|_e| {
+                UiError::Fatal(FatalActorError::ActorSendFailed {
+                    actor_name: crate::app::ui::ACTOR_NAME,
+                    operation: "show lists".to_string(),
+                })
+            })?;
         rx.await
-            .context("Awaiting response for show lists from UI actor")
-            .expect("UI actor died")
+            .map_err(|e| {
+                UiError::Fatal(FatalActorError::ActorRecvFailed {
+                    actor_name: crate::app::ui::ACTOR_NAME,
+                    operation: "show lists".to_string(),
+                    source: e,
+                })
+            })?
     }
 
     /// Show the patch feed view for a specific mailing list
-    pub async fn show_feed(&self, list: ArcStr, page: usize) -> Result<()> {
+    pub async fn show_feed(&self, list: ArcStr, page: usize) -> Result<(), UiError> {
         let (tx, rx) = oneshot::channel();
         self.tx
             .send(Message::ShowFeed { list, page, tx })
             .await
-            .context("Sending show feed message to UI actor")
-            .expect("UI actor died");
+            .map_err(|_e| {
+                UiError::Fatal(FatalActorError::ActorSendFailed {
+                    actor_name: crate::app::ui::ACTOR_NAME,
+                    operation: "show feed".to_string(),
+                })
+            })?;
         rx.await
-            .context("Awaiting response for show feed from UI actor")
-            .expect("UI actor died")
+            .map_err(|e| {
+                UiError::Fatal(FatalActorError::ActorRecvFailed {
+                    actor_name: crate::app::ui::ACTOR_NAME,
+                    operation: "show feed".to_string(),
+                    source: e,
+                })
+            })?
     }
 
     /// Show a specific patch content
-    pub async fn show_patch(&self, list: ArcStr, message_id: ArcStr, title: ArcStr) -> Result<()> {
+    pub async fn show_patch(&self, list: ArcStr, message_id: ArcStr, title: ArcStr) -> Result<(), UiError> {
         let (tx, rx) = oneshot::channel();
         self.tx
             .send(Message::ShowPatch {
@@ -106,11 +126,20 @@ impl Ui {
                 tx,
             })
             .await
-            .context("Sending show patch message to UI actor")
-            .expect("UI actor died");
+            .map_err(|_e| {
+                UiError::Fatal(FatalActorError::ActorSendFailed {
+                    actor_name: crate::app::ui::ACTOR_NAME,
+                    operation: "show patch".to_string(),
+                })
+            })?;
         rx.await
-            .context("Awaiting response for show patch from UI actor")
-            .expect("UI actor died")
+            .map_err(|e| {
+                UiError::Fatal(FatalActorError::ActorRecvFailed {
+                    actor_name: crate::app::ui::ACTOR_NAME,
+                    operation: "show patch".to_string(),
+                    source: e,
+                })
+            })?
     }
 
     /// Update the current selection index
@@ -119,55 +148,91 @@ impl Ui {
     }
 
     /// Navigate to the previous page
-    pub async fn previous_page(&self) -> Result<()> {
+    pub async fn previous_page(&self) -> Result<(), UiError> {
         let (tx, rx) = oneshot::channel();
         self.tx
             .send(Message::PreviousPage { tx })
             .await
-            .context("Sending previous page message to UI actor")
-            .expect("UI actor died");
+            .map_err(|_e| {
+                UiError::Fatal(FatalActorError::ActorSendFailed {
+                    actor_name: crate::app::ui::ACTOR_NAME,
+                    operation: "previous page".to_string(),
+                })
+            })?;
         rx.await
-            .context("Awaiting response for previous page from UI actor")
-            .expect("UI actor died")
+            .map_err(|e| {
+                UiError::Fatal(FatalActorError::ActorRecvFailed {
+                    actor_name: crate::app::ui::ACTOR_NAME,
+                    operation: "previous page".to_string(),
+                    source: e,
+                })
+            })?
     }
 
     /// Navigate to the next page
-    pub async fn next_page(&self) -> Result<()> {
+    pub async fn next_page(&self) -> Result<(), UiError> {
         let (tx, rx) = oneshot::channel();
         self.tx
             .send(Message::NextPage { tx })
             .await
-            .context("Sending next page message to UI actor")
-            .expect("UI actor died");
+            .map_err(|_e| {
+                UiError::Fatal(FatalActorError::ActorSendFailed {
+                    actor_name: crate::app::ui::ACTOR_NAME,
+                    operation: "next page".to_string(),
+                })
+            })?;
         rx.await
-            .context("Awaiting response for next page from UI actor")
-            .expect("UI actor died")
+            .map_err(|e| {
+                UiError::Fatal(FatalActorError::ActorRecvFailed {
+                    actor_name: crate::app::ui::ACTOR_NAME,
+                    operation: "next page".to_string(),
+                    source: e,
+                })
+            })?
     }
 
     /// Navigate back to previous view
-    pub async fn navigate_back(&self) -> Result<()> {
+    pub async fn navigate_back(&self) -> Result<(), UiError> {
         let (tx, rx) = oneshot::channel();
         self.tx
             .send(Message::NavigateBack { tx })
             .await
-            .context("Sending navigate back message to UI actor")
-            .expect("UI actor died");
+            .map_err(|_e| {
+                UiError::Fatal(FatalActorError::ActorSendFailed {
+                    actor_name: crate::app::ui::ACTOR_NAME,
+                    operation: "navigate back".to_string(),
+                })
+            })?;
         rx.await
-            .context("Awaiting response for navigate back from UI actor")
-            .expect("UI actor died")
+            .map_err(|e| {
+                UiError::Fatal(FatalActorError::ActorRecvFailed {
+                    actor_name: crate::app::ui::ACTOR_NAME,
+                    operation: "navigate back".to_string(),
+                    source: e,
+                })
+            })?
     }
 
     /// Submit/select the current item
-    pub async fn submit_selection(&self) -> Result<Option<NavigationAction>> {
+    pub async fn submit_selection(&self) -> Result<Option<NavigationAction>, UiError> {
         let (tx, rx) = oneshot::channel();
         self.tx
             .send(Message::SubmitSelection { tx })
             .await
-            .context("Sending submit selection message to UI actor")
-            .expect("UI actor died");
+            .map_err(|_e| {
+                UiError::Fatal(FatalActorError::ActorSendFailed {
+                    actor_name: crate::app::ui::ACTOR_NAME,
+                    operation: "submit selection".to_string(),
+                })
+            })?;
         rx.await
-            .context("Awaiting response for submit selection from UI actor")
-            .expect("UI actor died")
+            .map_err(|e| {
+                UiError::Fatal(FatalActorError::ActorRecvFailed {
+                    actor_name: crate::app::ui::ACTOR_NAME,
+                    operation: "submit selection".to_string(),
+                    source: e,
+                })
+            })?
     }
 
     /// Get current UI state

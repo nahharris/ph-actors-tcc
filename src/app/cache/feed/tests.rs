@@ -1,7 +1,7 @@
 use super::*;
 use crate::{
-    ArcPath, ArcStr, api::lore::mock::MockLoreApi, app::config::mock::MockConfig, fs::mock::MockFs,
-    log::mock::MockLog,
+    ArcPath, ArcStr, FsError, api::lore::mock::MockLoreApi, app::config::mock::MockConfig,
+    fs::mock::MockFs, log::mock::MockLog,
 };
 use tokio::fs::File;
 
@@ -20,7 +20,7 @@ async fn create_test_feed_cache() -> (FeedCache, tempfile::TempDir) {
         .with(mockall::predicate::eq(
             crate::app::config::PathOpt::CachePath,
         ))
-        .returning(move |_| cache_dir.clone());
+        .returning(move |_| Ok(cache_dir.clone()));
 
     // Set up log expectations (for various log calls)
     mock_log.expect_info().returning(|_, _| ());
@@ -28,7 +28,7 @@ async fn create_test_feed_cache() -> (FeedCache, tempfile::TempDir) {
 
     let cache = FeedCache::spawn(mock_lore, mock_fs, mock_config, mock_log)
         .await
-        .unwrap();
+        .expect("Spawning feed cache to succeed");
 
     (cache, temp_dir)
 }
@@ -48,7 +48,7 @@ async fn test_feed_cache_get_from_empty_cache() {
         .with(mockall::predicate::eq(
             crate::app::config::PathOpt::CachePath,
         ))
-        .returning(move |_| cache_dir.clone());
+        .returning(move |_| Ok(cache_dir.clone()));
 
     mock_log.expect_info().returning(|_, _| ());
 
@@ -66,7 +66,7 @@ async fn test_feed_cache_get_from_empty_cache() {
 
     let cache = FeedCache::spawn(mock_lore, mock_fs, mock_config, mock_log)
         .await
-        .unwrap();
+        .expect("Spawning feed cache to succeed");
 
     let list = ArcStr::from("test-list");
 
@@ -84,7 +84,7 @@ async fn test_feed_cache_len_empty() {
 
     // Length of empty cache should be 0
     let len = cache.len(list).await;
-    assert_eq!(len, 0);
+    assert_eq!(len.expect("Getting feed length to succeed"), 0);
 }
 
 #[tokio::test]
@@ -95,7 +95,7 @@ async fn test_feed_cache_is_loaded_empty() {
 
     // Initially, cache should not be loaded
     let is_loaded = cache.is_loaded(list).await;
-    assert!(!is_loaded);
+    assert!(matches!(is_loaded, Ok(false)));
 }
 
 #[tokio::test]
@@ -106,7 +106,7 @@ async fn test_feed_cache_is_available_empty() {
 
     // Range should not be available in empty cache
     let is_available = cache.is_available(list, 0..10).await;
-    assert!(!is_available);
+    assert!(matches!(is_available, Ok(false)));
 }
 
 #[tokio::test]
@@ -124,7 +124,7 @@ async fn test_feed_cache_invalidate() {
         .with(mockall::predicate::eq(
             crate::app::config::PathOpt::CachePath,
         ))
-        .returning(move |_| cache_dir.clone());
+        .returning(move |_| Ok(cache_dir.clone()));
 
     mock_log.expect_info().returning(|_, _| ());
 
@@ -137,7 +137,7 @@ async fn test_feed_cache_invalidate() {
 
     let cache = FeedCache::spawn(mock_lore, mock_fs, mock_config, mock_log)
         .await
-        .unwrap();
+        .expect("Spawning feed cache to succeed");
 
     let list = ArcStr::from("test-list");
 
@@ -161,7 +161,7 @@ async fn test_feed_cache_persist_with_data() {
         .with(mockall::predicate::eq(
             crate::app::config::PathOpt::CachePath,
         ))
-        .returning(move |_| cache_dir.clone());
+        .returning(move |_| Ok(cache_dir.clone()));
 
     mock_log.expect_info().returning(|_, _| ());
 
@@ -176,7 +176,7 @@ async fn test_feed_cache_persist_with_data() {
 
     let cache = FeedCache::spawn(mock_lore, mock_fs, mock_config, mock_log)
         .await
-        .unwrap();
+        .expect("Spawning feed cache to succeed");
 
     let list = ArcStr::from("test-list");
 
@@ -200,21 +200,23 @@ async fn test_feed_cache_load_nonexistent_file() {
         .with(mockall::predicate::eq(
             crate::app::config::PathOpt::CachePath,
         ))
-        .returning(move |_| cache_dir.clone());
+        .returning(move |_| Ok(cache_dir.clone()));
 
     mock_log.expect_info().returning(|_, _| ());
 
     // Mock read_file to return file not found
     mock_fs.expect_read_file().returning(|_| {
-        Err(std::io::Error::new(
-            std::io::ErrorKind::NotFound,
-            "File not found",
-        ))
+        Err(FsError::OperationFailed {
+            path: None,
+            operation: "read file".to_string(),
+            source: std::io::Error::new(std::io::ErrorKind::NotFound, "File not found"),
+            retryable: false,
+        })
     });
 
     let cache = FeedCache::spawn(mock_lore, mock_fs, mock_config, mock_log)
         .await
-        .unwrap();
+        .expect("Spawning feed cache to succeed");
 
     let list = ArcStr::from("test-list");
 
@@ -238,7 +240,7 @@ async fn test_feed_cache_get_slice_empty() {
         .with(mockall::predicate::eq(
             crate::app::config::PathOpt::CachePath,
         ))
-        .returning(move |_| cache_dir.clone());
+        .returning(move |_| Ok(cache_dir.clone()));
 
     mock_log.expect_info().returning(|_, _| ());
 
@@ -256,7 +258,7 @@ async fn test_feed_cache_get_slice_empty() {
 
     let cache = FeedCache::spawn(mock_lore, mock_fs, mock_config, mock_log)
         .await
-        .unwrap();
+        .expect("Spawning feed cache to succeed");
 
     let list = ArcStr::from("test-list");
 
@@ -264,7 +266,7 @@ async fn test_feed_cache_get_slice_empty() {
     let result = cache.get_slice(list, 0..10).await;
     assert!(result.is_ok());
     assert_eq!(
-        result.unwrap(),
+        result.expect("Getting feed slice to succeed"),
         Vec::<crate::api::lore::LorePatchMetadata>::new()
     );
 }
@@ -284,7 +286,7 @@ async fn test_feed_cache_refresh() {
         .with(mockall::predicate::eq(
             crate::app::config::PathOpt::CachePath,
         ))
-        .returning(move |_| cache_dir.clone());
+        .returning(move |_| Ok(cache_dir.clone()));
 
     mock_log.expect_info().returning(|_, _| ());
 
@@ -302,7 +304,7 @@ async fn test_feed_cache_refresh() {
 
     let cache = FeedCache::spawn(mock_lore, mock_fs, mock_config, mock_log)
         .await
-        .unwrap();
+        .expect("Spawning feed cache to succeed");
 
     let list = ArcStr::from("test-list");
 

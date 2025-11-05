@@ -1,4 +1,3 @@
-use anyhow::Context;
 use reqwest::Client;
 use std::collections::HashMap;
 
@@ -7,7 +6,7 @@ use crate::{app::config::Config, log::Log};
 #[cfg(test)]
 use crate::{app::config::mock::MockConfig as Config, log::mock::MockLog as Log};
 
-use crate::{ArcStr, net::message::Message};
+use crate::{error::NetError, error::network_error, ArcStr, net::message::Message};
 
 /// The core of the networking system that handles HTTP requests.
 ///
@@ -53,18 +52,24 @@ impl Core {
     ///
     /// # Returns
     /// A new instance of `Core` with a fresh HTTP client.
+    ///
+    /// # Panics
+    /// This function will panic if the HTTP client cannot be built. This should never happen
+    /// in normal operation as the client configuration is valid.
     pub fn new(config: Config, log: Log) -> Self {
         // Get timeout from config - this will be async, so we use a simple default for now
         // In a real implementation, we might need to make this async or use a lazy approach
         let timeout_secs = 30u64; // Default timeout
 
         let user_agent = concat!(env!("CARGO_PKG_NAME"), "/", env!("CARGO_PKG_VERSION"));
+        // This is a system configuration error that should never happen in practice.
+        // If it does, it indicates a serious system problem that cannot be recovered from.
         let client = reqwest::Client::builder()
             .user_agent(user_agent)
             .timeout(std::time::Duration::from_secs(timeout_secs))
             .use_rustls_tls()
             .build()
-            .expect("Failed to build reqwest client with user agent and timeout");
+            .expect("Failed to build reqwest client with user agent and timeout - this indicates a system configuration problem");
 
         Self {
             config,
@@ -85,10 +90,7 @@ impl Core {
             use Message::*;
             match msg {
                 Get { url, headers, tx } => {
-                    let response = self
-                        .handle_get_request(url.clone(), headers)
-                        .await
-                        .with_context(|| format!("GET request failed for URL: {url}"));
+                    let response = self.handle_get_request(url.clone(), headers).await;
                     let _ = tx.send(response);
                 }
                 Post {
@@ -97,10 +99,7 @@ impl Core {
                     body,
                     tx,
                 } => {
-                    let response = self
-                        .handle_post_request(url.clone(), headers, body)
-                        .await
-                        .with_context(|| format!("POST request failed for URL: {url}"));
+                    let response = self.handle_post_request(url.clone(), headers, body).await;
                     let _ = tx.send(response);
                 }
                 Put {
@@ -109,17 +108,11 @@ impl Core {
                     body,
                     tx,
                 } => {
-                    let response = self
-                        .handle_put_request(url.clone(), headers, body)
-                        .await
-                        .with_context(|| format!("PUT request failed for URL: {url}"));
+                    let response = self.handle_put_request(url.clone(), headers, body).await;
                     let _ = tx.send(response);
                 }
                 Delete { url, headers, tx } => {
-                    let response = self
-                        .handle_delete_request(url.clone(), headers)
-                        .await
-                        .with_context(|| format!("DELETE request failed for URL: {url}"));
+                    let response = self.handle_delete_request(url.clone(), headers).await;
                     let _ = tx.send(response);
                 }
                 Patch {
@@ -128,10 +121,7 @@ impl Core {
                     body,
                     tx,
                 } => {
-                    let response = self
-                        .handle_patch_request(url.clone(), headers, body)
-                        .await
-                        .with_context(|| format!("PATCH request failed for URL: {url}"));
+                    let response = self.handle_patch_request(url.clone(), headers, body).await;
                     let _ = tx.send(response);
                 }
             }
@@ -143,7 +133,8 @@ impl Core {
         &self,
         url: ArcStr,
         headers: Option<HashMap<ArcStr, ArcStr>>,
-    ) -> anyhow::Result<ArcStr> {
+    ) -> Result<ArcStr, NetError> {
+        let url_str = url.to_string();
         let mut request = self.client.get::<&str>(url.as_ref());
 
         if let Some(headers) = headers {
@@ -155,8 +146,8 @@ impl Core {
             }
         }
 
-        let response = request.send().await.context("Sending GET request")?;
-        let text = response.text().await.context("Reading response body")?;
+        let response = request.send().await.map_err(|e| network_error(url_str.clone(), "GET", e))?;
+        let text = response.text().await.map_err(|e| network_error(url_str, "GET", e))?;
         Ok(ArcStr::from(&text))
     }
 
@@ -166,7 +157,8 @@ impl Core {
         url: ArcStr,
         headers: Option<HashMap<ArcStr, ArcStr>>,
         body: Option<ArcStr>,
-    ) -> anyhow::Result<ArcStr> {
+    ) -> Result<ArcStr, NetError> {
+        let url_str = url.to_string();
         let mut request = self.client.post::<&str>(url.as_ref());
 
         if let Some(headers) = headers {
@@ -182,8 +174,8 @@ impl Core {
             request = request.body(<ArcStr as AsRef<str>>::as_ref(&body).to_string());
         }
 
-        let response = request.send().await.context("Sending POST request")?;
-        let text = response.text().await.context("Reading response body")?;
+        let response = request.send().await.map_err(|e| network_error(url_str.clone(), "POST", e))?;
+        let text = response.text().await.map_err(|e| network_error(url_str, "POST", e))?;
         Ok(ArcStr::from(&text))
     }
 
@@ -193,7 +185,8 @@ impl Core {
         url: ArcStr,
         headers: Option<HashMap<ArcStr, ArcStr>>,
         body: Option<ArcStr>,
-    ) -> anyhow::Result<ArcStr> {
+    ) -> Result<ArcStr, NetError> {
+        let url_str = url.to_string();
         let mut request = self.client.put::<&str>(url.as_ref());
 
         if let Some(headers) = headers {
@@ -209,8 +202,8 @@ impl Core {
             request = request.body(<ArcStr as AsRef<str>>::as_ref(&body).to_string());
         }
 
-        let response = request.send().await.context("Sending PUT request")?;
-        let text = response.text().await.context("Reading response body")?;
+        let response = request.send().await.map_err(|e| network_error(url_str.clone(), "PUT", e))?;
+        let text = response.text().await.map_err(|e| network_error(url_str, "PUT", e))?;
         Ok(ArcStr::from(&text))
     }
 
@@ -219,7 +212,8 @@ impl Core {
         &self,
         url: ArcStr,
         headers: Option<HashMap<ArcStr, ArcStr>>,
-    ) -> anyhow::Result<ArcStr> {
+    ) -> Result<ArcStr, NetError> {
+        let url_str = url.to_string();
         let mut request = self.client.delete::<&str>(url.as_ref());
 
         if let Some(headers) = headers {
@@ -231,8 +225,8 @@ impl Core {
             }
         }
 
-        let response = request.send().await.context("Sending DELETE request")?;
-        let text = response.text().await.context("Reading response body")?;
+        let response = request.send().await.map_err(|e| network_error(url_str.clone(), "DELETE", e))?;
+        let text = response.text().await.map_err(|e| network_error(url_str, "DELETE", e))?;
         Ok(ArcStr::from(&text))
     }
 
@@ -242,7 +236,8 @@ impl Core {
         url: ArcStr,
         headers: Option<HashMap<ArcStr, ArcStr>>,
         body: Option<ArcStr>,
-    ) -> anyhow::Result<ArcStr> {
+    ) -> Result<ArcStr, NetError> {
+        let url_str = url.to_string();
         let mut request = self.client.patch::<&str>(url.as_ref());
 
         if let Some(headers) = headers {
@@ -258,8 +253,8 @@ impl Core {
             request = request.body(<ArcStr as AsRef<str>>::as_ref(&body).to_string());
         }
 
-        let response = request.send().await.context("Sending PATCH request")?;
-        let text = response.text().await.context("Reading response body")?;
+        let response = request.send().await.map_err(|e| network_error(url_str.clone(), "PATCH", e))?;
+        let text = response.text().await.map_err(|e| network_error(url_str, "PATCH", e))?;
         Ok(ArcStr::from(&text))
     }
 }
