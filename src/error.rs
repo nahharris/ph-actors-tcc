@@ -25,17 +25,6 @@ use thiserror::Error;
 #[derive(Debug, Error, Diagnostic)]
 #[error("Fatal actor error")]
 pub enum FatalActorError {
-    /// Actor has died - communication channel closed.
-    #[error("Actor '{actor_name}' has died - communication channel closed")]
-    #[diagnostic(
-        code(fatal::actor_died),
-        help("The actor is no longer running. This is a fatal error that requires restarting the affected component.")
-    )]
-    ActorDied {
-        /// Name of the actor that died
-        actor_name: &'static str,
-    },
-
     /// Failed to send message to actor.
     #[error("Failed to send message to actor '{actor_name}' for operation '{operation}'")]
     #[diagnostic(
@@ -438,7 +427,7 @@ pub enum UiError {
 /// Errors that can occur during application operations.
 #[derive(Debug, Error, Diagnostic)]
 #[error("Application operation error")]
-pub enum AppOperationError {
+pub enum AppError {
     /// Application operation failed.
     #[error("Application operation failed: {message}")]
     #[diagnostic(
@@ -456,240 +445,16 @@ pub enum AppOperationError {
     Fatal(#[from] FatalActorError),
 }
 
-// ============================================================================
-// Top-Level App Error
-// ============================================================================
-
-/// Top-level application error type.
-///
-/// This error type composes all actor-specific errors, allowing callers to
-/// match on specific error types for precise handling while maintaining
-/// unified error propagation.
-#[derive(Debug, Error, Diagnostic)]
-#[error("Application error")]
-pub enum AppError {
-    /// Fatal error that requires system-level changes.
-    #[error(transparent)]
-    #[diagnostic(transparent)]
-    Fatal(#[from] FatalActorError),
-
-    /// Network operation error.
-    #[error(transparent)]
-    #[diagnostic(transparent)]
-    Net(#[from] NetError),
-
-    /// Filesystem operation error.
-    #[error(transparent)]
-    #[diagnostic(transparent)]
-    Fs(#[from] FsError),
-
-    /// Logging operation error.
-    #[error(transparent)]
-    #[diagnostic(transparent)]
-    Log(#[from] LogError),
-
-    /// Shell command execution error.
-    #[error(transparent)]
-    #[diagnostic(transparent)]
-    Shell(#[from] ShellError),
-
-    /// Terminal operation error.
-    #[error(transparent)]
-    #[diagnostic(transparent)]
-    Terminal(#[from] TerminalError),
-
-    /// Rendering operation error.
-    #[error(transparent)]
-    #[diagnostic(transparent)]
-    Render(#[from] RenderError),
-
-    /// Configuration operation error.
-    #[error(transparent)]
-    #[diagnostic(transparent)]
-    Config(#[from] ConfigError),
-
-    /// Lore API operation error.
-    #[error(transparent)]
-    #[diagnostic(transparent)]
-    LoreApi(#[from] LoreApiError),
-
-    /// Cache operation error.
-    #[error(transparent)]
-    #[diagnostic(transparent)]
-    Cache(#[from] CacheError),
-
-    /// Environment variable operation error.
-    #[error(transparent)]
-    #[diagnostic(transparent)]
-    Env(#[from] EnvError),
-
-    /// UI operation error.
-    #[error(transparent)]
-    #[diagnostic(transparent)]
-    Ui(#[from] UiError),
-
-    /// Application operation error.
-    #[error(transparent)]
-    #[diagnostic(transparent)]
-    App(#[from] AppOperationError),
-}
 
 impl FatalActorError {
     /// Returns a human-readable suggestion for handling this fatal error.
     pub fn suggested_action(&self) -> String {
         match self {
-            Self::ActorDied { actor_name } => {
-                format!("Restart the {} actor or the application", actor_name)
+            Self::ActorSendFailed { actor_name, operation } => {
+                format!("The message could not be sent to the {} actor. The actor may have died while processing the {} operation.", actor_name, operation)
             }
-            Self::ActorSendFailed { actor_name, .. } | Self::ActorRecvFailed { actor_name, .. } => {
-                format!("Check if the {} actor is still running", actor_name)
-            }
-        }
-    }
-}
-
-impl AppError {
-    /// Returns `true` if this error is recoverable.
-    ///
-    /// Fatal errors are never recoverable. All other errors are recoverable.
-    pub fn is_recoverable(&self) -> bool {
-        match self {
-            Self::Fatal(_) => false,
-            Self::Net(NetError::Fatal(_))
-            | Self::Fs(FsError::Fatal(_))
-            | Self::Log(LogError::Fatal(_))
-            | Self::Shell(ShellError::Fatal(_))
-            | Self::Terminal(TerminalError::Fatal(_))
-            | Self::Render(RenderError::Fatal(_))
-            | Self::Config(ConfigError::Fatal(_))
-            | Self::LoreApi(LoreApiError::Fatal(_))
-            | Self::Cache(CacheError::Fatal(_))
-            | Self::Env(EnvError::Fatal(_))
-            | Self::Ui(UiError::Fatal(_))
-            | Self::App(AppOperationError::Fatal(_)) => false,
-            _ => true,
-        }
-    }
-
-    /// Returns `true` if this error is unrecoverable.
-    ///
-    /// Only fatal actor errors are unrecoverable.
-    pub fn is_unrecoverable(&self) -> bool {
-        !self.is_recoverable()
-    }
-
-    /// Returns `true` if this error indicates the operation can be retried.
-    ///
-    /// This checks if the error is recoverable and specifically indicates
-    /// that a retry might succeed.
-    pub fn is_retryable(&self) -> bool {
-        match self {
-            Self::Fatal(_) => false,
-            Self::Net(NetError::RequestFailed { retryable, .. }) => *retryable,
-            Self::Fs(FsError::OperationFailed { retryable, .. }) => *retryable,
-            _ => false,
-        }
-    }
-
-    /// Returns a suggested retry delay if this error is retryable.
-    ///
-    /// Returns `None` if the error is not retryable or if no delay is recommended.
-    pub fn retry_after(&self) -> Option<std::time::Duration> {
-        match self {
-            Self::Net(NetError::RequestFailed { retryable, .. }) if *retryable => {
-                Some(std::time::Duration::from_secs(1))
-            }
-            Self::Fs(FsError::OperationFailed { retryable, .. }) if *retryable => {
-                Some(std::time::Duration::from_millis(100))
-            }
-            _ => None,
-        }
-    }
-
-    /// Returns a human-readable suggestion for handling this error.
-    pub fn suggested_action(&self) -> String {
-        match self {
-            // Direct fatal errors
-            Self::Fatal(fatal) => fatal.suggested_action(),
-            // Nested fatal errors in actor-specific errors
-            Self::Net(NetError::Fatal(fatal)) => fatal.suggested_action(),
-            Self::Fs(FsError::Fatal(fatal)) => fatal.suggested_action(),
-            Self::Log(LogError::Fatal(fatal)) => fatal.suggested_action(),
-            Self::Shell(ShellError::Fatal(fatal)) => fatal.suggested_action(),
-            Self::Terminal(TerminalError::Fatal(fatal)) => fatal.suggested_action(),
-            Self::Render(RenderError::Fatal(fatal)) => fatal.suggested_action(),
-            Self::Config(ConfigError::Fatal(fatal)) => fatal.suggested_action(),
-            Self::LoreApi(LoreApiError::Fatal(fatal)) => fatal.suggested_action(),
-            Self::Cache(CacheError::Fatal(fatal)) => fatal.suggested_action(),
-            Self::Env(EnvError::Fatal(fatal)) => fatal.suggested_action(),
-            Self::Ui(UiError::Fatal(fatal)) => fatal.suggested_action(),
-            Self::App(AppOperationError::Fatal(fatal)) => fatal.suggested_action(),
-            // Domain-specific errors
-            Self::Net(NetError::RequestFailed { retryable, .. }) if *retryable => {
-                "Retry the request after a brief delay".to_string()
-            }
-            Self::Net(NetError::RequestFailed { .. }) => {
-                "Check the request parameters and network connectivity".to_string()
-            }
-            Self::Fs(FsError::OperationFailed { retryable, .. }) if *retryable => {
-                "Retry the operation after a brief delay".to_string()
-            }
-            Self::Fs(FsError::OperationFailed { .. }) => {
-                "Check file permissions and disk space".to_string()
-            }
-            Self::Config(ConfigError::ParseFailed { .. }) => {
-                "Check the TOML syntax in the configuration file".to_string()
-            }
-            Self::Config(ConfigError::InvalidValue { .. }) => {
-                "Check and fix the configuration file".to_string()
-            }
-            Self::Config(ConfigError::FileOperationFailed { .. }) => {
-                "Check file permissions for the configuration file".to_string()
-            }
-            Self::LoreApi(LoreApiError::ParseFailed { .. }) => {
-                "Check the data format and try again".to_string()
-            }
-            Self::LoreApi(LoreApiError::RequestFailed { retryable, .. }) if *retryable => {
-                "Retry the API request after a brief delay".to_string()
-            }
-            Self::LoreApi(LoreApiError::RequestFailed { .. }) => {
-                "Check your network connection and API endpoint".to_string()
-            }
-            Self::Cache(CacheError::SerializationFailed { .. }) => {
-                "The cache file may be corrupted. Consider clearing the cache".to_string()
-            }
-            Self::Cache(CacheError::FileOperationFailed { .. }) => {
-                "Check file permissions and disk space for the cache directory".to_string()
-            }
-            Self::Env(EnvError::NotFound { name }) => {
-                format!("Set the {} environment variable", name)
-            }
-            Self::Log(LogError::FileOperationFailed { .. }) => {
-                "Check file permissions and disk space for the log directory".to_string()
-            }
-            Self::Log(LogError::AlreadyFlushed) => {
-                "The logger has been flushed and cannot be used anymore".to_string()
-            }
-            Self::Shell(ShellError::ExecutionFailed { .. }) => {
-                "Check the command and its arguments".to_string()
-            }
-            Self::Shell(ShellError::EncodingFailed { .. }) => {
-                "The command output contains invalid UTF-8. Check the command output".to_string()
-            }
-            Self::Terminal(TerminalError::InitFailed { .. }) => {
-                "Check terminal settings and try again".to_string()
-            }
-            Self::Terminal(TerminalError::OperationFailed { .. }) => {
-                "Check terminal state and try again".to_string()
-            }
-            Self::Render(RenderError::RenderingFailed { .. }) => {
-                "Check the renderer configuration and patch format".to_string()
-            }
-            Self::Ui(UiError::OperationFailed { .. }) => {
-                "Check the UI state and try again".to_string()
-            }
-            Self::App(AppOperationError::OperationFailed { .. }) => {
-                "Check the error details and try again".to_string()
+            Self::ActorRecvFailed { actor_name, operation, .. } => {
+                format!("The response could not be received from the {} actor. The actor may have died while processing the {} operation.", actor_name, operation)
             }
         }
     }
