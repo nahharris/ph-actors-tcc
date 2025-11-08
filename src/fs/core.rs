@@ -2,7 +2,7 @@ use std::collections::LinkedList;
 
 use tokio::{fs::OpenOptions, sync::mpsc};
 
-use crate::{error::FsError, error::fs_error, ArcPath};
+use crate::{ArcPath, error::FsError, error::fs_error};
 
 use super::message::Message;
 
@@ -131,21 +131,15 @@ impl Core {
                     match rd.next_entry().await {
                         Ok(Some(entry)) => entries.push_back(ArcPath::from(&entry.path())),
                         Ok(None) => break Ok(entries),
-                        Err(e) => break Err(fs_error(
-                            Some(path_str.clone()),
-                            "read directory entry",
-                            e,
-                        )),
+                        Err(e) => {
+                            break Err(fs_error(Some(path_str.clone()), "read directory entry", e));
+                        }
                     }
                 };
                 let _ = tx.send(res);
             }
             Err(e) => {
-                let _ = tx.send(Err(fs_error(
-                    Some(path_str),
-                    "read directory",
-                    e,
-                )));
+                let _ = tx.send(Err(fs_error(Some(path_str), "read directory", e)));
             }
         }
     }

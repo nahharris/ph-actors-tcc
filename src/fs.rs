@@ -2,7 +2,7 @@ use std::collections::LinkedList;
 
 use tokio::sync::mpsc::{self, Sender};
 
-use crate::{error::FsError, error::FatalActorError, ArcPath};
+use crate::{ArcPath, error::FatalActorError, error::FsError};
 
 mod core;
 mod message;
@@ -60,14 +60,13 @@ impl Fs {
                     operation: format!("read file: {}", path_str),
                 })
             })?;
-        rx.await
-            .map_err(|e| {
-                FsError::Fatal(FatalActorError::ActorRecvFailed {
-                    actor_name: crate::fs::ACTOR_NAME,
-                    operation: format!("read file: {}", path_str),
-                    source: e,
-                })
-            })?
+        rx.await.map_err(|e| {
+            FsError::Fatal(FatalActorError::ActorRecvFailed {
+                actor_name: crate::fs::ACTOR_NAME,
+                operation: format!("read file: {}", path_str),
+                source: e,
+            })
+        })?
     }
 
     /// Opens a file for writing (truncates content, creates if needed).
@@ -83,14 +82,13 @@ impl Fs {
                     operation: format!("write file: {}", path_str),
                 })
             })?;
-        rx.await
-            .map_err(|e| {
-                FsError::Fatal(FatalActorError::ActorRecvFailed {
-                    actor_name: crate::fs::ACTOR_NAME,
-                    operation: format!("write file: {}", path_str),
-                    source: e,
-                })
-            })?
+        rx.await.map_err(|e| {
+            FsError::Fatal(FatalActorError::ActorRecvFailed {
+                actor_name: crate::fs::ACTOR_NAME,
+                operation: format!("write file: {}", path_str),
+                source: e,
+            })
+        })?
     }
 
     /// Opens a file for appending (creates if needed).
@@ -106,14 +104,13 @@ impl Fs {
                     operation: format!("append file: {}", path_str),
                 })
             })?;
-        rx.await
-            .map_err(|e| {
-                FsError::Fatal(FatalActorError::ActorRecvFailed {
-                    actor_name: crate::fs::ACTOR_NAME,
-                    operation: format!("append file: {}", path_str),
-                    source: e,
-                })
-            })?
+        rx.await.map_err(|e| {
+            FsError::Fatal(FatalActorError::ActorRecvFailed {
+                actor_name: crate::fs::ACTOR_NAME,
+                operation: format!("append file: {}", path_str),
+                source: e,
+            })
+        })?
     }
 
     /// Removes a file from the filesystem
@@ -129,14 +126,13 @@ impl Fs {
                     operation: format!("remove file: {}", path_str),
                 })
             })?;
-        rx.await
-            .map_err(|e| {
-                FsError::Fatal(FatalActorError::ActorRecvFailed {
-                    actor_name: crate::fs::ACTOR_NAME,
-                    operation: format!("remove file: {}", path_str),
-                    source: e,
-                })
-            })?
+        rx.await.map_err(|e| {
+            FsError::Fatal(FatalActorError::ActorRecvFailed {
+                actor_name: crate::fs::ACTOR_NAME,
+                operation: format!("remove file: {}", path_str),
+                source: e,
+            })
+        })?
     }
 
     /// Reads a directory
@@ -152,14 +148,13 @@ impl Fs {
                     operation: format!("read directory: {}", path_str),
                 })
             })?;
-        rx.await
-            .map_err(|e| {
-                FsError::Fatal(FatalActorError::ActorRecvFailed {
-                    actor_name: crate::fs::ACTOR_NAME,
-                    operation: format!("read directory: {}", path_str),
-                    source: e,
-                })
-            })?
+        rx.await.map_err(|e| {
+            FsError::Fatal(FatalActorError::ActorRecvFailed {
+                actor_name: crate::fs::ACTOR_NAME,
+                operation: format!("read directory: {}", path_str),
+                source: e,
+            })
+        })?
     }
 
     /// Creates a directory if it doesn't exist
@@ -175,14 +170,13 @@ impl Fs {
                     operation: format!("create directory: {}", path_str),
                 })
             })?;
-        rx.await
-            .map_err(|e| {
-                FsError::Fatal(FatalActorError::ActorRecvFailed {
-                    actor_name: crate::fs::ACTOR_NAME,
-                    operation: format!("create directory: {}", path_str),
-                    source: e,
-                })
-            })?
+        rx.await.map_err(|e| {
+            FsError::Fatal(FatalActorError::ActorRecvFailed {
+                actor_name: crate::fs::ACTOR_NAME,
+                operation: format!("create directory: {}", path_str),
+                source: e,
+            })
+        })?
     }
 
     /// Removes a directory
@@ -198,13 +192,12 @@ impl Fs {
                     operation: format!("remove directory: {}", path_str),
                 })
             })?;
-        rx.await
-            .map_err(|e| {
-                FsError::Fatal(FatalActorError::ActorRecvFailed {
-                    actor_name: crate::fs::ACTOR_NAME,
-                    operation: format!("remove directory: {}", path_str),
-                    source: e,
-                })
-            })?
+        rx.await.map_err(|e| {
+            FsError::Fatal(FatalActorError::ActorRecvFailed {
+                actor_name: crate::fs::ACTOR_NAME,
+                operation: format!("remove directory: {}", path_str),
+                source: e,
+            })
+        })?
     }
 }

@@ -2,7 +2,7 @@ use std::collections::LinkedList;
 
 use tokio::sync::oneshot;
 
-use crate::{error::FsError, ArcPath};
+use crate::{ArcPath, error::FsError};
 
 /// Messages that can be sent to a [`Fs`] actor.
 ///

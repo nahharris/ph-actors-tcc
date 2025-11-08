@@ -5,7 +5,7 @@ use mockall::mock;
 use std::collections::LinkedList;
 
 #[cfg(test)]
-use crate::{error::FsError, ArcPath};
+use crate::{ArcPath, error::FsError};
 
 #[cfg(test)]
 mock! {
