@@ -20,7 +20,6 @@ pub fn parse_available_lists_html(
     html: &str,
     start_index: usize,
 ) -> Result<Option<LorePage<LoreMailingList>>, crate::error::LoreApiError> {
-
     let mut items = Vec::new();
     let mut next_page_index = None;
     let mut total_items = None;
@@ -102,12 +101,13 @@ pub fn parse_available_lists_html(
     }
 
     // Regex to find the next page index from the <a rel=next> link
-    let next_re = Regex::new(r#"<a[^>]*rel=next[^>]*href="\?&o=([0-9]+)""#)
-        .map_err(|e| crate::error::LoreApiError::ParseFailed {
+    let next_re = Regex::new(r#"<a[^>]*rel=next[^>]*href="\?&o=([0-9]+)""#).map_err(|e| {
+        crate::error::LoreApiError::ParseFailed {
             format: "HTML".to_string(),
             operation: "parse available lists".to_string(),
             details: format!("Failed to compile next page regex: {}", e),
-        })?;
+        }
+    })?;
     if let Some(cap) = next_re.captures(html) {
         let idx_str = cap
             .get(1)
@@ -117,23 +117,28 @@ pub fn parse_available_lists_html(
                 details: "Failed to capture next page index".to_string(),
             })?
             .as_str();
-        let idx = idx_str
-            .parse::<usize>()
-            .map_err(|e| crate::error::LoreApiError::ParseFailed {
-                format: "HTML".to_string(),
-                operation: "parse available lists".to_string(),
-                details: format!("Failed to parse next page index: '{}'. Error: {}", idx_str, e),
-            })?;
+        let idx =
+            idx_str
+                .parse::<usize>()
+                .map_err(|e| crate::error::LoreApiError::ParseFailed {
+                    format: "HTML".to_string(),
+                    operation: "parse available lists".to_string(),
+                    details: format!(
+                        "Failed to parse next page index: '{}'. Error: {}",
+                        idx_str, e
+                    ),
+                })?;
         next_page_index = Some(idx);
     }
 
     // Regex to extract next page index and total items from "Results 1-200 of ~337"
-    let total_re = Regex::new(r"Results [0-9]+(-[0-9]+)? of ~?([0-9,]+)")
-        .map_err(|e| crate::error::LoreApiError::ParseFailed {
+    let total_re = Regex::new(r"Results [0-9]+(-[0-9]+)? of ~?([0-9,]+)").map_err(|e| {
+        crate::error::LoreApiError::ParseFailed {
             format: "HTML".to_string(),
             operation: "parse available lists".to_string(),
             details: format!("Failed to compile total items regex: {}", e),
-        })?;
+        }
+    })?;
     if let Some(cap) = total_re.captures(html) {
         if cap.len() < 2 {
             return Err(crate::error::LoreApiError::ParseFailed {
@@ -146,26 +151,29 @@ pub fn parse_available_lists_html(
         if cap.len() == 3 {
             if let Some(next) = cap.get(1) {
                 let next_str = next.as_str().replace("-", "");
-                let idx = next_str
-                    .parse::<usize>()
-                    .map_err(|e| crate::error::LoreApiError::ParseFailed {
+                let idx = next_str.parse::<usize>().map_err(|e| {
+                    crate::error::LoreApiError::ParseFailed {
                         format: "HTML".to_string(),
                         operation: "parse available lists".to_string(),
-                        details: format!("Failed to parse next page index: '{}'. Error: {}", next_str, e),
-                    })?;
+                        details: format!(
+                            "Failed to parse next page index: '{}'. Error: {}",
+                            next_str, e
+                        ),
+                    }
+                })?;
                 next_page_index = Some(idx);
             }
         }
 
         if let Some(total) = cap.get(cap.len() - 1) {
             let total_str = total.as_str().replace(",", "");
-            let total_val = total_str
-                .parse::<usize>()
-                .map_err(|e| crate::error::LoreApiError::ParseFailed {
+            let total_val = total_str.parse::<usize>().map_err(|e| {
+                crate::error::LoreApiError::ParseFailed {
                     format: "HTML".to_string(),
                     operation: "parse available lists".to_string(),
                     details: format!("Failed to parse total items: '{}'. Error: {}", total_str, e),
-                })?;
+                }
+            })?;
             total_items = Some(total_val);
         }
     }
@@ -204,7 +212,8 @@ pub fn parse_patch_title(title: &str) -> Option<(usize, Option<SequenceNumber>)>
     // Regex to match patch title patterns with named captures
     let patch_regex = Regex::new(
         r"^\[PATCH\s*(?:v(?P<version>\d+))?\s*(?:(?P<current>\d+)/(?P<total>\d+))?\s*\]",
-    ).ok()?;
+    )
+    .ok()?;
 
     let captures = patch_regex.captures(title)?;
     // Extract version (defaults to 1 if not specified)
@@ -281,11 +290,13 @@ pub fn parse_patch_feed_xml(
         operation: "parse patch feed".to_string(),
         details: format!("Failed to parse patch feed XML: {}", e),
     })?;
-    let list_message_id_regex = Regex::new(r"https://lore.kernel.org/([^/]+)/([^/]+)/")
-        .map_err(|e| crate::error::LoreApiError::ParseFailed {
-            format: "XML".to_string(),
-            operation: "parse patch feed".to_string(),
-            details: format!("Failed to compile list message ID regex: {}", e),
+    let list_message_id_regex =
+        Regex::new(r"https://lore.kernel.org/([^/]+)/([^/]+)/").map_err(|e| {
+            crate::error::LoreApiError::ParseFailed {
+                format: "XML".to_string(),
+                operation: "parse patch feed".to_string(),
+                details: format!("Failed to compile list message ID regex: {}", e),
+            }
         })?;
 
     let items = feed

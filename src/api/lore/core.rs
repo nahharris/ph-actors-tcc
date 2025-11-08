@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use super::data::{LoreMailingList, LorePage, LorePatchMetadata};
 use super::parse;
-use crate::{error::LoreApiError, ArcSlice};
+use crate::{ArcSlice, error::LoreApiError};
 use crate::{ArcStr, api::lore::message::LoreApiMessage};
 
 #[cfg(not(test))]
@@ -83,15 +83,11 @@ impl Core {
                     let _ = tx.send(response);
                 }
                 LoreApiMessage::GetAvailableLists { tx } => {
-                    let response = self
-                        .handle_get_available_lists()
-                        .await;
+                    let response = self.handle_get_available_lists().await;
                     let _ = tx.send(response);
                 }
                 LoreApiMessage::GetAvailableListsPage { min_index, tx } => {
-                    let response = self
-                        .handle_get_available_lists_page(min_index)
-                        .await;
+                    let response = self.handle_get_available_lists_page(min_index).await;
                     let _ = tx.send(response);
                 }
                 LoreApiMessage::GetPatchHtml {
@@ -99,9 +95,7 @@ impl Core {
                     message_id,
                     tx,
                 } => {
-                    let response = self
-                            .handle_get_patch_html(&target_list, &message_id)
-                            .await;
+                    let response = self.handle_get_patch_html(&target_list, &message_id).await;
                     let _ = tx.send(response);
                 }
                 LoreApiMessage::GetRawPatch {
@@ -109,9 +103,7 @@ impl Core {
                     message_id,
                     tx,
                 } => {
-                    let response = self
-                            .handle_get_raw_patch(&target_list, &message_id)
-                            .await;
+                    let response = self.handle_get_raw_patch(&target_list, &message_id).await;
                     let _ = tx.send(response);
                 }
                 LoreApiMessage::GetPatchMetadata {
@@ -120,8 +112,8 @@ impl Core {
                     tx,
                 } => {
                     let response = self
-                            .handle_get_patch_metadata(&target_list, &message_id)
-                            .await;
+                        .handle_get_patch_metadata(&target_list, &message_id)
+                        .await;
                     let _ = tx.send(response);
                 }
             }
@@ -145,16 +137,23 @@ impl Core {
             ArcStr::from("text/html,application/xhtml+xml,application/xml"),
         );
 
-        let response = self.net.get(ArcStr::from(&url), Some(headers)).await.map_err(|e| match e {
-            crate::error::NetError::Fatal(fatal) => LoreApiError::Fatal(fatal),
-            crate::error::NetError::RequestFailed { url,  message, retryable, .. } => {
-                LoreApiError::RequestFailed {
+        let response = self
+            .net
+            .get(ArcStr::from(&url), Some(headers))
+            .await
+            .map_err(|e| match e {
+                crate::error::NetError::Fatal(fatal) => LoreApiError::Fatal(fatal),
+                crate::error::NetError::RequestFailed {
+                    url,
+                    message,
+                    retryable,
+                    ..
+                } => LoreApiError::RequestFailed {
                     endpoint: url,
                     message,
                     retryable,
-                }
-            }
-        })?;
+                },
+            })?;
         // Check for end of feed indicator
         if <ArcStr as AsRef<str>>::as_ref(&response) == "</feed>"
             || response.contains("[No results found]")
@@ -201,16 +200,23 @@ impl Core {
             ArcStr::from("text/html,application/xhtml+xml,application/xml"),
         );
 
-        let html = self.net.get(url, Some(headers)).await.map_err(|e| match e {
-            crate::error::NetError::Fatal(fatal) => LoreApiError::Fatal(fatal),
-            crate::error::NetError::RequestFailed { url,  message, retryable, .. } => {
-                LoreApiError::RequestFailed {
+        let html = self
+            .net
+            .get(url, Some(headers))
+            .await
+            .map_err(|e| match e {
+                crate::error::NetError::Fatal(fatal) => LoreApiError::Fatal(fatal),
+                crate::error::NetError::RequestFailed {
+                    url,
+                    message,
+                    retryable,
+                    ..
+                } => LoreApiError::RequestFailed {
                     endpoint: url,
                     message,
                     retryable,
-                }
-            }
-        })?;
+                },
+            })?;
         parse::parse_available_lists_html(&html, min_index)
     }
 
@@ -228,16 +234,22 @@ impl Core {
             ArcStr::from("text/html,application/xhtml+xml,application/xml"),
         );
 
-        self.net.get(ArcStr::from(&url), Some(headers)).await.map_err(|e| match e {
-            crate::error::NetError::Fatal(fatal) => LoreApiError::Fatal(fatal),
-            crate::error::NetError::RequestFailed { url,  message, retryable, .. } => {
-                LoreApiError::RequestFailed {
+        self.net
+            .get(ArcStr::from(&url), Some(headers))
+            .await
+            .map_err(|e| match e {
+                crate::error::NetError::Fatal(fatal) => LoreApiError::Fatal(fatal),
+                crate::error::NetError::RequestFailed {
+                    url,
+                    message,
+                    retryable,
+                    ..
+                } => LoreApiError::RequestFailed {
                     endpoint: url,
                     message,
                     retryable,
-                }
-            }
-        })
+                },
+            })
     }
 
     /// Handles GET raw patch requests
@@ -251,16 +263,22 @@ impl Core {
         let mut headers = HashMap::new();
         headers.insert(ArcStr::from("Accept"), ArcStr::from("text/plain"));
 
-        self.net.get(ArcStr::from(&url), Some(headers)).await.map_err(|e| match e {
-            crate::error::NetError::Fatal(fatal) => LoreApiError::Fatal(fatal),
-            crate::error::NetError::RequestFailed { url,  message, retryable, .. } => {
-                LoreApiError::RequestFailed {
+        self.net
+            .get(ArcStr::from(&url), Some(headers))
+            .await
+            .map_err(|e| match e {
+                crate::error::NetError::Fatal(fatal) => LoreApiError::Fatal(fatal),
+                crate::error::NetError::RequestFailed {
+                    url,
+                    message,
+                    retryable,
+                    ..
+                } => LoreApiError::RequestFailed {
                     endpoint: url,
                     message,
                     retryable,
-                }
-            }
-        })
+                },
+            })
     }
 
     /// Handles GET patch metadata requests
@@ -274,15 +292,21 @@ impl Core {
         let mut headers = HashMap::new();
         headers.insert(ArcStr::from("Accept"), ArcStr::from("application/json"));
 
-        self.net.get(ArcStr::from(&url), Some(headers)).await.map_err(|e| match e {
-            crate::error::NetError::Fatal(fatal) => LoreApiError::Fatal(fatal),
-            crate::error::NetError::RequestFailed { url,  message, retryable, .. } => {
-                LoreApiError::RequestFailed {
+        self.net
+            .get(ArcStr::from(&url), Some(headers))
+            .await
+            .map_err(|e| match e {
+                crate::error::NetError::Fatal(fatal) => LoreApiError::Fatal(fatal),
+                crate::error::NetError::RequestFailed {
+                    url,
+                    message,
+                    retryable,
+                    ..
+                } => LoreApiError::RequestFailed {
                     endpoint: url,
                     message,
                     retryable,
-                }
-            }
-        })
+                },
+            })
     }
 }

@@ -1,7 +1,7 @@
 use tokio::sync::{mpsc, oneshot};
 
-use crate::{error::LoreApiError, error::FatalActorError, ArcStr};
 use crate::utils::ArcSlice;
+use crate::{ArcStr, error::FatalActorError, error::LoreApiError};
 
 #[cfg(not(test))]
 use crate::net::Net;
@@ -90,14 +90,13 @@ impl LoreApi {
                     operation: "get patch feed page".to_string(),
                 })
             })?;
-        rx.await
-            .map_err(|e| {
-                LoreApiError::Fatal(FatalActorError::ActorRecvFailed {
-                    actor_name: crate::api::lore::ACTOR_NAME,
-                    operation: "get patch feed page".to_string(),
-                    source: e,
-                })
-            })?
+        rx.await.map_err(|e| {
+            LoreApiError::Fatal(FatalActorError::ActorRecvFailed {
+                actor_name: crate::api::lore::ACTOR_NAME,
+                operation: "get patch feed page".to_string(),
+                source: e,
+            })
+        })?
     }
 
     /// Fetches a single page of available mailing lists with pagination.
@@ -124,14 +123,13 @@ impl LoreApi {
                     operation: "get available lists page".to_string(),
                 })
             })?;
-        rx.await
-            .map_err(|e| {
-                LoreApiError::Fatal(FatalActorError::ActorRecvFailed {
-                    actor_name: crate::api::lore::ACTOR_NAME,
-                    operation: "get available lists page".to_string(),
-                    source: e,
-                })
-            })?
+        rx.await.map_err(|e| {
+            LoreApiError::Fatal(FatalActorError::ActorRecvFailed {
+                actor_name: crate::api::lore::ACTOR_NAME,
+                operation: "get available lists page".to_string(),
+                source: e,
+            })
+        })?
     }
 
     /// Fetches all available mailing lists, aggregating all paginated results.
@@ -152,14 +150,13 @@ impl LoreApi {
                     operation: "get available lists".to_string(),
                 })
             })?;
-        rx.await
-            .map_err(|e| {
-                LoreApiError::Fatal(FatalActorError::ActorRecvFailed {
-                    actor_name: crate::api::lore::ACTOR_NAME,
-                    operation: "get available lists".to_string(),
-                    source: e,
-                })
-            })?
+        rx.await.map_err(|e| {
+            LoreApiError::Fatal(FatalActorError::ActorRecvFailed {
+                actor_name: crate::api::lore::ACTOR_NAME,
+                operation: "get available lists".to_string(),
+                source: e,
+            })
+        })?
     }
 
     /// Fetches the HTML content of a specific patch.
@@ -197,14 +194,13 @@ impl LoreApi {
                     operation: "get patch HTML".to_string(),
                 })
             })?;
-        rx.await
-            .map_err(|e| {
-                LoreApiError::Fatal(FatalActorError::ActorRecvFailed {
-                    actor_name: crate::api::lore::ACTOR_NAME,
-                    operation: "get patch HTML".to_string(),
-                    source: e,
-                })
-            })?
+        rx.await.map_err(|e| {
+            LoreApiError::Fatal(FatalActorError::ActorRecvFailed {
+                actor_name: crate::api::lore::ACTOR_NAME,
+                operation: "get patch HTML".to_string(),
+                source: e,
+            })
+        })?
     }
 
     /// Fetches a raw patch in plain text format.
@@ -242,14 +238,13 @@ impl LoreApi {
                     operation: "get raw patch".to_string(),
                 })
             })?;
-        rx.await
-            .map_err(|e| {
-                LoreApiError::Fatal(FatalActorError::ActorRecvFailed {
-                    actor_name: crate::api::lore::ACTOR_NAME,
-                    operation: "get raw patch".to_string(),
-                    source: e,
-                })
-            })?
+        rx.await.map_err(|e| {
+            LoreApiError::Fatal(FatalActorError::ActorRecvFailed {
+                actor_name: crate::api::lore::ACTOR_NAME,
+                operation: "get raw patch".to_string(),
+                source: e,
+            })
+        })?
     }
 
     /// Fetches patch metadata in JSON format.
@@ -287,13 +282,12 @@ impl LoreApi {
                     operation: "get patch metadata".to_string(),
                 })
             })?;
-        rx.await
-            .map_err(|e| {
-                LoreApiError::Fatal(FatalActorError::ActorRecvFailed {
-                    actor_name: crate::api::lore::ACTOR_NAME,
-                    operation: "get patch metadata".to_string(),
-                    source: e,
-                })
-            })?
+        rx.await.map_err(|e| {
+            LoreApiError::Fatal(FatalActorError::ActorRecvFailed {
+                actor_name: crate::api::lore::ACTOR_NAME,
+                operation: "get patch metadata".to_string(),
+                source: e,
+            })
+        })?
     }
 }

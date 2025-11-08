@@ -1,7 +1,7 @@
 use tokio::sync::oneshot::Sender;
 
 use super::data::{LoreMailingList, LorePage, LorePatchMetadata};
-use crate::{error::LoreApiError, ArcSlice, ArcStr};
+use crate::{ArcSlice, ArcStr, error::LoreApiError};
 
 /// Messages that can be sent to a [`LoreApiCore`] actor.
 ///
