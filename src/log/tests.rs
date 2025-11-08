@@ -63,7 +63,9 @@ async fn test_log_flush_with_messages_above_level() {
         Ok(File::from_std(file))
     });
 
-    let log = Log::spawn(mock_fs, mock_config).await.expect("Spawning log to succeed");
+    let log = Log::spawn(mock_fs, mock_config)
+        .await
+        .expect("Spawning log to succeed");
 
     // Log messages at different levels
     log.info("test", "Info message".to_string());
@@ -89,7 +91,9 @@ async fn test_log_flush_with_no_messages() {
     let mut mock_fs = MockFs::new();
     let mut mock_config = MockConfig::new();
 
-    mock_config.expect_log_level().returning(|| Ok(LogLevel::Error));
+    mock_config
+        .expect_log_level()
+        .returning(|| Ok(LogLevel::Error));
     mock_config
         .expect_usize()
         .with(mockall::predicate::eq(crate::app::config::USizeOpt::MaxAge))
@@ -105,7 +109,9 @@ async fn test_log_flush_with_no_messages() {
         Ok(File::from_std(file))
     });
 
-    let log = Log::spawn(mock_fs, mock_config).await.expect("Spawning log to succeed");
+    let log = Log::spawn(mock_fs, mock_config)
+        .await
+        .expect("Spawning log to succeed");
 
     // Log a message below the print level (Info < Error)
     log.info("test", "Info message".to_string());
@@ -125,7 +131,9 @@ async fn test_log_collect_garbage_with_max_age_zero() {
     let mut mock_fs = MockFs::new();
     let mut mock_config = MockConfig::new();
 
-    mock_config.expect_log_level().returning(|| Ok(LogLevel::Info)  );
+    mock_config
+        .expect_log_level()
+        .returning(|| Ok(LogLevel::Info));
     mock_config
         .expect_usize()
         .with(mockall::predicate::eq(crate::app::config::USizeOpt::MaxAge))
@@ -142,10 +150,14 @@ async fn test_log_collect_garbage_with_max_age_zero() {
         Ok(File::from_std(file))
     });
 
-    let log = Log::spawn(mock_fs, mock_config).await.expect("Spawning log to succeed");
+    let log = Log::spawn(mock_fs, mock_config)
+        .await
+        .expect("Spawning log to succeed");
 
     // With max_age=0, collect_garbage should return immediately without reading directory
-    log.collect_garbage().await.expect("Collecting garbage to succeed");
+    log.collect_garbage()
+        .await
+        .expect("Collecting garbage to succeed");
 
     // Wait a bit to ensure the message is processed
     tokio::time::sleep(Duration::from_millis(100)).await;
@@ -162,7 +174,9 @@ async fn test_log_collect_garbage_with_old_files() {
     let mut mock_fs = MockFs::new();
     let mut mock_config = MockConfig::new();
 
-    mock_config.expect_log_level().returning(|| Ok(LogLevel::Info));
+    mock_config
+        .expect_log_level()
+        .returning(|| Ok(LogLevel::Info));
     mock_config
         .expect_usize()
         .with(mockall::predicate::eq(crate::app::config::USizeOpt::MaxAge))
@@ -211,9 +225,13 @@ async fn test_log_collect_garbage_with_old_files() {
     // Mock metadata for files (old file has old creation time)
     // Note: We can't easily mock metadata in the current setup, so we'll test the logic flow
 
-    let log = Log::spawn(mock_fs, mock_config).await.expect("Spawning log to succeed");
+    let log = Log::spawn(mock_fs, mock_config)
+        .await
+        .expect("Spawning log to succeed");
 
-    log.collect_garbage().await.expect("Collecting garbage to succeed");
+    log.collect_garbage()
+        .await
+        .expect("Collecting garbage to succeed");
     tokio::time::sleep(Duration::from_millis(100)).await;
 
     // Cleanup
@@ -231,7 +249,9 @@ async fn test_log_collect_garbage_read_dir_error() {
     let mut mock_fs = MockFs::new();
     let mut mock_config = MockConfig::new();
 
-    mock_config.expect_log_level().returning(|| Ok(LogLevel::Info));
+    mock_config
+        .expect_log_level()
+        .returning(|| Ok(LogLevel::Info));
     mock_config
         .expect_usize()
         .with(mockall::predicate::eq(crate::app::config::USizeOpt::MaxAge))
@@ -261,10 +281,14 @@ async fn test_log_collect_garbage_read_dir_error() {
         })
     });
 
-    let log = Log::spawn(mock_fs, mock_config).await.expect("Spawning log to succeed");
+    let log = Log::spawn(mock_fs, mock_config)
+        .await
+        .expect("Spawning log to succeed");
 
     // collect_garbage should handle the error gracefully and log it
-    log.collect_garbage().await.expect("Collecting garbage to succeed");
+    log.collect_garbage()
+        .await
+        .expect("Collecting garbage to succeed");
     tokio::time::sleep(Duration::from_millis(100)).await;
 
     // Cleanup
