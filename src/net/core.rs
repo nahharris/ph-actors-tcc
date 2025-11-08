@@ -6,7 +6,7 @@ use crate::{app::config::Config, log::Log};
 #[cfg(test)]
 use crate::{app::config::mock::MockConfig as Config, log::mock::MockLog as Log};
 
-use crate::{error::NetError, error::network_error, ArcStr, net::message::Message};
+use crate::{ArcStr, error::NetError, error::network_error, net::message::Message};
 
 /// The core of the networking system that handles HTTP requests.
 ///
@@ -146,8 +146,14 @@ impl Core {
             }
         }
 
-        let response = request.send().await.map_err(|e| network_error(url_str.clone(), "GET", e))?;
-        let text = response.text().await.map_err(|e| network_error(url_str, "GET", e))?;
+        let response = request
+            .send()
+            .await
+            .map_err(|e| network_error(url_str.clone(), "GET", e))?;
+        let text = response
+            .text()
+            .await
+            .map_err(|e| network_error(url_str, "GET", e))?;
         Ok(ArcStr::from(&text))
     }
 
@@ -174,8 +180,14 @@ impl Core {
             request = request.body(<ArcStr as AsRef<str>>::as_ref(&body).to_string());
         }
 
-        let response = request.send().await.map_err(|e| network_error(url_str.clone(), "POST", e))?;
-        let text = response.text().await.map_err(|e| network_error(url_str, "POST", e))?;
+        let response = request
+            .send()
+            .await
+            .map_err(|e| network_error(url_str.clone(), "POST", e))?;
+        let text = response
+            .text()
+            .await
+            .map_err(|e| network_error(url_str, "POST", e))?;
         Ok(ArcStr::from(&text))
     }
 
@@ -202,8 +214,14 @@ impl Core {
             request = request.body(<ArcStr as AsRef<str>>::as_ref(&body).to_string());
         }
 
-        let response = request.send().await.map_err(|e| network_error(url_str.clone(), "PUT", e))?;
-        let text = response.text().await.map_err(|e| network_error(url_str, "PUT", e))?;
+        let response = request
+            .send()
+            .await
+            .map_err(|e| network_error(url_str.clone(), "PUT", e))?;
+        let text = response
+            .text()
+            .await
+            .map_err(|e| network_error(url_str, "PUT", e))?;
         Ok(ArcStr::from(&text))
     }
 
@@ -225,8 +243,14 @@ impl Core {
             }
         }
 
-        let response = request.send().await.map_err(|e| network_error(url_str.clone(), "DELETE", e))?;
-        let text = response.text().await.map_err(|e| network_error(url_str, "DELETE", e))?;
+        let response = request
+            .send()
+            .await
+            .map_err(|e| network_error(url_str.clone(), "DELETE", e))?;
+        let text = response
+            .text()
+            .await
+            .map_err(|e| network_error(url_str, "DELETE", e))?;
         Ok(ArcStr::from(&text))
     }
 
@@ -253,8 +277,14 @@ impl Core {
             request = request.body(<ArcStr as AsRef<str>>::as_ref(&body).to_string());
         }
 
-        let response = request.send().await.map_err(|e| network_error(url_str.clone(), "PATCH", e))?;
-        let text = response.text().await.map_err(|e| network_error(url_str, "PATCH", e))?;
+        let response = request
+            .send()
+            .await
+            .map_err(|e| network_error(url_str.clone(), "PATCH", e))?;
+        let text = response
+            .text()
+            .await
+            .map_err(|e| network_error(url_str, "PATCH", e))?;
         Ok(ArcStr::from(&text))
     }
 }

@@ -3,7 +3,7 @@ use std::fmt::Display;
 use std::str::FromStr;
 use tokio::sync::oneshot::Sender;
 
-use crate::{error::NetError, ArcStr};
+use crate::{ArcStr, error::NetError};
 
 /// Represents HTTP methods supported by the networking actor.
 ///

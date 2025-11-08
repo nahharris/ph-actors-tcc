@@ -5,7 +5,7 @@ use mockall::mock;
 use std::collections::HashMap;
 
 #[cfg(test)]
-use crate::{error::NetError, ArcStr};
+use crate::{ArcStr, error::NetError};
 
 #[cfg(test)]
 mock! {

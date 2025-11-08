@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use tokio::sync::mpsc::Sender;
 
-use crate::{error::NetError, error::FatalActorError, ArcStr, net::core::Core};
+use crate::{ArcStr, error::FatalActorError, error::NetError, net::core::Core};
 #[cfg(not(test))]
 use crate::{app::config::Config, log::Log};
 #[cfg(test)]
@@ -69,7 +69,11 @@ impl Net {
     ) -> Result<ArcStr, NetError> {
         let (tx, rx) = tokio::sync::oneshot::channel();
         self.tx
-            .send(message::Message::Get { url: url.clone(), headers, tx })
+            .send(message::Message::Get {
+                url: url.clone(),
+                headers,
+                tx,
+            })
             .await
             .map_err(|_e| {
                 NetError::Fatal(FatalActorError::ActorSendFailed {
@@ -77,14 +81,13 @@ impl Net {
                     operation: "GET request".to_string(),
                 })
             })?;
-        rx.await
-            .map_err(|e| {
-                NetError::Fatal(FatalActorError::ActorRecvFailed {
-                    actor_name: crate::net::ACTOR_NAME,
-                    operation: format!("GET request to {}", url),
-                    source: e,
-                })
-            })?
+        rx.await.map_err(|e| {
+            NetError::Fatal(FatalActorError::ActorRecvFailed {
+                actor_name: crate::net::ACTOR_NAME,
+                operation: format!("GET request to {}", url),
+                source: e,
+            })
+        })?
     }
 
     /// Performs an HTTP POST request to the specified URL.
@@ -117,14 +120,13 @@ impl Net {
                     operation: "POST request".to_string(),
                 })
             })?;
-        rx.await
-            .map_err(|e| {
-                NetError::Fatal(FatalActorError::ActorRecvFailed {
-                    actor_name: crate::net::ACTOR_NAME,
-                    operation: format!("POST request to {}", url),
-                    source: e,
-                })
-            })?
+        rx.await.map_err(|e| {
+            NetError::Fatal(FatalActorError::ActorRecvFailed {
+                actor_name: crate::net::ACTOR_NAME,
+                operation: format!("POST request to {}", url),
+                source: e,
+            })
+        })?
     }
 
     /// Performs an HTTP PUT request to the specified URL.
@@ -157,14 +159,13 @@ impl Net {
                     operation: "PUT request".to_string(),
                 })
             })?;
-        rx.await
-            .map_err(|e| {
-                NetError::Fatal(FatalActorError::ActorRecvFailed {
-                    actor_name: crate::net::ACTOR_NAME,
-                    operation: format!("PUT request to {}", url),
-                    source: e,
-                })
-            })?
+        rx.await.map_err(|e| {
+            NetError::Fatal(FatalActorError::ActorRecvFailed {
+                actor_name: crate::net::ACTOR_NAME,
+                operation: format!("PUT request to {}", url),
+                source: e,
+            })
+        })?
     }
 
     /// Performs an HTTP DELETE request to the specified URL.
@@ -182,7 +183,11 @@ impl Net {
     ) -> Result<ArcStr, NetError> {
         let (tx, rx) = tokio::sync::oneshot::channel();
         self.tx
-            .send(message::Message::Delete { url: url.clone(), headers, tx })
+            .send(message::Message::Delete {
+                url: url.clone(),
+                headers,
+                tx,
+            })
             .await
             .map_err(|_e| {
                 NetError::Fatal(FatalActorError::ActorSendFailed {
@@ -190,14 +195,13 @@ impl Net {
                     operation: "DELETE request".to_string(),
                 })
             })?;
-        rx.await
-            .map_err(|e| {
-                NetError::Fatal(FatalActorError::ActorRecvFailed {
-                    actor_name: crate::net::ACTOR_NAME,
-                    operation: format!("DELETE request to {}", url),
-                    source: e,
-                })
-            })?
+        rx.await.map_err(|e| {
+            NetError::Fatal(FatalActorError::ActorRecvFailed {
+                actor_name: crate::net::ACTOR_NAME,
+                operation: format!("DELETE request to {}", url),
+                source: e,
+            })
+        })?
     }
 
     /// Performs an HTTP PATCH request to the specified URL.
@@ -230,13 +234,12 @@ impl Net {
                     operation: "PATCH request".to_string(),
                 })
             })?;
-        rx.await
-            .map_err(|e| {
-                NetError::Fatal(FatalActorError::ActorRecvFailed {
-                    actor_name: crate::net::ACTOR_NAME,
-                    operation: format!("PATCH request to {}", url),
-                    source: e,
-                })
-            })?
+        rx.await.map_err(|e| {
+            NetError::Fatal(FatalActorError::ActorRecvFailed {
+                actor_name: crate::net::ACTOR_NAME,
+                operation: format!("PATCH request to {}", url),
+                source: e,
+            })
+        })?
     }
 }
