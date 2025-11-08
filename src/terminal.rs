@@ -1,7 +1,7 @@
 use tokio::sync::{mpsc, oneshot};
 use tokio::task::JoinHandle;
 
-use crate::{error::TerminalError, error::FatalActorError, log::Log};
+use crate::{error::FatalActorError, error::TerminalError, log::Log};
 
 mod core;
 mod data;
@@ -38,15 +38,12 @@ impl Terminal {
 
     /// Requests the terminal to show a specific screen.
     pub async fn show(&self, screen: Screen) -> Result<(), TerminalError> {
-        self.tx
-            .send(Message::Show(screen))
-            .await
-            .map_err(|_e| {
-                TerminalError::Fatal(FatalActorError::ActorSendFailed {
-                    actor_name: crate::terminal::ACTOR_NAME,
-                    operation: "show screen".to_string(),
-                })
+        self.tx.send(Message::Show(screen)).await.map_err(|_e| {
+            TerminalError::Fatal(FatalActorError::ActorSendFailed {
+                actor_name: crate::terminal::ACTOR_NAME,
+                operation: "show screen".to_string(),
             })
+        })
     }
 
     /// Get the next UI event from the terminal's internal queue (pops the head).
@@ -61,14 +58,13 @@ impl Terminal {
                     operation: "get ui event".to_string(),
                 })
             })?;
-        rx.await
-            .map_err(|e| {
-                TerminalError::Fatal(FatalActorError::ActorRecvFailed {
-                    actor_name: crate::terminal::ACTOR_NAME,
-                    operation: "get ui event".to_string(),
-                    source: e,
-                })
+        rx.await.map_err(|e| {
+            TerminalError::Fatal(FatalActorError::ActorRecvFailed {
+                actor_name: crate::terminal::ACTOR_NAME,
+                operation: "get ui event".to_string(),
+                source: e,
             })
+        })
     }
 
     /// Clear all UI events from the terminal's internal queue.
@@ -83,35 +79,30 @@ impl Terminal {
                     operation: "clear ui events".to_string(),
                 })
             })?;
-        rx.await
-            .map_err(|e| {
-                TerminalError::Fatal(FatalActorError::ActorRecvFailed {
-                    actor_name: crate::terminal::ACTOR_NAME,
-                    operation: "clear ui events".to_string(),
-                    source: e,
-                })
+        rx.await.map_err(|e| {
+            TerminalError::Fatal(FatalActorError::ActorRecvFailed {
+                actor_name: crate::terminal::ACTOR_NAME,
+                operation: "clear ui events".to_string(),
+                source: e,
             })
+        })
     }
 
     /// Requests the terminal to quit.
     pub async fn quit(&self) -> Result<(), TerminalError> {
         let (tx, rx) = oneshot::channel();
-        self.tx
-            .send(Message::Quit { tx })
-            .await
-            .map_err(|_e| {
-                TerminalError::Fatal(FatalActorError::ActorSendFailed {
-                    actor_name: crate::terminal::ACTOR_NAME,
-                    operation: "quit".to_string(),
-                })
-            })?;
-        rx.await
-            .map_err(|e| {
-                TerminalError::Fatal(FatalActorError::ActorRecvFailed {
-                    actor_name: crate::terminal::ACTOR_NAME,
-                    operation: "quit".to_string(),
-                    source: e,
-                })
+        self.tx.send(Message::Quit { tx }).await.map_err(|_e| {
+            TerminalError::Fatal(FatalActorError::ActorSendFailed {
+                actor_name: crate::terminal::ACTOR_NAME,
+                operation: "quit".to_string(),
             })
+        })?;
+        rx.await.map_err(|e| {
+            TerminalError::Fatal(FatalActorError::ActorRecvFailed {
+                actor_name: crate::terminal::ACTOR_NAME,
+                operation: "quit".to_string(),
+                source: e,
+            })
+        })
     }
 }

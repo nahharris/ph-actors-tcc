@@ -2,7 +2,10 @@ use mockall::mock;
 use std::sync::Arc;
 use tokio::task::JoinHandle;
 
-use crate::{error::TerminalError, terminal::data::{Screen, UiEvent}};
+use crate::{
+    error::TerminalError,
+    terminal::data::{Screen, UiEvent},
+};
 
 mock! {
     #[derive(Debug)]
