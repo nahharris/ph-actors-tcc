@@ -11,8 +11,8 @@ mod tests;
 /// Actor name for error reporting.
 pub const ACTOR_NAME: &'static str = "FeedCache";
 
-use crate::{error::CacheError, error::FatalActorError, ArcStr};
 use crate::api::lore::LorePatchMetadata;
+use crate::{ArcStr, error::CacheError, error::FatalActorError};
 use message::Message;
 
 #[cfg(not(test))]
@@ -40,7 +40,12 @@ impl FeedCache {
     }
 
     /// Spawns a new FeedCache actor.
-    pub async fn spawn(lore: LoreApi, fs: Fs, config: Config, log: Log) -> Result<Self, CacheError> {
+    pub async fn spawn(
+        lore: LoreApi,
+        fs: Fs,
+        config: Config,
+        log: Log,
+    ) -> Result<Self, CacheError> {
         let (tx, rx) = mpsc::channel(crate::BUFFER_SIZE);
         let core = core::Core::new(lore, fs, config, log).await?;
         let _ = tokio::spawn(async move {
@@ -65,14 +70,13 @@ impl FeedCache {
                     operation: "get patch metadata".to_string(),
                 })
             })?;
-        rx.await
-            .map_err(|e| {
-                CacheError::Fatal(FatalActorError::ActorRecvFailed {
-                    actor_name: crate::app::cache::feed::ACTOR_NAME,
-                    operation: "get patch metadata".to_string(),
-                    source: e,
-                })
-            })?
+        rx.await.map_err(|e| {
+            CacheError::Fatal(FatalActorError::ActorRecvFailed {
+                actor_name: crate::app::cache::feed::ACTOR_NAME,
+                operation: "get patch metadata".to_string(),
+                source: e,
+            })
+        })?
     }
 
     /// Fetches a slice of patch metadata items by range for a given mailing list.
@@ -91,14 +95,13 @@ impl FeedCache {
                     operation: "get slice".to_string(),
                 })
             })?;
-        rx.await
-            .map_err(|e| {
-                CacheError::Fatal(FatalActorError::ActorRecvFailed {
-                    actor_name: crate::app::cache::feed::ACTOR_NAME,
-                    operation: "get slice".to_string(),
-                    source: e,
-                })
-            })?
+        rx.await.map_err(|e| {
+            CacheError::Fatal(FatalActorError::ActorRecvFailed {
+                actor_name: crate::app::cache::feed::ACTOR_NAME,
+                operation: "get slice".to_string(),
+                source: e,
+            })
+        })?
     }
 
     /// Refreshes the cache for a specific mailing list.
@@ -113,14 +116,13 @@ impl FeedCache {
                     operation: "refresh".to_string(),
                 })
             })?;
-        rx.await
-            .map_err(|e| {
-                CacheError::Fatal(FatalActorError::ActorRecvFailed {
-                    actor_name: crate::app::cache::feed::ACTOR_NAME,
-                    operation: "refresh".to_string(),
-                    source: e,
-                })
-            })?
+        rx.await.map_err(|e| {
+            CacheError::Fatal(FatalActorError::ActorRecvFailed {
+                actor_name: crate::app::cache::feed::ACTOR_NAME,
+                operation: "refresh".to_string(),
+                source: e,
+            })
+        })?
     }
 
     /// Invalidates the cache for a specific mailing list.
@@ -135,18 +137,21 @@ impl FeedCache {
                     operation: "invalidate".to_string(),
                 })
             })?;
-        rx.await
-            .map_err(|e| {
-                CacheError::Fatal(FatalActorError::ActorRecvFailed {
-                    actor_name: crate::app::cache::feed::ACTOR_NAME,
-                    operation: "invalidate".to_string(),
-                    source: e,
-                })
-            })?
+        rx.await.map_err(|e| {
+            CacheError::Fatal(FatalActorError::ActorRecvFailed {
+                actor_name: crate::app::cache::feed::ACTOR_NAME,
+                operation: "invalidate".to_string(),
+                source: e,
+            })
+        })?
     }
 
     /// Checks if the requested range is available in cache for a mailing list.
-    pub async fn is_available(&self, list: ArcStr, range: std::ops::Range<usize>) -> Result<bool, CacheError> {
+    pub async fn is_available(
+        &self,
+        list: ArcStr,
+        range: std::ops::Range<usize>,
+    ) -> Result<bool, CacheError> {
         let (tx, rx) = tokio::sync::oneshot::channel();
         self.tx
             .send(Message::IsAvailable { list, range, tx })
@@ -157,14 +162,13 @@ impl FeedCache {
                     operation: "is available".to_string(),
                 })
             })?;
-        rx.await
-            .map_err(|e| {
-                CacheError::Fatal(FatalActorError::ActorRecvFailed {
-                    actor_name: crate::app::cache::feed::ACTOR_NAME,
-                    operation: "is available".to_string(),
-                    source: e,
-                })
-            })?
+        rx.await.map_err(|e| {
+            CacheError::Fatal(FatalActorError::ActorRecvFailed {
+                actor_name: crate::app::cache::feed::ACTOR_NAME,
+                operation: "is available".to_string(),
+                source: e,
+            })
+        })?
     }
 
     /// Returns the number of cached items for a given mailing list.
@@ -179,14 +183,13 @@ impl FeedCache {
                     operation: "len".to_string(),
                 })
             })?;
-        rx.await
-            .map_err(|e| {
-                CacheError::Fatal(FatalActorError::ActorRecvFailed {
-                    actor_name: crate::app::cache::feed::ACTOR_NAME,
-                    operation: "len".to_string(),
-                    source: e,
-                })
-            })?
+        rx.await.map_err(|e| {
+            CacheError::Fatal(FatalActorError::ActorRecvFailed {
+                actor_name: crate::app::cache::feed::ACTOR_NAME,
+                operation: "len".to_string(),
+                source: e,
+            })
+        })?
     }
 
     /// Checks if the cache has been loaded from disk for a given mailing list.
@@ -202,14 +205,13 @@ impl FeedCache {
                     operation: "is loaded".to_string(),
                 })
             })?;
-        rx.await
-            .map_err(|e| {
-                CacheError::Fatal(FatalActorError::ActorRecvFailed {
-                    actor_name: crate::app::cache::feed::ACTOR_NAME,
-                    operation: "is loaded".to_string(),
-                    source: e,
-                })
-            })?
+        rx.await.map_err(|e| {
+            CacheError::Fatal(FatalActorError::ActorRecvFailed {
+                actor_name: crate::app::cache::feed::ACTOR_NAME,
+                operation: "is loaded".to_string(),
+                source: e,
+            })
+        })?
     }
 
     /// Ensures the cache is loaded for a given mailing list.
@@ -233,14 +235,13 @@ impl FeedCache {
                     operation: "persist".to_string(),
                 })
             })?;
-        rx.await
-            .map_err(|e| {
-                CacheError::Fatal(FatalActorError::ActorRecvFailed {
-                    actor_name: crate::app::cache::feed::ACTOR_NAME,
-                    operation: "persist".to_string(),
-                    source: e,
-                })
-            })?
+        rx.await.map_err(|e| {
+            CacheError::Fatal(FatalActorError::ActorRecvFailed {
+                actor_name: crate::app::cache::feed::ACTOR_NAME,
+                operation: "persist".to_string(),
+                source: e,
+            })
+        })?
     }
 
     /// Loads the cache for a specific mailing list from the filesystem.
@@ -255,13 +256,12 @@ impl FeedCache {
                     operation: "load".to_string(),
                 })
             })?;
-        rx.await
-            .map_err(|e| {
-                CacheError::Fatal(FatalActorError::ActorRecvFailed {
-                    actor_name: crate::app::cache::feed::ACTOR_NAME,
-                    operation: "load".to_string(),
-                    source: e,
-                })
-            })?
+        rx.await.map_err(|e| {
+            CacheError::Fatal(FatalActorError::ActorRecvFailed {
+                actor_name: crate::app::cache::feed::ACTOR_NAME,
+                operation: "load".to_string(),
+                source: e,
+            })
+        })?
     }
 }

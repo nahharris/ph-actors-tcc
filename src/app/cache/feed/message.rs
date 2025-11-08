@@ -1,5 +1,5 @@
-use crate::{error::CacheError, ArcStr};
 use crate::api::lore::LorePatchMetadata;
+use crate::{ArcStr, error::CacheError};
 use tokio::sync::oneshot;
 
 /// Messages for the Feed Actor.

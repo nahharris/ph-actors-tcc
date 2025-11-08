@@ -1,7 +1,7 @@
 use mockall::mock;
 
-use crate::{error::CacheError, ArcStr};
 use crate::api::lore::LorePatchMetadata;
+use crate::{ArcStr, error::CacheError};
 
 mock! {
     #[derive(Debug)]
