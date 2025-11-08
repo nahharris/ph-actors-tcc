@@ -16,7 +16,7 @@ use crate::log::Log;
 #[cfg(test)]
 use crate::log::mock::MockLog as Log;
 
-use crate::{error::ShellError, error::FatalActorError, ArcSlice, ArcStr};
+use crate::{ArcSlice, ArcStr, error::FatalActorError, error::ShellError};
 
 /// The shell actor that provides a thread-safe interface for executing external programs.
 ///
@@ -85,13 +85,12 @@ impl Shell {
                     operation: "execute command".to_string(),
                 })
             })?;
-        rx.await
-            .map_err(|e| {
-                ShellError::Fatal(FatalActorError::ActorRecvFailed {
-                    actor_name: crate::shell::ACTOR_NAME,
-                    operation: "execute command".to_string(),
-                    source: e,
-                })
-            })?
+        rx.await.map_err(|e| {
+            ShellError::Fatal(FatalActorError::ActorRecvFailed {
+                actor_name: crate::shell::ACTOR_NAME,
+                operation: "execute command".to_string(),
+                source: e,
+            })
+        })?
     }
 }

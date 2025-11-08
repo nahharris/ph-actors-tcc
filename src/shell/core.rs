@@ -3,11 +3,11 @@ use tokio::sync::mpsc;
 
 use super::data::{Command as ShellCommand, Result, Status};
 use super::message::Message;
-use crate::{error::ShellError, ArcStr};
 #[cfg(not(test))]
 use crate::log::Log;
 #[cfg(test)]
 use crate::log::mock::MockLog as Log;
+use crate::{ArcStr, error::ShellError};
 
 const SCOPE: &str = "shell";
 

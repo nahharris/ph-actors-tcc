@@ -1,7 +1,7 @@
 use mockall::mock;
 
-use crate::{error::ShellError, ArcStr, ArcSlice};
 use crate::shell::data;
+use crate::{ArcSlice, ArcStr, error::ShellError};
 
 mock! {
     #[derive(Debug)]
