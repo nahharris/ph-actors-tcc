@@ -11,7 +11,7 @@ mod tests;
 /// Actor name for error reporting.
 pub const ACTOR_NAME: &'static str = "PatchCache";
 
-use crate::{error::CacheError, error::FatalActorError, ArcStr};
+use crate::{ArcStr, error::CacheError, error::FatalActorError};
 use message::Message;
 
 #[cfg(not(test))]
@@ -40,7 +40,12 @@ impl PatchCache {
     }
 
     /// Spawns a new PatchCache actor.
-    pub async fn spawn(lore: LoreApi, fs: Fs, config: Config, log: Log) -> Result<Self, CacheError> {
+    pub async fn spawn(
+        lore: LoreApi,
+        fs: Fs,
+        config: Config,
+        log: Log,
+    ) -> Result<Self, CacheError> {
         let (tx, rx) = mpsc::channel(crate::BUFFER_SIZE);
         let core = core::Core::new(lore, fs, config, log).await?;
         let _ = tokio::spawn(async move {
@@ -65,14 +70,13 @@ impl PatchCache {
                     operation: "get".to_string(),
                 })
             })?;
-        rx.await
-            .map_err(|e| {
-                CacheError::Fatal(FatalActorError::ActorRecvFailed {
-                    actor_name: crate::app::cache::patch::ACTOR_NAME,
-                    operation: "get".to_string(),
-                    source: e,
-                })
-            })?
+        rx.await.map_err(|e| {
+            CacheError::Fatal(FatalActorError::ActorRecvFailed {
+                actor_name: crate::app::cache::patch::ACTOR_NAME,
+                operation: "get".to_string(),
+                source: e,
+            })
+        })?
     }
 
     /// Invalidates a specific patch.
@@ -91,14 +95,13 @@ impl PatchCache {
                     operation: "invalidate".to_string(),
                 })
             })?;
-        rx.await
-            .map_err(|e| {
-                CacheError::Fatal(FatalActorError::ActorRecvFailed {
-                    actor_name: crate::app::cache::patch::ACTOR_NAME,
-                    operation: "invalidate".to_string(),
-                    source: e,
-                })
-            })?
+        rx.await.map_err(|e| {
+            CacheError::Fatal(FatalActorError::ActorRecvFailed {
+                actor_name: crate::app::cache::patch::ACTOR_NAME,
+                operation: "invalidate".to_string(),
+                source: e,
+            })
+        })?
     }
 
     /// Checks if a patch is available in cache.
@@ -117,13 +120,12 @@ impl PatchCache {
                     operation: "is available".to_string(),
                 })
             })?;
-        rx.await
-            .map_err(|e| {
-                CacheError::Fatal(FatalActorError::ActorRecvFailed {
-                    actor_name: crate::app::cache::patch::ACTOR_NAME,
-                    operation: "is available".to_string(),
-                    source: e,
-                })
-            })?
+        rx.await.map_err(|e| {
+            CacheError::Fatal(FatalActorError::ActorRecvFailed {
+                actor_name: crate::app::cache::patch::ACTOR_NAME,
+                operation: "is available".to_string(),
+                source: e,
+            })
+        })?
     }
 }

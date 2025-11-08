@@ -1,4 +1,4 @@
-use crate::{error::CacheError, ArcStr};
+use crate::{ArcStr, error::CacheError};
 use tokio::sync::oneshot;
 
 /// Messages for the Patch Actor.

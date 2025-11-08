@@ -1,6 +1,6 @@
 use super::data::PatchData;
 use super::message::Message;
-use crate::{error::CacheError, ArcPath, ArcStr};
+use crate::{ArcPath, ArcStr, error::CacheError};
 use tokio::sync::mpsc;
 
 #[cfg(not(test))]
@@ -30,16 +30,21 @@ pub struct Core {
 impl Core {
     /// Creates a new Core instance.
     pub async fn new(lore: LoreApi, fs: Fs, config: Config, log: Log) -> Result<Self, CacheError> {
-        let cache_dir = config.path(crate::app::config::PathOpt::CachePath).await.map_err(|e| match e {
-            crate::error::ConfigError::Fatal(fatal) => CacheError::Fatal(fatal),
-            crate::error::ConfigError::ParseFailed { .. } | crate::error::ConfigError::InvalidValue { .. } | crate::error::ConfigError::FileOperationFailed { .. } => {
-                CacheError::FileOperationFailed {
-                    path: "config".to_string(),
-                    operation: "get cache path".to_string(),
-                    source: std::io::Error::new(std::io::ErrorKind::NotFound, format!("{}", e)),
+        let cache_dir = config
+            .path(crate::app::config::PathOpt::CachePath)
+            .await
+            .map_err(|e| match e {
+                crate::error::ConfigError::Fatal(fatal) => CacheError::Fatal(fatal),
+                crate::error::ConfigError::ParseFailed { .. }
+                | crate::error::ConfigError::InvalidValue { .. }
+                | crate::error::ConfigError::FileOperationFailed { .. } => {
+                    CacheError::FileOperationFailed {
+                        path: "config".to_string(),
+                        operation: "get cache path".to_string(),
+                        source: std::io::Error::new(std::io::ErrorKind::NotFound, format!("{}", e)),
+                    }
                 }
-            }
-        })?;
+            })?;
         let patch_cache_dir = ArcPath::from(&cache_dir.join("patch"));
         let data = PatchData::new(patch_cache_dir);
 
@@ -111,19 +116,23 @@ impl Core {
             .await
             .map_err(|e| match e {
                 crate::error::LoreApiError::Fatal(fatal) => CacheError::Fatal(fatal),
-                crate::error::LoreApiError::RequestFailed { endpoint, message, retryable: _ } => {
-                    CacheError::FileOperationFailed {
-                        path: endpoint,
-                        operation: "fetch patch".to_string(),
-                        source: std::io::Error::new(std::io::ErrorKind::Other, message),
-                    }
-                }
-                crate::error::LoreApiError::ParseFailed { format, operation, details } => {
-                    CacheError::SerializationFailed {
-                        message: format!("Failed to parse {} for {}: {}", format, operation, details),
-                        source: None,
-                    }
-                }
+                crate::error::LoreApiError::RequestFailed {
+                    endpoint,
+                    message,
+                    retryable: _,
+                } => CacheError::FileOperationFailed {
+                    path: endpoint,
+                    operation: "fetch patch".to_string(),
+                    source: std::io::Error::new(std::io::ErrorKind::Other, message),
+                },
+                crate::error::LoreApiError::ParseFailed {
+                    format,
+                    operation,
+                    details,
+                } => CacheError::SerializationFailed {
+                    message: format!("Failed to parse {} for {}: {}", format, operation, details),
+                    source: None,
+                },
             })?;
 
         // Save to disk and add to buffer
@@ -188,7 +197,11 @@ impl Core {
     }
 
     /// Loads a patch from disk.
-    async fn load_patch_from_disk(&self, list: &str, message_id: &str) -> Result<String, CacheError> {
+    async fn load_patch_from_disk(
+        &self,
+        list: &str,
+        message_id: &str,
+    ) -> Result<String, CacheError> {
         let cache_path = self.data.get_cache_path(list, message_id);
 
         let file = self
@@ -197,13 +210,16 @@ impl Core {
             .await
             .map_err(|e| match e {
                 crate::error::FsError::Fatal(fatal) => CacheError::Fatal(fatal),
-                crate::error::FsError::OperationFailed { path, operation, source, .. } => {
-                    CacheError::FileOperationFailed {
-                        path: path.unwrap_or_else(|| cache_path.to_string_lossy().to_string()),
-                        operation,
-                        source,
-                    }
-                }
+                crate::error::FsError::OperationFailed {
+                    path,
+                    operation,
+                    source,
+                    ..
+                } => CacheError::FileOperationFailed {
+                    path: path.unwrap_or_else(|| cache_path.to_string_lossy().to_string()),
+                    operation,
+                    source,
+                },
             })?;
 
         // Read the content
@@ -212,12 +228,10 @@ impl Core {
         let mut file = file;
         file.read_to_string(&mut content)
             .await
-            .map_err(|e| {
-                CacheError::FileOperationFailed {
-                    path: cache_path.to_string_lossy().to_string(),
-                    operation: "read patch file content".to_string(),
-                    source: e,
-                }
+            .map_err(|e| CacheError::FileOperationFailed {
+                path: cache_path.to_string_lossy().to_string(),
+                operation: "read patch file content".to_string(),
+                source: e,
             })?;
 
         Ok(content)
@@ -239,13 +253,16 @@ impl Core {
                 .await
                 .map_err(|e| match e {
                     crate::error::FsError::Fatal(fatal) => CacheError::Fatal(fatal),
-                    crate::error::FsError::OperationFailed { path, operation, source, .. } => {
-                        CacheError::FileOperationFailed {
-                            path: path.unwrap_or_else(|| cache_path.to_string_lossy().to_string()),
-                            operation,
-                            source,
-                        }
-                    }
+                    crate::error::FsError::OperationFailed {
+                        path,
+                        operation,
+                        source,
+                        ..
+                    } => CacheError::FileOperationFailed {
+                        path: path.unwrap_or_else(|| cache_path.to_string_lossy().to_string()),
+                        operation,
+                        source,
+                    },
                 })?;
         }
 
@@ -256,24 +273,25 @@ impl Core {
             .await
             .map_err(|e| match e {
                 crate::error::FsError::Fatal(fatal) => CacheError::Fatal(fatal),
-                crate::error::FsError::OperationFailed { path, operation, source, .. } => {
-                    CacheError::FileOperationFailed {
-                        path: path.unwrap_or_else(|| cache_path.to_string_lossy().to_string()),
-                        operation,
-                        source,
-                    }
-                }
+                crate::error::FsError::OperationFailed {
+                    path,
+                    operation,
+                    source,
+                    ..
+                } => CacheError::FileOperationFailed {
+                    path: path.unwrap_or_else(|| cache_path.to_string_lossy().to_string()),
+                    operation,
+                    source,
+                },
             })?;
 
         use tokio::io::AsyncWriteExt;
         file.write_all(content.as_bytes())
             .await
-            .map_err(|e| {
-                CacheError::FileOperationFailed {
-                    path: cache_path.to_string_lossy().to_string(),
-                    operation: "write patch file".to_string(),
-                    source: e,
-                }
+            .map_err(|e| CacheError::FileOperationFailed {
+                path: cache_path.to_string_lossy().to_string(),
+                operation: "write patch file".to_string(),
+                source: e,
             })?;
 
         self.log.info(
