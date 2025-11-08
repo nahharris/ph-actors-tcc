@@ -2,7 +2,7 @@ use std::ffi::OsString;
 
 use tokio::sync::mpsc;
 
-use crate::{error::EnvError, ArcOsStr, ArcStr};
+use crate::{ArcOsStr, ArcStr, error::EnvError};
 
 use super::message::Message;
 

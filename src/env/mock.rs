@@ -2,7 +2,7 @@
 use mockall::mock;
 
 #[cfg(test)]
-use crate::{error::EnvError, ArcOsStr, ArcStr};
+use crate::{ArcOsStr, ArcStr, error::EnvError};
 
 #[cfg(test)]
 mock! {

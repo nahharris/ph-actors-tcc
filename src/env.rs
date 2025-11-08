@@ -2,7 +2,7 @@ use std::fmt::Display;
 
 use tokio::sync::mpsc::{self, Sender};
 
-use crate::{error::EnvError, error::FatalActorError, ArcOsStr, ArcStr};
+use crate::{ArcOsStr, ArcStr, error::EnvError, error::FatalActorError};
 
 mod core;
 mod message;
@@ -89,13 +89,12 @@ impl Env {
                     operation: "get environment variable".to_string(),
                 })
             })?;
-        rx.await
-            .map_err(|e| {
-                EnvError::Fatal(FatalActorError::ActorRecvFailed {
-                    actor_name: crate::env::ACTOR_NAME,
-                    operation: "get environment variable".to_string(),
-                    source: e,
-                })
-            })?
+        rx.await.map_err(|e| {
+            EnvError::Fatal(FatalActorError::ActorRecvFailed {
+                actor_name: crate::env::ACTOR_NAME,
+                operation: "get environment variable".to_string(),
+                source: e,
+            })
+        })?
     }
 }
