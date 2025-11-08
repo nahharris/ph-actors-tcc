@@ -20,7 +20,7 @@ use crate::{app::config::mock::MockConfig as Config, fs::mock::MockFs as Fs};
 
 use tokio::sync::mpsc::{self, Sender};
 
-use crate::{error::LogError, error::FatalActorError};
+use crate::{error::FatalActorError, error::LogError};
 
 /// The logging actor that provides a thread-safe interface for logging operations.
 ///
@@ -106,14 +106,13 @@ impl Log {
                     operation: "flush log".to_string(),
                 })
             })?;
-        rx.await
-            .map_err(|e| {
-                LogError::Fatal(FatalActorError::ActorRecvFailed {
-                    actor_name: crate::log::ACTOR_NAME,
-                    operation: "flush log".to_string(),
-                    source: e,
-                })
-            })?
+        rx.await.map_err(|e| {
+            LogError::Fatal(FatalActorError::ActorRecvFailed {
+                actor_name: crate::log::ACTOR_NAME,
+                operation: "flush log".to_string(),
+                source: e,
+            })
+        })?
     }
 
     /// Collects the garbage from the logs directory. Garbage logs are the ones
