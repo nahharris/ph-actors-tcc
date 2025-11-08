@@ -2,7 +2,7 @@ pub use data::{PathOpt, Renderer, RendererOpt, USizeOpt};
 
 use tokio::sync::mpsc::Sender;
 
-use crate::{error::ConfigError, error::FatalActorError, ArcPath, log::LogLevel};
+use crate::{ArcPath, error::ConfigError, error::FatalActorError, log::LogLevel};
 #[cfg(not(test))]
 use crate::{env::Env, fs::Fs};
 #[cfg(test)]
@@ -69,46 +69,38 @@ impl Config {
     /// `Ok(())` for mock implementation.
     pub async fn load(&self) -> Result<(), ConfigError> {
         let (tx, rx) = tokio::sync::oneshot::channel();
-        self.tx
-            .send(Message::Load { tx })
-            .await
-            .map_err(|_e| {
-                ConfigError::Fatal(FatalActorError::ActorSendFailed {
-                    actor_name: crate::app::config::ACTOR_NAME,
-                    operation: "load config".to_string(),
-                })
-            })?;
-        rx.await
-            .map_err(|e| {
-                ConfigError::Fatal(FatalActorError::ActorRecvFailed {
-                    actor_name: crate::app::config::ACTOR_NAME,
-                    operation: "load config".to_string(),
-                    source: e,
-                })
-            })?
+        self.tx.send(Message::Load { tx }).await.map_err(|_e| {
+            ConfigError::Fatal(FatalActorError::ActorSendFailed {
+                actor_name: crate::app::config::ACTOR_NAME,
+                operation: "load config".to_string(),
+            })
+        })?;
+        rx.await.map_err(|e| {
+            ConfigError::Fatal(FatalActorError::ActorRecvFailed {
+                actor_name: crate::app::config::ACTOR_NAME,
+                operation: "load config".to_string(),
+                source: e,
+            })
+        })?
     }
 
     /// Saves the current configuration to the file.
     ///
     pub async fn save(&self) -> Result<(), ConfigError> {
         let (tx, rx) = tokio::sync::oneshot::channel();
-        self.tx
-            .send(Message::Save { tx })
-            .await
-            .map_err(|_e| {
-                ConfigError::Fatal(FatalActorError::ActorSendFailed {
-                    actor_name: crate::app::config::ACTOR_NAME,
-                    operation: "save config".to_string(),
-                })
-            })?;
-        rx.await
-            .map_err(|e| {
-                ConfigError::Fatal(FatalActorError::ActorRecvFailed {
-                    actor_name: crate::app::config::ACTOR_NAME,
-                    operation: "save config".to_string(),
-                    source: e,
-                })
-            })?
+        self.tx.send(Message::Save { tx }).await.map_err(|_e| {
+            ConfigError::Fatal(FatalActorError::ActorSendFailed {
+                actor_name: crate::app::config::ACTOR_NAME,
+                operation: "save config".to_string(),
+            })
+        })?;
+        rx.await.map_err(|e| {
+            ConfigError::Fatal(FatalActorError::ActorRecvFailed {
+                actor_name: crate::app::config::ACTOR_NAME,
+                operation: "save config".to_string(),
+                source: e,
+            })
+        })?
     }
 
     /// Gets a path-based configuration value.
@@ -129,14 +121,13 @@ impl Config {
                     operation: "get path".to_string(),
                 })
             })?;
-        rx.await
-            .map_err(|e| {
-                ConfigError::Fatal(FatalActorError::ActorRecvFailed {
-                    actor_name: crate::app::config::ACTOR_NAME,
-                    operation: "get path".to_string(),
-                    source: e,
-                })
-            })?
+        rx.await.map_err(|e| {
+            ConfigError::Fatal(FatalActorError::ActorRecvFailed {
+                actor_name: crate::app::config::ACTOR_NAME,
+                operation: "get path".to_string(),
+                source: e,
+            })
+        })?
     }
 
     /// Sets a path-based configuration value.
@@ -171,14 +162,13 @@ impl Config {
                     operation: "get log level".to_string(),
                 })
             })?;
-        rx.await
-            .map_err(|e| {
-                ConfigError::Fatal(FatalActorError::ActorRecvFailed {
-                    actor_name: crate::app::config::ACTOR_NAME,
-                    operation: "get log level".to_string(),
-                    source: e,
-                })
-            })?
+        rx.await.map_err(|e| {
+            ConfigError::Fatal(FatalActorError::ActorRecvFailed {
+                actor_name: crate::app::config::ACTOR_NAME,
+                operation: "get log level".to_string(),
+                source: e,
+            })
+        })?
     }
 
     /// Sets the log level.
@@ -215,14 +205,13 @@ impl Config {
                     operation: "get usize".to_string(),
                 })
             })?;
-        rx.await
-            .map_err(|e| {
-                ConfigError::Fatal(FatalActorError::ActorRecvFailed {
-                    actor_name: crate::app::config::ACTOR_NAME,
-                    operation: "get usize".to_string(),
-                    source: e,
-                })
-            })?
+        rx.await.map_err(|e| {
+            ConfigError::Fatal(FatalActorError::ActorRecvFailed {
+                actor_name: crate::app::config::ACTOR_NAME,
+                operation: "get usize".to_string(),
+                source: e,
+            })
+        })?
     }
 
     /// Sets a numeric configuration value.
@@ -260,14 +249,13 @@ impl Config {
                     operation: "get renderer".to_string(),
                 })
             })?;
-        rx.await
-            .map_err(|e| {
-                ConfigError::Fatal(FatalActorError::ActorRecvFailed {
-                    actor_name: crate::app::config::ACTOR_NAME,
-                    operation: "get renderer".to_string(),
-                    source: e,
-                })
-            })?
+        rx.await.map_err(|e| {
+            ConfigError::Fatal(FatalActorError::ActorRecvFailed {
+                actor_name: crate::app::config::ACTOR_NAME,
+                operation: "get renderer".to_string(),
+                source: e,
+            })
+        })?
     }
 
     /// Sets a renderer configuration value.
@@ -275,7 +263,11 @@ impl Config {
     /// # Arguments
     /// * `opt` - The renderer option to set
     /// * `renderer` - The new renderer value
-    pub async fn set_renderer(&self, opt: RendererOpt, renderer: Renderer) -> Result<(), ConfigError> {
+    pub async fn set_renderer(
+        &self,
+        opt: RendererOpt,
+        renderer: Renderer,
+    ) -> Result<(), ConfigError> {
         self.tx
             .send(Message::SetRenderer { opt, renderer })
             .await
