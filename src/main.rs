@@ -69,15 +69,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     // Spawn the App actor
     let (_app, app_handle) = App::spawn(
         log,
-        fs,
-        env,
-        config,
-        lore,
-        shell,
-        render,
         mailing_list_cache,
         feed_cache,
-        patch_cache,
         terminal,
         terminal_handle,
         ui,

@@ -29,7 +29,9 @@ pub enum FatalActorError {
     #[error("Failed to send message to actor '{actor_name}' for operation '{operation}'")]
     #[diagnostic(
         code(fatal::actor_send_failed),
-        help("The message could not be sent to the actor. The actor may have died or the channel may be closed.")
+        help(
+            "The message could not be sent to the actor. The actor may have died or the channel may be closed."
+        )
     )]
     ActorSendFailed {
         /// Name of the actor
@@ -42,7 +44,9 @@ pub enum FatalActorError {
     #[error("Failed to receive response from actor '{actor_name}' for operation '{operation}'")]
     #[diagnostic(
         code(fatal::actor_recv_failed),
-        help("The response could not be received from the actor. The actor may have died or the channel may be closed.")
+        help(
+            "The response could not be received from the actor. The actor may have died or the channel may be closed."
+        )
     )]
     ActorRecvFailed {
         /// Name of the actor
@@ -270,7 +274,9 @@ pub enum ConfigError {
     #[error("Configuration error: {message}")]
     #[diagnostic(
         code(config::invalid_value),
-        help("The configuration value is invalid. Check the configuration file or environment variables.")
+        help(
+            "The configuration value is invalid. Check the configuration file or environment variables."
+        )
     )]
     InvalidValue {
         /// Configuration key being accessed (if applicable)
@@ -445,16 +451,28 @@ pub enum AppError {
     Fatal(#[from] FatalActorError),
 }
 
-
 impl FatalActorError {
     /// Returns a human-readable suggestion for handling this fatal error.
     pub fn suggested_action(&self) -> String {
         match self {
-            Self::ActorSendFailed { actor_name, operation } => {
-                format!("The message could not be sent to the {} actor. The actor may have died while processing the {} operation.", actor_name, operation)
+            Self::ActorSendFailed {
+                actor_name,
+                operation,
+            } => {
+                format!(
+                    "The message could not be sent to the {} actor. The actor may have died while processing the {} operation.",
+                    actor_name, operation
+                )
             }
-            Self::ActorRecvFailed { actor_name, operation, .. } => {
-                format!("The response could not be received from the {} actor. The actor may have died while processing the {} operation.", actor_name, operation)
+            Self::ActorRecvFailed {
+                actor_name,
+                operation,
+                ..
+            } => {
+                format!(
+                    "The response could not be received from the {} actor. The actor may have died while processing the {} operation.",
+                    actor_name, operation
+                )
             }
         }
     }
@@ -497,7 +515,11 @@ impl ReqwestErrorExt for reqwest::Error {
 
     fn error_message(&self) -> String {
         if let Some(status) = self.status() {
-            format!("HTTP {}: {}", status.as_u16(), status.canonical_reason().unwrap_or("Unknown"))
+            format!(
+                "HTTP {}: {}",
+                status.as_u16(),
+                status.canonical_reason().unwrap_or("Unknown")
+            )
         } else if self.is_timeout() {
             "Request timed out".to_string()
         } else if self.is_connect() {

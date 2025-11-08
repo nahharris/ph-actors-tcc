@@ -475,9 +475,11 @@ impl FromStr for SequenceNumber {
         if parts.len() != 2 {
             return Err(ParseSequenceNumberError(s.to_string()));
         }
-        let current = parts[0].parse::<usize>()
+        let current = parts[0]
+            .parse::<usize>()
             .map_err(|e| ParseSequenceNumberError(format!("Invalid current number: {}", e)))?;
-        let total = parts[1].parse::<usize>()
+        let total = parts[1]
+            .parse::<usize>()
             .map_err(|e| ParseSequenceNumberError(format!("Invalid total number: {}", e)))?;
         Ok(Self { current, total })
     }

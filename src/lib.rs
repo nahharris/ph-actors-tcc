@@ -17,8 +17,8 @@ pub mod utils;
 pub mod macros;
 
 pub use error::{
-    AppError, CacheError, ConfigError, EnvError, FatalActorError, FsError,
-    LogError, LoreApiError, NetError, RenderError, ShellError, TerminalError, UiError,
+    AppError, CacheError, ConfigError, EnvError, FatalActorError, FsError, LogError, LoreApiError,
+    NetError, RenderError, ShellError, TerminalError, UiError,
 };
 pub use utils::*;
 
