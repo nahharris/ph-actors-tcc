@@ -12,24 +12,19 @@ mod message;
 
 #[cfg(not(test))]
 use crate::{
-    api::lore::LoreApi,
-    app::cache::{feed::FeedCache, mailing_list::MailingListCache, patch::PatchCache},
-    app::config::Config,
+    app::cache::{feed::FeedCache, mailing_list::MailingListCache},
     app::ui::Ui,
-    env::Env,
-    fs::Fs,
     log::Log,
-    render::Render,
-    shell::Shell,
     terminal::Terminal,
 };
 #[cfg(test)]
 use crate::{
-    api::lore::mock::MockLoreApi as LoreApi, app::cache::feed::mock::MockFeedCache as FeedCache,
-    app::cache::mailing_list::mock::MockMailingListCache as MailingListCache,
-    app::cache::patch::mock::MockPatchCache as PatchCache, app::config::mock::MockConfig as Config,
-    app::ui::mock::MockUi as Ui, env::mock::MockEnv as Env, fs::mock::MockFs as Fs,
-    log::mock::MockLog as Log, render::mock::MockRender as Render, shell::mock::MockShell as Shell,
+    app::cache::{
+        feed::mock::MockFeedCache as FeedCache,
+        mailing_list::mock::MockMailingListCache as MailingListCache,
+    },
+    app::ui::mock::MockUi as Ui,
+    log::mock::MockLog as Log,
     terminal::mock::MockTerminal as Terminal,
 };
 
@@ -54,15 +49,8 @@ impl App {
     /// and a JoinHandle for the actor task.
     pub fn spawn(
         log: Log,
-        fs: Fs,
-        env: Env,
-        config: Config,
-        lore: LoreApi,
-        shell: Shell,
-        render: Render,
         mailing_list_cache: MailingListCache,
         feed_cache: FeedCache,
-        patch_cache: PatchCache,
         terminal: Terminal,
         terminal_handle: tokio::task::JoinHandle<()>,
         ui: Ui,
@@ -70,15 +58,8 @@ impl App {
         let (tx, rx) = mpsc::channel(crate::BUFFER_SIZE);
         let core = core::Core::new(
             log,
-            fs,
-            env,
-            config,
-            lore,
-            shell,
-            render,
             mailing_list_cache,
             feed_cache,
-            patch_cache,
             terminal,
             terminal_handle,
             ui,
@@ -92,22 +73,18 @@ impl App {
     /// Shutdown the App actor gracefully
     pub async fn shutdown(&self) -> Result<(), AppError> {
         let (tx, rx) = oneshot::channel();
-        self.tx
-            .send(Message::Shutdown { tx })
-            .await
-            .map_err(|_e| {
-                AppError::Fatal(FatalActorError::ActorSendFailed {
-                    actor_name: crate::app::ACTOR_NAME,
-                    operation: "shutdown".to_string(),
-                })
-            })?;
-        rx.await
-            .map_err(|e| {
-                AppError::Fatal(FatalActorError::ActorRecvFailed {
-                    actor_name: crate::app::ACTOR_NAME,
-                    operation: "shutdown".to_string(),
-                    source: e,
-                })
-            })?
+        self.tx.send(Message::Shutdown { tx }).await.map_err(|_e| {
+            AppError::Fatal(FatalActorError::ActorSendFailed {
+                actor_name: crate::app::ACTOR_NAME,
+                operation: "shutdown".to_string(),
+            })
+        })?;
+        rx.await.map_err(|e| {
+            AppError::Fatal(FatalActorError::ActorRecvFailed {
+                actor_name: crate::app::ACTOR_NAME,
+                operation: "shutdown".to_string(),
+                source: e,
+            })
+        })?
     }
 }
