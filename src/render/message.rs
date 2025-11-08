@@ -1,6 +1,6 @@
 use tokio::sync::oneshot::Sender;
 
-use crate::{error::RenderError, ArcStr};
+use crate::{ArcStr, error::RenderError};
 
 /// Messages that can be sent to the render actor.
 ///

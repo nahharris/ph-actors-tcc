@@ -1,6 +1,6 @@
 use mockall::mock;
 
-use crate::{error::RenderError, ArcStr};
+use crate::{ArcStr, error::RenderError};
 
 mock! {
     #[derive(Debug)]

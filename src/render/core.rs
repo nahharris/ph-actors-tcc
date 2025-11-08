@@ -1,6 +1,6 @@
 use tokio::sync::mpsc;
 
-use crate::{error::RenderError, ArcSlice, ArcStr};
+use crate::{ArcSlice, ArcStr, error::RenderError};
 
 use super::message::Message;
 
@@ -69,12 +69,12 @@ impl Core {
             .await
             .map_err(|e| match e {
                 crate::error::ConfigError::Fatal(fatal) => RenderError::Fatal(fatal),
-                crate::error::ConfigError::FileOperationFailed { .. } | crate::error::ConfigError::ParseFailed { .. } | crate::error::ConfigError::InvalidValue { .. } => {
-                    RenderError::RenderingFailed {
-                        message: format!("Failed to get renderer configuration: {}", e),
-                        source: Some(Box::new(e)),
-                    }
-                }
+                crate::error::ConfigError::FileOperationFailed { .. }
+                | crate::error::ConfigError::ParseFailed { .. }
+                | crate::error::ConfigError::InvalidValue { .. } => RenderError::RenderingFailed {
+                    message: format!("Failed to get renderer configuration: {}", e),
+                    source: Some(Box::new(e)),
+                },
             })?;
 
         if matches!(renderer, crate::app::config::Renderer::None) {
@@ -91,21 +91,22 @@ impl Core {
         let args = ArcSlice::from(args);
 
         // Execute the renderer program with the content as stdin
-        let result = self.shell.execute(program, args, Some(content)).await
-            .map_err(|e| {
-                match e {
-                    crate::error::ShellError::Fatal(fatal) => RenderError::Fatal(fatal),
-                    crate::error::ShellError::ExecutionFailed { ref message, .. } => {
-                        RenderError::RenderingFailed {
-                            message: format!("Renderer execution failed: {}", message),
-                            source: Some(Box::new(e)),
-                        }
+        let result = self
+            .shell
+            .execute(program, args, Some(content))
+            .await
+            .map_err(|e| match e {
+                crate::error::ShellError::Fatal(fatal) => RenderError::Fatal(fatal),
+                crate::error::ShellError::ExecutionFailed { ref message, .. } => {
+                    RenderError::RenderingFailed {
+                        message: format!("Renderer execution failed: {}", message),
+                        source: Some(Box::new(e)),
                     }
-                    crate::error::ShellError::EncodingFailed { ref command, .. } => {
-                        RenderError::RenderingFailed {
-                            message: format!("Renderer encoding failed for command: {}", command),
-                            source: Some(Box::new(e)),
-                        }
+                }
+                crate::error::ShellError::EncodingFailed { ref command, .. } => {
+                    RenderError::RenderingFailed {
+                        message: format!("Renderer encoding failed for command: {}", command),
+                        source: Some(Box::new(e)),
                     }
                 }
             })?;

@@ -7,7 +7,7 @@ mod tests;
 
 use tokio::sync::mpsc::{self, Sender};
 
-use crate::{error::RenderError, error::FatalActorError, ArcStr};
+use crate::{ArcStr, error::FatalActorError, error::RenderError};
 
 // Actors it depends on
 #[cfg(not(test))]
@@ -75,13 +75,12 @@ impl Render {
                     operation: "render patch".to_string(),
                 })
             })?;
-        rx.await
-            .map_err(|e| {
-                RenderError::Fatal(FatalActorError::ActorRecvFailed {
-                    actor_name: crate::render::ACTOR_NAME,
-                    operation: "render patch".to_string(),
-                    source: e,
-                })
-            })?
+        rx.await.map_err(|e| {
+            RenderError::Fatal(FatalActorError::ActorRecvFailed {
+                actor_name: crate::render::ACTOR_NAME,
+                operation: "render patch".to_string(),
+                source: e,
+            })
+        })?
     }
 }
