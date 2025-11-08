@@ -1,6 +1,9 @@
 use super::*;
 use crate::{
-    ArcPath, ArcStr, api::lore::LoreMailingList, app::config::mock::MockConfig, fs::mock::MockFs,
+    ArcPath, ArcStr,
+    api::lore::LoreMailingList,
+    app::config::mock::MockConfig,
+    fs::mock::MockFs,
     log::{Log, LogLevel},
 };
 use chrono::Utc;
@@ -30,7 +33,9 @@ async fn create_test_log() -> Log {
         Ok(tokio::fs::File::from_std(file))
     });
 
-    Log::spawn(mock_fs, mock_config).await.expect("Spawning log to succeed")
+    Log::spawn(mock_fs, mock_config)
+        .await
+        .expect("Spawning log to succeed")
 }
 
 #[tokio::test]
@@ -42,11 +47,13 @@ async fn test_terminal_show_screen() {
     // Test showing different screen types
     terminal
         .show(Screen::Loading(ArcStr::from("Test loading")))
-        .await.expect("Showing loading screen to succeed");
+        .await
+        .expect("Showing loading screen to succeed");
 
     terminal
         .show(Screen::Error(ArcStr::from("Test error")))
-        .await.expect("Showing error screen to succeed");
+        .await
+        .expect("Showing error screen to succeed");
 
     // Test Lists screen
     let items = vec![LoreMailingList {
@@ -60,7 +67,8 @@ async fn test_terminal_show_screen() {
             page: 0,
             selected: 0,
         })
-        .await.expect("Showing lists screen to succeed");
+        .await
+        .expect("Showing lists screen to succeed");
 
     // Cleanup
     terminal.quit().await.expect("Quitting terminal to succeed");
@@ -88,7 +96,10 @@ async fn test_terminal_clear_ui_events() {
     let (terminal, _handle) = Terminal::spawn(log);
 
     // Clear events should complete without error
-    terminal.clear_ui_events().await.expect("Clearing UI events to succeed");
+    terminal
+        .clear_ui_events()
+        .await
+        .expect("Clearing UI events to succeed");
 
     // Cleanup
     terminal.quit().await.expect("Quitting terminal to succeed");
@@ -117,9 +128,13 @@ async fn test_terminal_show_all_screen_variants() {
     // Test all screen variants
     terminal
         .show(Screen::Loading(ArcStr::from("Loading...")))
-        .await.expect("Showing loading screen to succeed");
+        .await
+        .expect("Showing loading screen to succeed");
 
-    terminal.show(Screen::Error(ArcStr::from("Error!"))).await.expect("Showing error screen to succeed");
+    terminal
+        .show(Screen::Error(ArcStr::from("Error!")))
+        .await
+        .expect("Showing error screen to succeed");
 
     // Lists screen
     let lists = vec![
@@ -140,7 +155,8 @@ async fn test_terminal_show_all_screen_variants() {
             page: 1,
             selected: 0,
         })
-        .await.expect("Showing lists screen to succeed");
+        .await
+        .expect("Showing lists screen to succeed");
 
     // Patch screen
     terminal
@@ -148,7 +164,8 @@ async fn test_terminal_show_all_screen_variants() {
             title: ArcStr::from("Test Patch"),
             content: ArcStr::from("Patch content here"),
         })
-        .await.expect("Showing patch screen to succeed");
+        .await
+        .expect("Showing patch screen to succeed");
 
     // Cleanup
     terminal.quit().await.expect("Quitting terminal to succeed");
