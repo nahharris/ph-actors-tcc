@@ -1,7 +1,7 @@
 use mockall::mock;
 
-use crate::{error::UiError, ArcStr};
 use crate::app::ui::{NavigationAction, UiState};
+use crate::{ArcStr, error::UiError};
 
 mock! {
     #[derive(Debug)]

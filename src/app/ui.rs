@@ -6,7 +6,7 @@ use tokio::sync::{
 /// Actor name for error reporting.
 pub const ACTOR_NAME: &'static str = "Ui";
 
-use crate::{error::UiError, error::FatalActorError, ArcStr};
+use crate::{ArcStr, error::FatalActorError, error::UiError};
 
 #[cfg(not(test))]
 use crate::{
@@ -83,14 +83,13 @@ impl Ui {
                     operation: "show lists".to_string(),
                 })
             })?;
-        rx.await
-            .map_err(|e| {
-                UiError::Fatal(FatalActorError::ActorRecvFailed {
-                    actor_name: crate::app::ui::ACTOR_NAME,
-                    operation: "show lists".to_string(),
-                    source: e,
-                })
-            })?
+        rx.await.map_err(|e| {
+            UiError::Fatal(FatalActorError::ActorRecvFailed {
+                actor_name: crate::app::ui::ACTOR_NAME,
+                operation: "show lists".to_string(),
+                source: e,
+            })
+        })?
     }
 
     /// Show the patch feed view for a specific mailing list
@@ -105,18 +104,22 @@ impl Ui {
                     operation: "show feed".to_string(),
                 })
             })?;
-        rx.await
-            .map_err(|e| {
-                UiError::Fatal(FatalActorError::ActorRecvFailed {
-                    actor_name: crate::app::ui::ACTOR_NAME,
-                    operation: "show feed".to_string(),
-                    source: e,
-                })
-            })?
+        rx.await.map_err(|e| {
+            UiError::Fatal(FatalActorError::ActorRecvFailed {
+                actor_name: crate::app::ui::ACTOR_NAME,
+                operation: "show feed".to_string(),
+                source: e,
+            })
+        })?
     }
 
     /// Show a specific patch content
-    pub async fn show_patch(&self, list: ArcStr, message_id: ArcStr, title: ArcStr) -> Result<(), UiError> {
+    pub async fn show_patch(
+        &self,
+        list: ArcStr,
+        message_id: ArcStr,
+        title: ArcStr,
+    ) -> Result<(), UiError> {
         let (tx, rx) = oneshot::channel();
         self.tx
             .send(Message::ShowPatch {
@@ -132,14 +135,13 @@ impl Ui {
                     operation: "show patch".to_string(),
                 })
             })?;
-        rx.await
-            .map_err(|e| {
-                UiError::Fatal(FatalActorError::ActorRecvFailed {
-                    actor_name: crate::app::ui::ACTOR_NAME,
-                    operation: "show patch".to_string(),
-                    source: e,
-                })
-            })?
+        rx.await.map_err(|e| {
+            UiError::Fatal(FatalActorError::ActorRecvFailed {
+                actor_name: crate::app::ui::ACTOR_NAME,
+                operation: "show patch".to_string(),
+                source: e,
+            })
+        })?
     }
 
     /// Update the current selection index
@@ -159,36 +161,31 @@ impl Ui {
                     operation: "previous page".to_string(),
                 })
             })?;
-        rx.await
-            .map_err(|e| {
-                UiError::Fatal(FatalActorError::ActorRecvFailed {
-                    actor_name: crate::app::ui::ACTOR_NAME,
-                    operation: "previous page".to_string(),
-                    source: e,
-                })
-            })?
+        rx.await.map_err(|e| {
+            UiError::Fatal(FatalActorError::ActorRecvFailed {
+                actor_name: crate::app::ui::ACTOR_NAME,
+                operation: "previous page".to_string(),
+                source: e,
+            })
+        })?
     }
 
     /// Navigate to the next page
     pub async fn next_page(&self) -> Result<(), UiError> {
         let (tx, rx) = oneshot::channel();
-        self.tx
-            .send(Message::NextPage { tx })
-            .await
-            .map_err(|_e| {
-                UiError::Fatal(FatalActorError::ActorSendFailed {
-                    actor_name: crate::app::ui::ACTOR_NAME,
-                    operation: "next page".to_string(),
-                })
-            })?;
-        rx.await
-            .map_err(|e| {
-                UiError::Fatal(FatalActorError::ActorRecvFailed {
-                    actor_name: crate::app::ui::ACTOR_NAME,
-                    operation: "next page".to_string(),
-                    source: e,
-                })
-            })?
+        self.tx.send(Message::NextPage { tx }).await.map_err(|_e| {
+            UiError::Fatal(FatalActorError::ActorSendFailed {
+                actor_name: crate::app::ui::ACTOR_NAME,
+                operation: "next page".to_string(),
+            })
+        })?;
+        rx.await.map_err(|e| {
+            UiError::Fatal(FatalActorError::ActorRecvFailed {
+                actor_name: crate::app::ui::ACTOR_NAME,
+                operation: "next page".to_string(),
+                source: e,
+            })
+        })?
     }
 
     /// Navigate back to previous view
@@ -203,14 +200,13 @@ impl Ui {
                     operation: "navigate back".to_string(),
                 })
             })?;
-        rx.await
-            .map_err(|e| {
-                UiError::Fatal(FatalActorError::ActorRecvFailed {
-                    actor_name: crate::app::ui::ACTOR_NAME,
-                    operation: "navigate back".to_string(),
-                    source: e,
-                })
-            })?
+        rx.await.map_err(|e| {
+            UiError::Fatal(FatalActorError::ActorRecvFailed {
+                actor_name: crate::app::ui::ACTOR_NAME,
+                operation: "navigate back".to_string(),
+                source: e,
+            })
+        })?
     }
 
     /// Submit/select the current item
@@ -225,14 +221,13 @@ impl Ui {
                     operation: "submit selection".to_string(),
                 })
             })?;
-        rx.await
-            .map_err(|e| {
-                UiError::Fatal(FatalActorError::ActorRecvFailed {
-                    actor_name: crate::app::ui::ACTOR_NAME,
-                    operation: "submit selection".to_string(),
-                    source: e,
-                })
-            })?
+        rx.await.map_err(|e| {
+            UiError::Fatal(FatalActorError::ActorRecvFailed {
+                actor_name: crate::app::ui::ACTOR_NAME,
+                operation: "submit selection".to_string(),
+                source: e,
+            })
+        })?
     }
 
     /// Get current UI state

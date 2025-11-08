@@ -1,6 +1,6 @@
 use tokio::sync::oneshot;
 
-use crate::{error::UiError, ArcStr};
+use crate::{ArcStr, error::UiError};
 
 /// Messages for communicating with the UI actor
 #[derive(Debug)]
@@ -26,11 +26,17 @@ pub enum Message {
     /// Update the current selection index
     UpdateSelection { index: usize },
     /// Navigate to the previous page
-    PreviousPage { tx: oneshot::Sender<Result<(), UiError>> },
+    PreviousPage {
+        tx: oneshot::Sender<Result<(), UiError>>,
+    },
     /// Navigate to the next page
-    NextPage { tx: oneshot::Sender<Result<(), UiError>> },
+    NextPage {
+        tx: oneshot::Sender<Result<(), UiError>>,
+    },
     /// Navigate back to previous view
-    NavigateBack { tx: oneshot::Sender<Result<(), UiError>> },
+    NavigateBack {
+        tx: oneshot::Sender<Result<(), UiError>>,
+    },
     /// Submit/select the current item
     SubmitSelection {
         tx: oneshot::Sender<Result<Option<NavigationAction>, UiError>>,

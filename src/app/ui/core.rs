@@ -1,7 +1,7 @@
 use tokio::sync::mpsc;
 
-use crate::{error::UiError, ArcStr};
 use crate::terminal::Screen;
+use crate::{ArcStr, error::UiError};
 #[cfg(not(test))]
 use crate::{
     app::cache::{feed::FeedCache, mailing_list::MailingListCache, patch::PatchCache},
@@ -137,31 +137,41 @@ impl Core {
         self.state.feed_selected = 0;
 
         // Show loading screen immediately when transitioning to feed view
-        let _ = self.terminal
+        let _ = self
+            .terminal
             .show(Screen::Loading(ArcStr::from("Loading feed...")))
             .await;
 
         // Ensure cache is loaded from disk
-        self.feed_cache.ensure_loaded(list.clone()).await.map_err(|e| match e {
-            crate::error::CacheError::Fatal(fatal) => UiError::Fatal(fatal),
-            crate::error::CacheError::FileOperationFailed { .. } | crate::error::CacheError::SerializationFailed { .. } => {
-                UiError::OperationFailed {
-                    operation: "ensure feed cache loaded".to_string(),
-                    message: format!("{}", e),
+        self.feed_cache
+            .ensure_loaded(list.clone())
+            .await
+            .map_err(|e| match e {
+                crate::error::CacheError::Fatal(fatal) => UiError::Fatal(fatal),
+                crate::error::CacheError::FileOperationFailed { .. }
+                | crate::error::CacheError::SerializationFailed { .. } => {
+                    UiError::OperationFailed {
+                        operation: "ensure feed cache loaded".to_string(),
+                        message: format!("{}", e),
+                    }
                 }
-            }
-        })?;
+            })?;
 
         // Check if cache has data
-        let len_result = self.feed_cache.len(list.clone()).await.map_err(|e| match e {
-            crate::error::CacheError::Fatal(fatal) => UiError::Fatal(fatal),
-            crate::error::CacheError::FileOperationFailed { .. } | crate::error::CacheError::SerializationFailed { .. } => {
-                UiError::OperationFailed {
-                    operation: "check feed cache length".to_string(),
-                    message: format!("{}", e),
+        let len_result = self
+            .feed_cache
+            .len(list.clone())
+            .await
+            .map_err(|e| match e {
+                crate::error::CacheError::Fatal(fatal) => UiError::Fatal(fatal),
+                crate::error::CacheError::FileOperationFailed { .. }
+                | crate::error::CacheError::SerializationFailed { .. } => {
+                    UiError::OperationFailed {
+                        operation: "check feed cache length".to_string(),
+                        message: format!("{}", e),
+                    }
                 }
-            }
-        })?;
+            })?;
         let is_empty = len_result == 0;
         if is_empty {
             self.log.info(
@@ -212,15 +222,20 @@ impl Core {
                 // Check if the previous page would have data
                 let start = new_page * 20;
                 let end = start + 20;
-                let items = self.mailing_list_cache.get_slice(start..end).await.map_err(|e| match e {
-                    crate::error::CacheError::Fatal(fatal) => UiError::Fatal(fatal),
-                    crate::error::CacheError::FileOperationFailed { .. } | crate::error::CacheError::SerializationFailed { .. } => {
-                        UiError::OperationFailed {
-                            operation: "get mailing list slice".to_string(),
-                            message: format!("{}", e),
+                let items = self
+                    .mailing_list_cache
+                    .get_slice(start..end)
+                    .await
+                    .map_err(|e| match e {
+                        crate::error::CacheError::Fatal(fatal) => UiError::Fatal(fatal),
+                        crate::error::CacheError::FileOperationFailed { .. }
+                        | crate::error::CacheError::SerializationFailed { .. } => {
+                            UiError::OperationFailed {
+                                operation: "get mailing list slice".to_string(),
+                                message: format!("{}", e),
+                            }
                         }
-                    }
-                })?;
+                    })?;
                 if items.is_empty() {
                     // Previous page is empty, don't navigate
                     return Ok(());
@@ -245,15 +260,20 @@ impl Core {
                     // Check if data is available in cache
                     let start = new_page * 20;
                     let end = start + 20;
-                    let is_available = self.feed_cache.is_available(list.clone(), start..end).await.map_err(|e| match e {
-                        crate::error::CacheError::Fatal(fatal) => UiError::Fatal(fatal),
-                        crate::error::CacheError::FileOperationFailed { .. } | crate::error::CacheError::SerializationFailed { .. } => {
-                            UiError::OperationFailed {
-                                operation: "check feed availability".to_string(),
-                                message: format!("{}", e),
+                    let is_available = self
+                        .feed_cache
+                        .is_available(list.clone(), start..end)
+                        .await
+                        .map_err(|e| match e {
+                            crate::error::CacheError::Fatal(fatal) => UiError::Fatal(fatal),
+                            crate::error::CacheError::FileOperationFailed { .. }
+                            | crate::error::CacheError::SerializationFailed { .. } => {
+                                UiError::OperationFailed {
+                                    operation: "check feed availability".to_string(),
+                                    message: format!("{}", e),
+                                }
                             }
-                        }
-                    })?;
+                        })?;
 
                     if is_available {
                         // Data is available, render immediately
@@ -269,23 +289,30 @@ impl Core {
                         );
 
                         // Show loading screen
-                        let _ = self.terminal
+                        let _ = self
+                            .terminal
                             .show(Screen::Loading(ArcStr::from("Loading page...")))
                             .await;
 
                         // Fetch the data (this will trigger on-demand fetching)
-                        let items = self.feed_cache.get_slice(list.clone(), start..end).await.map_err(|e| match e {
-                            crate::error::CacheError::Fatal(fatal) => UiError::Fatal(fatal),
-                            crate::error::CacheError::FileOperationFailed { .. } | crate::error::CacheError::SerializationFailed { .. } => {
-                                UiError::OperationFailed {
-                                    operation: "get feed slice".to_string(),
-                                    message: format!("{}", e),
+                        let items = self
+                            .feed_cache
+                            .get_slice(list.clone(), start..end)
+                            .await
+                            .map_err(|e| match e {
+                                crate::error::CacheError::Fatal(fatal) => UiError::Fatal(fatal),
+                                crate::error::CacheError::FileOperationFailed { .. }
+                                | crate::error::CacheError::SerializationFailed { .. } => {
+                                    UiError::OperationFailed {
+                                        operation: "get feed slice".to_string(),
+                                        message: format!("{}", e),
+                                    }
                                 }
-                            }
-                        })?;
+                            })?;
 
                         // Show the feed with fetched data
-                        let _ = self.terminal
+                        let _ = self
+                            .terminal
                             .show(Screen::Feed {
                                 list,
                                 items,
@@ -312,15 +339,20 @@ impl Core {
                 // Check if the next page would have data
                 let start = new_page * 20;
                 let end = start + 20;
-                let items = self.mailing_list_cache.get_slice(start..end).await.map_err(|e| match e {
-                    crate::error::CacheError::Fatal(fatal) => UiError::Fatal(fatal),
-                    crate::error::CacheError::FileOperationFailed { .. } | crate::error::CacheError::SerializationFailed { .. } => {
-                        UiError::OperationFailed {
-                            operation: "get mailing list slice".to_string(),
-                            message: format!("{}", e),
+                let items = self
+                    .mailing_list_cache
+                    .get_slice(start..end)
+                    .await
+                    .map_err(|e| match e {
+                        crate::error::CacheError::Fatal(fatal) => UiError::Fatal(fatal),
+                        crate::error::CacheError::FileOperationFailed { .. }
+                        | crate::error::CacheError::SerializationFailed { .. } => {
+                            UiError::OperationFailed {
+                                operation: "get mailing list slice".to_string(),
+                                message: format!("{}", e),
+                            }
                         }
-                    }
-                })?;
+                    })?;
                 if items.is_empty() {
                     // Next page is empty, don't navigate
                     return Ok(());
@@ -341,15 +373,20 @@ impl Core {
                     // Check if data is available in cache
                     let start = new_page * 20;
                     let end = start + 20;
-                    let is_available = self.feed_cache.is_available(list.clone(), start..end).await.map_err(|e| match e {
-                        crate::error::CacheError::Fatal(fatal) => UiError::Fatal(fatal),
-                        crate::error::CacheError::FileOperationFailed { .. } | crate::error::CacheError::SerializationFailed { .. } => {
-                            UiError::OperationFailed {
-                                operation: "check feed availability".to_string(),
-                                message: format!("{}", e),
+                    let is_available = self
+                        .feed_cache
+                        .is_available(list.clone(), start..end)
+                        .await
+                        .map_err(|e| match e {
+                            crate::error::CacheError::Fatal(fatal) => UiError::Fatal(fatal),
+                            crate::error::CacheError::FileOperationFailed { .. }
+                            | crate::error::CacheError::SerializationFailed { .. } => {
+                                UiError::OperationFailed {
+                                    operation: "check feed availability".to_string(),
+                                    message: format!("{}", e),
+                                }
                             }
-                        }
-                    })?;
+                        })?;
 
                     if is_available {
                         // Data is available, render immediately
@@ -365,23 +402,30 @@ impl Core {
                         );
 
                         // Show loading screen
-                        let _ = self.terminal
+                        let _ = self
+                            .terminal
                             .show(Screen::Loading(ArcStr::from("Loading page...")))
                             .await;
 
                         // Fetch the data (this will trigger on-demand fetching)
-                        let items = self.feed_cache.get_slice(list.clone(), start..end).await.map_err(|e| match e {
-                            crate::error::CacheError::Fatal(fatal) => UiError::Fatal(fatal),
-                            crate::error::CacheError::FileOperationFailed { .. } | crate::error::CacheError::SerializationFailed { .. } => {
-                                UiError::OperationFailed {
-                                    operation: "get feed slice".to_string(),
-                                    message: format!("{}", e),
+                        let items = self
+                            .feed_cache
+                            .get_slice(list.clone(), start..end)
+                            .await
+                            .map_err(|e| match e {
+                                crate::error::CacheError::Fatal(fatal) => UiError::Fatal(fatal),
+                                crate::error::CacheError::FileOperationFailed { .. }
+                                | crate::error::CacheError::SerializationFailed { .. } => {
+                                    UiError::OperationFailed {
+                                        operation: "get feed slice".to_string(),
+                                        message: format!("{}", e),
+                                    }
                                 }
-                            }
-                        })?;
+                            })?;
 
                         // Show the feed with fetched data
-                        let _ = self.terminal
+                        let _ = self
+                            .terminal
                             .show(Screen::Feed {
                                 list,
                                 items,
@@ -432,15 +476,20 @@ impl Core {
             ViewKind::Lists => {
                 let start = self.state.list_page * 20;
                 let end = start + 20;
-                let items = self.mailing_list_cache.get_slice(start..end).await.map_err(|e| match e {
-                    crate::error::CacheError::Fatal(fatal) => UiError::Fatal(fatal),
-                    crate::error::CacheError::FileOperationFailed { .. } | crate::error::CacheError::SerializationFailed { .. } => {
-                        UiError::OperationFailed {
-                            operation: "get mailing list slice".to_string(),
-                            message: format!("{}", e),
+                let items = self
+                    .mailing_list_cache
+                    .get_slice(start..end)
+                    .await
+                    .map_err(|e| match e {
+                        crate::error::CacheError::Fatal(fatal) => UiError::Fatal(fatal),
+                        crate::error::CacheError::FileOperationFailed { .. }
+                        | crate::error::CacheError::SerializationFailed { .. } => {
+                            UiError::OperationFailed {
+                                operation: "get mailing list slice".to_string(),
+                                message: format!("{}", e),
+                            }
                         }
-                    }
-                })?;
+                    })?;
                 if let Some(selected) = items.get(self.state.list_selected) {
                     self.log.info(
                         SCOPE,
@@ -457,15 +506,20 @@ impl Core {
                 if let Some(list) = self.state.feed_list.clone() {
                     let start = self.state.feed_page * 20;
                     let end = start + 20;
-                    let items = self.feed_cache.get_slice(list.clone(), start..end).await.map_err(|e| match e {
-                        crate::error::CacheError::Fatal(fatal) => UiError::Fatal(fatal),
-                        crate::error::CacheError::FileOperationFailed { .. } | crate::error::CacheError::SerializationFailed { .. } => {
-                            UiError::OperationFailed {
-                                operation: "get feed slice (render feed)".to_string(),
-                                message: format!("{}", e),
+                    let items = self
+                        .feed_cache
+                        .get_slice(list.clone(), start..end)
+                        .await
+                        .map_err(|e| match e {
+                            crate::error::CacheError::Fatal(fatal) => UiError::Fatal(fatal),
+                            crate::error::CacheError::FileOperationFailed { .. }
+                            | crate::error::CacheError::SerializationFailed { .. } => {
+                                UiError::OperationFailed {
+                                    operation: "get feed slice (render feed)".to_string(),
+                                    message: format!("{}", e),
+                                }
                             }
-                        }
-                    })?;
+                        })?;
                     if let Some(selected) = items.get(self.state.feed_selected) {
                         self.log.info(
                             SCOPE,
@@ -499,15 +553,20 @@ impl Core {
             format!("Lists: fetching items range {}..{}", start, end),
         );
 
-        let items = self.mailing_list_cache.get_slice(start..end).await.map_err(|e| match e {
-            crate::error::CacheError::Fatal(fatal) => UiError::Fatal(fatal),
-            crate::error::CacheError::FileOperationFailed { .. } | crate::error::CacheError::SerializationFailed { .. } => {
-                UiError::OperationFailed {
-                    operation: "get mailing list slice (render lists)".to_string(),
-                    message: format!("{}", e),
+        let items = self
+            .mailing_list_cache
+            .get_slice(start..end)
+            .await
+            .map_err(|e| match e {
+                crate::error::CacheError::Fatal(fatal) => UiError::Fatal(fatal),
+                crate::error::CacheError::FileOperationFailed { .. }
+                | crate::error::CacheError::SerializationFailed { .. } => {
+                    UiError::OperationFailed {
+                        operation: "get mailing list slice (render lists)".to_string(),
+                        message: format!("{}", e),
+                    }
                 }
-            }
-        })?;
+            })?;
 
         if items.is_empty() {
             self.log.warn(
@@ -518,7 +577,8 @@ impl Core {
             // Check if cache is empty and needs refresh
             let total_items = self.mailing_list_cache.len().await.map_err(|e| match e {
                 crate::error::CacheError::Fatal(fatal) => UiError::Fatal(fatal),
-                crate::error::CacheError::FileOperationFailed { .. } | crate::error::CacheError::SerializationFailed { .. } => {
+                crate::error::CacheError::FileOperationFailed { .. }
+                | crate::error::CacheError::SerializationFailed { .. } => {
                     UiError::OperationFailed {
                         operation: "get mailing list length".to_string(),
                         message: format!("{}", e),
@@ -539,9 +599,14 @@ impl Core {
                 match refresh_result {
                     Ok(Ok(())) => {
                         // Refresh succeeded, try again
-                        let refreshed_items = self.mailing_list_cache.get_slice(start..end).await.map_err(|e| match e {
+                        let refreshed_items = self
+                            .mailing_list_cache
+                            .get_slice(start..end)
+                            .await
+                            .map_err(|e| match e {
                             crate::error::CacheError::Fatal(fatal) => UiError::Fatal(fatal),
-                            crate::error::CacheError::FileOperationFailed { .. } | crate::error::CacheError::SerializationFailed { .. } => {
+                            crate::error::CacheError::FileOperationFailed { .. }
+                            | crate::error::CacheError::SerializationFailed { .. } => {
                                 UiError::OperationFailed {
                                     operation: "get refreshed mailing list slice".to_string(),
                                     message: format!("{}", e),
@@ -566,7 +631,8 @@ impl Core {
                             );
                         }
 
-                        let _ = self.terminal
+                        let _ = self
+                            .terminal
                             .show(Screen::Lists {
                                 items: refreshed_items,
                                 page: self.state.list_page,
@@ -579,7 +645,8 @@ impl Core {
                         // Refresh failed
                         self.log
                             .error(SCOPE, format!("Lists: refresh failed: {}", e));
-                        let _ = self.terminal
+                        let _ = self
+                            .terminal
                             .show(Screen::Error(ArcStr::from("Failed to load mailing lists")))
                             .await;
                         Ok(())
@@ -588,7 +655,8 @@ impl Core {
                         // Refresh timed out
                         self.log
                             .error(SCOPE, "Lists: refresh timed out".to_string());
-                        let _ = self.terminal
+                        let _ = self
+                            .terminal
                             .show(Screen::Error(ArcStr::from(
                                 "Mailing lists loading timed out",
                             )))
@@ -598,7 +666,8 @@ impl Core {
                 }
             } else {
                 // Cache has data but this page is empty (e.g., page beyond available data)
-                let _ = self.terminal
+                let _ = self
+                    .terminal
                     .show(Screen::Lists {
                         items,
                         page: self.state.list_page,
@@ -616,12 +685,19 @@ impl Core {
                     page: self.state.list_page,
                     selected: self.state.list_selected,
                 })
-                .await.map_err(|e| match e {
-                    crate::error::TerminalError::OperationFailed { source, .. } => UiError::OperationFailed {
-                        operation: "show lists".to_string(),
-                        message: if source.is_some() { format!("{}", source.unwrap()) } else { "Unknown error".to_string() },
-                    },
-                    _ => unreachable!()
+                .await
+                .map_err(|e| match e {
+                    crate::error::TerminalError::OperationFailed { source, .. } => {
+                        UiError::OperationFailed {
+                            operation: "show lists".to_string(),
+                            message: if source.is_some() {
+                                format!("{}", source.unwrap())
+                            } else {
+                                "Unknown error".to_string()
+                            },
+                        }
+                    }
+                    _ => unreachable!(),
                 })
         }
     }
@@ -636,15 +712,20 @@ impl Core {
         );
 
         // Try to get items from cache
-        let items = self.feed_cache.get_slice(list.clone(), start..end).await.map_err(|e| match e {
-            crate::error::CacheError::Fatal(fatal) => UiError::Fatal(fatal),
-            crate::error::CacheError::FileOperationFailed { .. } | crate::error::CacheError::SerializationFailed { .. } => {
-                UiError::OperationFailed {
-                    operation: "get feed slice (render feed initial)".to_string(),
-                    message: format!("{}", e),
+        let items = self
+            .feed_cache
+            .get_slice(list.clone(), start..end)
+            .await
+            .map_err(|e| match e {
+                crate::error::CacheError::Fatal(fatal) => UiError::Fatal(fatal),
+                crate::error::CacheError::FileOperationFailed { .. }
+                | crate::error::CacheError::SerializationFailed { .. } => {
+                    UiError::OperationFailed {
+                        operation: "get feed slice (render feed initial)".to_string(),
+                        message: format!("{}", e),
+                    }
                 }
-            }
-        })?;
+            })?;
 
         if items.is_empty() {
             self.log.warn(
@@ -656,15 +737,20 @@ impl Core {
             );
 
             // Check if we need to load more data or if this is truly empty
-            let total_items = self.feed_cache.len(list.clone()).await.map_err(|e| match e {
-                crate::error::CacheError::Fatal(fatal) => UiError::Fatal(fatal),
-                crate::error::CacheError::FileOperationFailed { .. } | crate::error::CacheError::SerializationFailed { .. } => {
-                    UiError::OperationFailed {
-                        operation: "get feed length".to_string(),
-                        message: format!("{}", e),
+            let total_items = self
+                .feed_cache
+                .len(list.clone())
+                .await
+                .map_err(|e| match e {
+                    crate::error::CacheError::Fatal(fatal) => UiError::Fatal(fatal),
+                    crate::error::CacheError::FileOperationFailed { .. }
+                    | crate::error::CacheError::SerializationFailed { .. } => {
+                        UiError::OperationFailed {
+                            operation: "get feed length".to_string(),
+                            message: format!("{}", e),
+                        }
                     }
-                }
-            })?;
+                })?;
             if total_items == 0 {
                 // Cache is empty, try to refresh it with timeout
                 self.log.info(
@@ -682,10 +768,14 @@ impl Core {
                 match refresh_result {
                     Ok(Ok(())) => {
                         // Refresh succeeded, try again
-                        let refreshed_items =
-                            self.feed_cache.get_slice(list.clone(), start..end).await.map_err(|e| match e {
+                        let refreshed_items = self
+                            .feed_cache
+                            .get_slice(list.clone(), start..end)
+                            .await
+                            .map_err(|e| match e {
                                 crate::error::CacheError::Fatal(fatal) => UiError::Fatal(fatal),
-                                crate::error::CacheError::FileOperationFailed { .. } | crate::error::CacheError::SerializationFailed { .. } => {
+                                crate::error::CacheError::FileOperationFailed { .. }
+                                | crate::error::CacheError::SerializationFailed { .. } => {
                                     UiError::OperationFailed {
                                         operation: "get refreshed feed slice".to_string(),
                                         message: format!("{}", e),
@@ -721,12 +811,19 @@ impl Core {
                                 page: self.state.feed_page,
                                 selected: self.state.feed_selected,
                             })
-                            .await.map_err(|e| match e {
-                                crate::error::TerminalError::OperationFailed { source, .. } => UiError::OperationFailed {
-                                    operation: "show feed".to_string(),
-                                    message: if source.is_some() { format!("{}", source.unwrap()) } else { "Unknown error".to_string() },
-                                },
-                                _ => unreachable!()
+                            .await
+                            .map_err(|e| match e {
+                                crate::error::TerminalError::OperationFailed { source, .. } => {
+                                    UiError::OperationFailed {
+                                        operation: "show feed".to_string(),
+                                        message: if source.is_some() {
+                                            format!("{}", source.unwrap())
+                                        } else {
+                                            "Unknown error".to_string()
+                                        },
+                                    }
+                                }
+                                _ => unreachable!(),
                             })
                     }
                     Ok(Err(e)) => {
@@ -735,12 +832,19 @@ impl Core {
                             .error(SCOPE, format!("Feed: refresh failed for '{}': {}", list, e));
                         self.terminal
                             .show(Screen::Error(ArcStr::from("Failed to load feed data")))
-                            .await.map_err(|e| match e {
-                                crate::error::TerminalError::OperationFailed { source, .. } => UiError::OperationFailed {
-                                    operation: "show feed".to_string(),
-                                    message: if source.is_some() { format!("{}", source.unwrap()) } else { "Unknown error".to_string() },
-                                },
-                                _ => unreachable!()
+                            .await
+                            .map_err(|e| match e {
+                                crate::error::TerminalError::OperationFailed { source, .. } => {
+                                    UiError::OperationFailed {
+                                        operation: "show feed".to_string(),
+                                        message: if source.is_some() {
+                                            format!("{}", source.unwrap())
+                                        } else {
+                                            "Unknown error".to_string()
+                                        },
+                                    }
+                                }
+                                _ => unreachable!(),
                             })
                     }
                     Err(_) => {
@@ -749,12 +853,19 @@ impl Core {
                             .error(SCOPE, format!("Feed: refresh timed out for '{}'", list));
                         self.terminal
                             .show(Screen::Error(ArcStr::from("Feed loading timed out")))
-                            .await.map_err(|e| match e {
-                                crate::error::TerminalError::OperationFailed { source, .. } => UiError::OperationFailed {
-                                    operation: "show feed".to_string(),
-                                    message: if source.is_some() { format!("{}", source.unwrap()) } else { "Unknown error".to_string() },
-                                },
-                                _ => unreachable!()
+                            .await
+                            .map_err(|e| match e {
+                                crate::error::TerminalError::OperationFailed { source, .. } => {
+                                    UiError::OperationFailed {
+                                        operation: "show feed".to_string(),
+                                        message: if source.is_some() {
+                                            format!("{}", source.unwrap())
+                                        } else {
+                                            "Unknown error".to_string()
+                                        },
+                                    }
+                                }
+                                _ => unreachable!(),
                             })
                     }
                 }
@@ -767,12 +878,19 @@ impl Core {
                         page: self.state.feed_page,
                         selected: self.state.feed_selected,
                     })
-                    .await.map_err(|e| match e {
-                        crate::error::TerminalError::OperationFailed { source, .. } => UiError::OperationFailed {
-                            operation: "show feed".to_string(),
-                            message: if source.is_some() { format!("{}", source.unwrap()) } else { "Unknown error".to_string() },
-                        },
-                        _ => unreachable!()
+                    .await
+                    .map_err(|e| match e {
+                        crate::error::TerminalError::OperationFailed { source, .. } => {
+                            UiError::OperationFailed {
+                                operation: "show feed".to_string(),
+                                message: if source.is_some() {
+                                    format!("{}", source.unwrap())
+                                } else {
+                                    "Unknown error".to_string()
+                                },
+                            }
+                        }
+                        _ => unreachable!(),
                     })
             }
         } else {
@@ -785,18 +903,30 @@ impl Core {
                     page: self.state.feed_page,
                     selected: self.state.feed_selected,
                 })
-                .await.map_err(|e| match e {
-                    crate::error::TerminalError::OperationFailed { source, .. } => UiError::OperationFailed {
-                        operation: "show feed".to_string(),
-                        message: if source.is_some() { format!("{}", source.unwrap()) } else { "Unknown error".to_string() },
-                    },
-                    _ => unreachable!()
+                .await
+                .map_err(|e| match e {
+                    crate::error::TerminalError::OperationFailed { source, .. } => {
+                        UiError::OperationFailed {
+                            operation: "show feed".to_string(),
+                            message: if source.is_some() {
+                                format!("{}", source.unwrap())
+                            } else {
+                                "Unknown error".to_string()
+                            },
+                        }
+                    }
+                    _ => unreachable!(),
                 })
         }
     }
 
     /// Render the patch view
-    async fn render_patch(&self, list: ArcStr, message_id: ArcStr, title: ArcStr) -> Result<(), UiError> {
+    async fn render_patch(
+        &self,
+        list: ArcStr,
+        message_id: ArcStr,
+        title: ArcStr,
+    ) -> Result<(), UiError> {
         self.log.info(
             SCOPE,
             format!(
@@ -806,26 +936,37 @@ impl Core {
         );
         self.terminal
             .show(Screen::Loading(ArcStr::from("Loading patch...")))
-            .await.map_err(|e| match e {
-                crate::error::TerminalError::OperationFailed { source, .. } => UiError::OperationFailed {
-                    operation: "show loading".to_string(),
-                    message: if source.is_some() { format!("{}", source.unwrap()) } else { "Unknown error".to_string() },
-                },
-                _ => unreachable!()
+            .await
+            .map_err(|e| match e {
+                crate::error::TerminalError::OperationFailed { source, .. } => {
+                    UiError::OperationFailed {
+                        operation: "show loading".to_string(),
+                        message: if source.is_some() {
+                            format!("{}", source.unwrap())
+                        } else {
+                            "Unknown error".to_string()
+                        },
+                    }
+                }
+                _ => unreachable!(),
             })?;
         match self.patch_cache.get(list.clone(), message_id.clone()).await {
             Ok(raw) => {
                 self.log
                     .info(SCOPE, format!("Patch: raw chars={}", raw.len()));
-                match self.render.render_patch(ArcStr::from(raw)).await.map_err(|e| match e {
-                    crate::error::RenderError::Fatal(fatal) => UiError::Fatal(fatal),
-                    crate::error::RenderError::RenderingFailed { message, .. } => {
-                        UiError::OperationFailed {
-                            operation: "render patch".to_string(),
-                            message,
+                match self
+                    .render
+                    .render_patch(ArcStr::from(raw))
+                    .await
+                    .map_err(|e| match e {
+                        crate::error::RenderError::Fatal(fatal) => UiError::Fatal(fatal),
+                        crate::error::RenderError::RenderingFailed { message, .. } => {
+                            UiError::OperationFailed {
+                                operation: "render patch".to_string(),
+                                message,
+                            }
                         }
-                    }
-                }) {
+                    }) {
                     Ok(rendered) => {
                         if rendered.is_empty() {
                             self.log.warn(
@@ -841,7 +982,8 @@ impl Core {
                             self.log
                                 .info(SCOPE, format!("Patch: rendered chars={}", rendered.len()));
                         }
-                        let _ = self.terminal
+                        let _ = self
+                            .terminal
                             .show(Screen::Patch {
                                 title,
                                 content: rendered,
@@ -852,7 +994,8 @@ impl Core {
                     Err(e) => {
                         self.log.error(SCOPE, format!("Patch: render error: {}", e));
                         let _ = self.feed_cache.invalidate(list).await;
-                        let _ = self.terminal
+                        let _ = self
+                            .terminal
                             .show(Screen::Error(ArcStr::from("Failed to render patch")))
                             .await;
                         Ok(())
@@ -862,7 +1005,8 @@ impl Core {
             Err(e) => {
                 self.log.error(SCOPE, format!("Patch: fetch error: {}", e));
                 let _ = self.feed_cache.invalidate(list).await;
-                let _ = self.terminal
+                let _ = self
+                    .terminal
                     .show(Screen::Error(ArcStr::from("Failed to load patch")))
                     .await;
                 Ok(())
