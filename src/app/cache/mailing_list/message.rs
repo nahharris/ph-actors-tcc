@@ -1,4 +1,4 @@
-use crate::{error::CacheError, api::lore::LoreMailingList};
+use crate::{api::lore::LoreMailingList, error::CacheError};
 use tokio::sync::oneshot;
 
 /// Messages for the Mailing List Actor.
@@ -28,7 +28,9 @@ pub enum Message {
         tx: oneshot::Sender<Result<bool, CacheError>>,
     },
     /// Get the number of cached mailing lists
-    Len { tx: oneshot::Sender<Result<usize, CacheError>> },
+    Len {
+        tx: oneshot::Sender<Result<usize, CacheError>>,
+    },
     /// Persist the cache to filesystem
     Persist {
         tx: oneshot::Sender<Result<(), CacheError>>,

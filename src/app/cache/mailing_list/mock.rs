@@ -1,4 +1,4 @@
-use crate::{error::CacheError, api::lore::LoreMailingList};
+use crate::{api::lore::LoreMailingList, error::CacheError};
 use mockall::mock;
 
 mock! {

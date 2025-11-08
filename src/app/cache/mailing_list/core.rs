@@ -1,8 +1,8 @@
 use super::data::MailingListData;
 use super::message::Message;
 use crate::FsError;
-use crate::{error::CacheError, ArcPath};
 use crate::api::lore::LoreMailingList;
+use crate::{ArcPath, error::CacheError};
 use tokio::sync::mpsc;
 
 #[cfg(not(test))]
@@ -32,16 +32,21 @@ pub struct Core {
 impl Core {
     /// Creates a new Core instance.
     pub async fn new(lore: LoreApi, fs: Fs, config: Config, log: Log) -> Result<Self, CacheError> {
-        let cache_dir = config.path(crate::app::config::PathOpt::CachePath).await.map_err(|e| match e {
-            crate::error::ConfigError::Fatal(fatal) => CacheError::Fatal(fatal),
-            crate::error::ConfigError::ParseFailed { .. } | crate::error::ConfigError::InvalidValue { .. } | crate::error::ConfigError::FileOperationFailed { .. } => {
-                CacheError::FileOperationFailed {
-                    path: "config".to_string(),
-                    operation: "get cache path".to_string(),
-                    source: std::io::Error::new(std::io::ErrorKind::NotFound, format!("{}", e)),
+        let cache_dir = config
+            .path(crate::app::config::PathOpt::CachePath)
+            .await
+            .map_err(|e| match e {
+                crate::error::ConfigError::Fatal(fatal) => CacheError::Fatal(fatal),
+                crate::error::ConfigError::ParseFailed { .. }
+                | crate::error::ConfigError::InvalidValue { .. }
+                | crate::error::ConfigError::FileOperationFailed { .. } => {
+                    CacheError::FileOperationFailed {
+                        path: "config".to_string(),
+                        operation: "get cache path".to_string(),
+                        source: std::io::Error::new(std::io::ErrorKind::NotFound, format!("{}", e)),
+                    }
                 }
-            }
-        })?;
+            })?;
         let cache_path = ArcPath::from(&cache_dir.join("mailing_lists.toml"));
         let data = MailingListData::new(cache_path);
 
@@ -144,22 +149,33 @@ impl Core {
         let mut min_index = 0;
 
         loop {
-            let page = self.lore.get_available_lists_page(min_index).await.map_err(|e| match e {
-                crate::error::LoreApiError::Fatal(fatal) => CacheError::Fatal(fatal),
-                crate::error::LoreApiError::RequestFailed { endpoint, message, retryable: _ } => {
-                    CacheError::FileOperationFailed {
+            let page = self
+                .lore
+                .get_available_lists_page(min_index)
+                .await
+                .map_err(|e| match e {
+                    crate::error::LoreApiError::Fatal(fatal) => CacheError::Fatal(fatal),
+                    crate::error::LoreApiError::RequestFailed {
+                        endpoint,
+                        message,
+                        retryable: _,
+                    } => CacheError::FileOperationFailed {
                         path: endpoint,
                         operation: "fetch mailing lists".to_string(),
                         source: std::io::Error::new(std::io::ErrorKind::Other, message),
-                    }
-                }
-                crate::error::LoreApiError::ParseFailed { format, operation, details } => {
-                    CacheError::SerializationFailed {
-                        message: format!("Failed to parse {} for {}: {}", format, operation, details),
+                    },
+                    crate::error::LoreApiError::ParseFailed {
+                        format,
+                        operation,
+                        details,
+                    } => CacheError::SerializationFailed {
+                        message: format!(
+                            "Failed to parse {} for {}: {}",
+                            format, operation, details
+                        ),
                         source: None,
-                    }
-                }
-            })?;
+                    },
+                })?;
             match page {
                 Some(page) => {
                     let items_len = page.items.len();
@@ -194,12 +210,11 @@ impl Core {
     /// Persists the cache to the filesystem.
     async fn persist_cache(&self) -> Result<(), CacheError> {
         let cache_data = self.data.to_cache_data();
-        let content = toml::to_string_pretty(&cache_data).map_err(|e| {
-            CacheError::SerializationFailed {
+        let content =
+            toml::to_string_pretty(&cache_data).map_err(|e| CacheError::SerializationFailed {
                 message: format!("Failed to serialize cache data: {}", e),
                 source: Some(Box::new(e)),
-            }
-        })?;
+            })?;
 
         // Create parent directory if it doesn't exist
         if let Some(parent) = self.data.cache_path.parent() {
@@ -208,13 +223,17 @@ impl Core {
                 .await
                 .map_err(|e| match e {
                     FsError::Fatal(fatal) => CacheError::Fatal(fatal),
-                    FsError::OperationFailed { path, operation, source, .. } => {
-                        CacheError::FileOperationFailed {
-                            path: path.unwrap_or_else(|| self.data.cache_path.to_string_lossy().to_string()),
-                            operation,
-                            source,
-                        }
-                    }
+                    FsError::OperationFailed {
+                        path,
+                        operation,
+                        source,
+                        ..
+                    } => CacheError::FileOperationFailed {
+                        path: path
+                            .unwrap_or_else(|| self.data.cache_path.to_string_lossy().to_string()),
+                        operation,
+                        source,
+                    },
                 })?;
         }
 
@@ -225,24 +244,26 @@ impl Core {
             .await
             .map_err(|e| match e {
                 FsError::Fatal(fatal) => CacheError::Fatal(fatal),
-                FsError::OperationFailed { path, operation, source, .. } => {
-                    CacheError::FileOperationFailed {
-                        path: path.unwrap_or_else(|| self.data.cache_path.to_string_lossy().to_string()),
-                        operation,
-                        source,
-                    }
-                }
+                FsError::OperationFailed {
+                    path,
+                    operation,
+                    source,
+                    ..
+                } => CacheError::FileOperationFailed {
+                    path: path
+                        .unwrap_or_else(|| self.data.cache_path.to_string_lossy().to_string()),
+                    operation,
+                    source,
+                },
             })?;
 
         use tokio::io::AsyncWriteExt;
         file.write_all(content.as_bytes())
             .await
-            .map_err(|e| {
-                CacheError::FileOperationFailed {
-                    path: self.data.cache_path.to_string_lossy().to_string(),
-                    operation: "write cache file".to_string(),
-                    source: e,
-                }
+            .map_err(|e| CacheError::FileOperationFailed {
+                path: self.data.cache_path.to_string_lossy().to_string(),
+                operation: "write cache file".to_string(),
+                source: e,
             })?;
 
         Ok(())
@@ -270,20 +291,17 @@ impl Core {
         let mut file = file;
         file.read_to_string(&mut content)
             .await
-            .map_err(|e| {
-                CacheError::FileOperationFailed {
-                    path: self.data.cache_path.to_string_lossy().to_string(),
-                    operation: "read cache file content".to_string(),
-                    source: e,
-                }
+            .map_err(|e| CacheError::FileOperationFailed {
+                path: self.data.cache_path.to_string_lossy().to_string(),
+                operation: "read cache file content".to_string(),
+                source: e,
             })?;
 
-        let cache_data: super::data::CacheData = toml::from_str(&content).map_err(|e| {
-            CacheError::SerializationFailed {
+        let cache_data: super::data::CacheData =
+            toml::from_str(&content).map_err(|e| CacheError::SerializationFailed {
                 message: format!("Failed to deserialize cache data: {}", e),
                 source: Some(Box::new(e)),
-            }
-        })?;
+            })?;
 
         self.data.from_cache_data(cache_data);
 
