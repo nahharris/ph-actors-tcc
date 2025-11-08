@@ -85,7 +85,13 @@ async fn test_fs_mkdir_rmdir() {
     fs.rmdir(path.clone())
         .await
         .expect("Removing directory to succeed");
-    let Err(FsError::OperationFailed { path: error_path, operation, retryable, source }) = fs.read_dir(path_to_read.clone()).await else {
+    let Err(FsError::OperationFailed {
+        path: error_path,
+        operation,
+        retryable,
+        source,
+    }) = fs.read_dir(path_to_read.clone()).await
+    else {
         panic!("Reading directory to fail");
     };
     assert_eq!(error_path, Some(path_to_read.to_string_lossy().to_string()));
