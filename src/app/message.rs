@@ -6,5 +6,7 @@ use crate::error::AppError;
 #[derive(Debug)]
 pub enum Message {
     /// Shutdown the application gracefully
-    Shutdown { tx: oneshot::Sender<Result<(), AppError>> },
+    Shutdown {
+        tx: oneshot::Sender<Result<(), AppError>>,
+    },
 }
