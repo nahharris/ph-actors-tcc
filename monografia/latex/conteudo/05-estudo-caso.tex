@@ -1,6 +1,6 @@
 \chapter{Estudo de Caso: Patch-Hub}
 
-Uma vez apresentadas as propostas de adaptação do Modelo de Atores para experimentação fora do domínio dos sistemas distribuídos, chega o momento de realizar um estudo de caso para aplicar a proposta em um projeto real para posterior análise de resultados. O projeto escolhido foi uma ferramenta de código aberto desenvolvida sob a organização KWorkflow (kw) chamado de Patch-Hub.
+Uma vez apresentadas as propostas de adaptação do Modelo de Atores para experimentação fora do domínio dos sistemas distribuídos, chega o momento de realizar um estudo de caso para aplicar a proposta em um projeto real para posterior análise de resultados. O projeto escolhido foi uma ferramenta de código aberto desenvolvida sob a organização KWorkflow (kw) chamado de Patch-Hub. Neste capítulo, será apresentado o contexto do projeto, a arquitetura original e suas limitações, os objetivos do estudo de caso e a proposta de refatoração do projeto com o uso do Modelo de Atores cuja implementação estará disponível parcialmente como apêncides e na integra no repositório do projeto.
 
 \section{Contexto}
 
@@ -47,7 +47,7 @@ A implementação original do Patch-Hub seguia uma arquitetura majoritariamente 
     \item \textbf{\texttt{handler}}: Manipulação de entrada do usuário e processamento de eventos
 \end{itemize}
 
-\section{Funcionalidades Principais}
+\subsection{Funcionalidades Principais}
 
 A implementação do Patch-Hub (tanto a original quanto a refatorada) fornece um conjunto de funcionalidades para interagir com o arquivo de patches do kernel Linux. O sistema permite a seleção e navegação de listas de discussão arquivadas no \textit{lore.kernel.org}, apresentando os conjuntos de patches associados. Ao examinar uma série específica, a interface disponibiliza o conteúdo individual dos patches juntamente com metadados relevantes, incluindo título, autor, versão, quantidade de patches e timestamp da última atualização.
 
@@ -78,7 +78,7 @@ O resultado é uma violação do princípio da responsabilidade única, forçand
 
 \subsection{Impossibilidade de Composição Modular}
 
-O design atual impede a composição modular de handlers e componentes devido às restrições de borrowing. Handlers de eventos devem receber \texttt{\&mut App} inteiro mesmo quando precisam acessar apenas um subconjunto específico de dados. Isso cria uma situação onde handlers não podem ser decompostos em funções auxiliares menores e também funções auxiliares que precisam de múltiplos campos de \texttt{App} enfrentam conflitos por tentarem pegar referências a partes de algo que já está possui uma referência mutável.
+O design atual impede a composição modular de handlers e componentes devido às restrições de borrowing. Handlers de eventos devem receber \texttt{\&mut App} inteiro mesmo quando precisam acessar apenas um subconjunto específico de dados. Isso cria uma situação onde handlers não podem ser decompostos em funções auxiliares menores e também funções auxiliares que precisam de múltiplos campos de \texttt{App} enfrentam conflitos por tentarem pegar referências a partes de algo que já possui uma referência mutável.
 
 Esta limitação força a criação de métodos monolíticos em \texttt{App} que conhecem detalhes de implementação de múltiplos componentes, aumentando a complexidade e reduzindo a testabilidade.
 
@@ -326,7 +326,7 @@ O ator UI gerencia a lógica de navegação e estado da interface, coordenando a
     \item \textbf{Cache de Listas}: Para recuperar dados de listas de discussão
     \item \textbf{Cache de Feed}: Para recuperar metadados de patches
     \item \textbf{Cache de Patches}: Para recuperar conteúdo de patches
-    \item \textbf{Render}: Para renderizar conteúdo de patches
+    \item \textbf{Renderizador}: Para renderizar conteúdo de patches
     \item \textbf{Log}: Para registrar operações de UI
 \end{itemize}
 
@@ -344,7 +344,7 @@ O ator UI gerencia a lógica de navegação e estado da interface, coordenando a
     \item \texttt{GetState}: Recupera o estado atual da UI
 \end{itemize}
 
-\subsubsection{Render}
+\subsubsection{Renderizador}
 
 O ator Render é responsável por processar conteúdo bruto de patches e convertê-los em uma representação visual formatada. Ele suporta múltiplos backends de renderização, incluindo ferramentas externas como \texttt{bat} ou \texttt{delta}.
 
@@ -442,12 +442,16 @@ Armazena em cache o conteúdo bruto de patches individuais (formato \texttt{.mbo
 
 \subsubsection{App}
 
-O ator App atua como coordenador central da aplicação, gerenciando o ciclo de vida e coordenando a comunicação entre todos os outros atores. Ele é responsável por inicializar a aplicação, processar eventos de UI do Terminal e realizar encerramento gracioso quando apropriado.
+O ator App atua como entidade central da aplicação, gerenciando o ciclo de vida e estado da aplicação. Ele é responsável pela inicialização da aplicação, processamento de eventos de UI do Terminal e encerramento gracioso quando apropriado.
 
 \textbf{Depende:}
 
 \begin{itemize}
-    \item \textbf{Todos os atores}: O App depende de praticamente todos os outros atores da aplicação como dependências injetadas
+    \item \textbf{Mailing List Cache}: Para gerenciar o cache de listas de discussão
+    \item \textbf{Feed Cache}: Para gerenciar o cache dos feeds das listas de patches
+    \item \textbf{Terminal}: Para receber eventos de UI capturados pelo terminal
+    \item \textbf{UI}: Para atualizar a interface de usuário com base nas ações do usuário
+    \item \textbf{Log}: Para registrar operações da aplicação
 \end{itemize}
 
 \textbf{Mensagens:}
@@ -456,4 +460,4 @@ O ator App atua como coordenador central da aplicação, gerenciando o ciclo de 
     \item \texttt{Shutdown}: Inicia o processo de encerramento graceful da aplicação
 \end{itemize}
 
-Note que os eventos de teclado são registrados pelo Terminal e processados pelo App. Todavia isto não é feito com uma mensagem enviada pelo Terminal para o App. Mas sim o App que vai solicitar os eventos de UI ao Terminal no momento apropriado. Caso contrário, existiria um ciclo de dependências entre o Terminal e o App. Pois o App depende de Ui, que por sua vez depende de Terminal. Caso o Terminal tivesse de enviar mensagens ao App, então o Terminal dependeria do App, fechando o ciclo.
+Note que os eventos de teclado são registrados pelo Terminal e processados pelo App. Todavia isto não é feito com uma mensagem enviada pelo Terminal para o App. Mas sim o App que vai solicitar os eventos de UI ao Terminal no momento apropriado. Caso contrário, existiria um ciclo de dependências entre o Terminal e o App. Pois o App depende de Ui, que por sua vez depende de Terminal. Caso o Terminal tivesse de enviar mensagens ao App, então o Terminal dependeria do App, fechando o ciclo. Na presente proposta, as dependencias precisam de ser organizadas sem ciclos.
