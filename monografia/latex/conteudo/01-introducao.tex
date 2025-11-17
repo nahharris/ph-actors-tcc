@@ -1,15 +1,10 @@
 \chapter{Introdução}
 
-A arquitetura de software é um campo de estudo que busca entender como sistemas de software são construídos e organizados para atender aos seus requisitos. Todavia, na prática, projetos costumam dedicar mais atenção às funcionalidades do que aos requisitos de qualidade. Isso traz a tona a necessidade de estudar e entender os padrões arquiteturais existentes e como isso traz consequências de longo prazo para confiabilidade, manutenibilidade, testabilidade, entre outras complicações para um sistema.
+A arquitetura de software é um campo de estudo que busca entender como sistemas de software são construídos e organizados para atender aos seus requisitos. Todavia, na prática, projetos costumam dedicar mais atenção às funcionalidades do que aos requisitos de qualidade. Isso traz a tona a necessidade de estudar e entender os padrões arquiteturais existentes e como eles impactam, a longo prazo, a confiabilidade, manutenibilidade, testabilidade, entre outras complicações para um sistema.
 
-Este trabalho tem como objetivo estudar e entender um padrão arquitetural especifico chamado de Modelo de Atores. O Modelo de Atores é originalmente uma teoria matemática largamente usada na arquitetura de sistemas distribuídos. Aqui é feita uma experimentação com o Modelo de Atores tentando aplicá-lo em um contexto hostil, ou seja, uma aplicação não distribuída (isto é, centralizada). A ideia é entender quais são as consequências de usar um padrão arquitetural fora do seu contexto natural e quais adaptações se fazem necessárias para que ele possa ser usado de forma adequada.
+Este trabalho tem como objetivo estudar e entender um padrão arquitetural especifico chamado de Modelo de Atores. O Modelo de Atores é originalmente uma teoria matemática largamente usada na arquitetura de sistemas distribuídos que, posteriormente, serviu de paradigma base para a criação de linguagens de programação como Erlang e Elixir. 
 
-Para atingir os objetivos do trabalho, serão utilizados os seguintes métodos:
+Aqui é feita uma experimentação com o Modelo de Atores tentando aplicá-lo em um contexto distante do qual ele foi originalmente concebido. Para isso, foi escolhido o projeto Patch-Hub, uma aplicação de terminal (ou seja, não distribuída) desenvolvida com a linguagem de programação Rust (que não possui o Modelo de Atores como paradigma central). A ideia é entender o esforço necessário para se aplicar um padrão arquitetural fora do seu contexto natural e quais consequências isso traz para o projeto.
 
-\begin{itemize}
-    \item \textbf{Estado da Arte}: Serão estudadas as implementações existentes do Modelo de Atores a fim de compreender o estado da arte do padrão arquitetural.
-    \item \textbf{Proposta}: Será feita uma proposta de uma versão do Modelo de Atores propriamente adaptada para um contexto centralizado usando a linguagem de programação Rust.
-    \item \textbf{Estudo de Caso}: Será feito um estudo de caso aplicando a proposta em um projeto real para posterior análise de resultados.
-    \item \textbf{Análise de Resultados}: Será feita uma avaliação do projeto desenvolvido de um ponto de vista qualitativo e quantitativo. Buscando entender o quanto usar um padrão arquitetural fora do seu contexto natural traz benefícios e custos.
-\end{itemize}
+O restante do texto está estruturado da seguinte forma: No capitulo 2, é feita uma explanação sobre o que é a arquitetura de software e o que são padrões arquiteturais; No capitulo 3, é apresentado o Modelo de Atores do ponto de vista teórico e prático com foco na linguagem de programação Elixir; No capitulo 4, é demonstrada a proposta de um arcabouço genérico para a implementação de aplicações centralizadas usando o Modelo de Atores em Rust com as devidas adaptações; No capitulo 5, é realizado um estudo de caso aplicando a proposta no projeto Patch-Hub; No capitulo 6, são apresentados os resultados da experimentação e as conclusões finais.
 
