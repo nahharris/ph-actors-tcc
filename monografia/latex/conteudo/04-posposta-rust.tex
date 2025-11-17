@@ -416,9 +416,9 @@ Deverá ser fornecido um método de instância \texttt{init} responsável por co
     }
 \end{lstlisting}
 
-Note que o método \texttt{init} recebe \texttt{self} como primeiro argumento, isso significa que ele consome a instância. Em outras palavras, aquele que tiver posse de uma instância do \texttt{Core} do App a perderá assim que \texttt{init} for invocada, impedindo que um mesmo objeto seja instanciado como 2 atores compartilhando o mesmo espaço de memória. O segundo parâmetro é a ponta de recebimento de mensagens do canal para se comunicar com o ator.
+Note que o método \texttt{init} recebe \texttt{mut self} como primeiro argumento (sem uso de \texttt{\&}), isso significa que ele consome a instância. Em outras palavras, aquele que tiver posse de uma instância do \texttt{Core} do App a perderá assim que \texttt{init} for invocada, impedindo que um mesmo objeto seja instanciado como 2 atores compartilhando o mesmo espaço de memória. O segundo parâmetro é a ponta de recebimento de mensagens do canal para se comunicar com o ator.
 
-Adicionalmente, cada ramo do bloco \texttt{match} apenas obtém os valores da mensagem e delega a execução para um método privado \texttt{handle\_}. Em caso de necessidade de enviar resposta, isso não deve ser feito dentro método \texttt{handle}, assegurando assim o princípio de responsabilidade única.
+O bloco \texttt{while let Some(message) = rx.recv().await} é um loop que continua processando mensagens até que o canal seja fechado. Adicionalmente, cada ramo do bloco \texttt{match} apenas delega a execução para um método privado \texttt{handle\_}. Em caso de necessidade de enviar resposta, isso é feito dentro do ramo, assim o método privado \texttt{handle\_} é responsável apenas pela lógica de processamento da mensagem e não pela comunicação com o receptor.
 
 \subsection{Endereço}
 
