@@ -1,16 +1,18 @@
 \chapter{Estudo de Caso: Patch-Hub}
 
-Uma vez apresentadas as propostas de adaptação do Modelo de Atores para experimentação fora do domínio dos sistemas distribuídos, chega o momento de realizar um estudo de caso para aplicar a proposta em um projeto real para posterior análise de resultados. O projeto escolhido foi uma ferramenta de código aberto desenvolvida sob a organização KWorkflow (kw) chamado de Patch-Hub. Neste capítulo, será apresentado o contexto do projeto, a arquitetura original e suas limitações, os objetivos do estudo de caso e a proposta de refatoração do projeto com o uso do Modelo de Atores cuja implementação estará disponível parcialmente como apêncides e na integra no repositório do projeto.
+Uma vez apresentadas as propostas de adaptação do Modelo de Atores para experimentação fora do domínio dos sistemas distribuídos, chega o momento de realizar um estudo de caso para aplicar a proposta em um projeto real para posterior análise de resultados. 
+
+O projeto escolhido foi uma ferramenta de código aberto desenvolvida sob a organização KWorkflow (kw) chamado de Patch-Hub. Neste capítulo, será apresentado o contexto do projeto, a arquitetura original e suas limitações, os objetivos do estudo de caso e a proposta de refatoração do projeto com o uso do Modelo de Atores cuja implementação estará disponível na integra no repositório do projeto no GitHub(incluir link).
 
 \section{Contexto}
 
-Para compreender adequadamente o projeto Patch-Hub e sua importância, é necessário entender o ecossistema de desenvolvimento do kernel Linux e os desafios enfrentados pelos desenvolvedores. O Linux é um sistema operacional de código aberto baseado no kernel Unix-like desenvolvido por Linus Torvalds em 1991~\cite{linux_wikipedia}. O kernel Linux é o núcleo do sistema operacional, responsável por gerenciar recursos de hardware, processos e comunicação entre componentes do sistema~\cite{kernel_wikipedia}.
+Para compreender adequadamente o projeto Patch-Hub e sua proposta, é necessário entender o ecossistema de desenvolvimento do kernel Linux e os desafios enfrentados pelos desenvolvedores. O Linux é um sistema operacional de código aberto baseado no kernel Unix-like desenvolvido por Linus Torvalds em 1991~\cite{linux_wikipedia}. O kernel Linux é o núcleo do sistema operacional, responsável por gerenciar recursos de hardware, processos e comunicação entre componentes do sistema~\cite{kernel_wikipedia}.
 
 \subsection{O Processo de Contribuição para o Kernel Linux}
 
-O desenvolvimento do kernel Linux é um processo colaborativo que envolve milhares de desenvolvedores ao redor do mundo. Devido à sua complexidade e tamanho, o kernel é organizado em subsistemas especializados, cada um com responsabilidades específicas~\cite{kernel_subsystems}. Contribuições para o kernel, conhecidas como \textit{patches}, são tradicionalmente enviadas através de listas de discussão públicas por email e revisadas por mantenedores especializados~\cite{kernel_patches}.
+O desenvolvimento do kernel Linux é um processo colaborativo que envolve milhares de desenvolvedores ao redor do mundo. Devido à sua complexidade e tamanho, o kernel é organizado em subsistemas especializados, cada um com responsabilidades específicas~\cite{kernel_subsystems}. Contribuições para o kernel, conhecidas como \textit{patches}, são tradicionalmente enviadas através de listas de discussão públicas por email e revisadas por mantenedores especializados~\cite{kernel_patches}. 
 
-Este processo tradicional de contribuição apresenta diversos desafios. Os desenvolvedores precisam se inscrever em múltiplas listas de email e gerenciar um volume considerável de mensagens. Isso dificulta muito acompanhar o status de suas contribuições.
+Essa forma de contribuição é um processo tradicional e bem estabelecido, mas que traz diversos desafios para os desenvolvedores. Os desenvolvedores precisam se inscrever em múltiplas listas de email e gerenciar um volume considerável de mensagens. Isso dificulta muito acompanhar o status de suas contribuições.
 
 \subsection{O Projeto lore.kernel.org}
 
@@ -20,13 +22,15 @@ A API do lore suporta consultas complexas através de parâmetros de query strin
 
 \subsection{O Projeto KWorkflow}
 
-O projeto KWorkflow (kw) surgiu como uma resposta aos desafios de configuração e complexidade do ambiente de desenvolvimento para o kernel Linux~\cite{kworkflow_org}. O kw é descrito como uma "ferramenta de fluxo de trabalho de desenvolvedor de kernel" que visa reduzir a sobrecarga de configuração e fornecer ferramentas para tarefas comuns do desenvolvimento de kernel.
+O projeto KWorkflow (kw) surgiu como uma resposta a complexidade e desafios de configuração do ambiente de desenvolvimento para o kernel Linux~\cite{kworkflow_org}. O kw é descrito como uma ``ferramenta de fluxo de trabalho de desenvolvedor de kernel'' que visa reduzir a sobrecarga de configuração e fornecer ferramentas para tarefas comuns do desenvolvimento de kernel.
 
 O projeto oferece um utilitário de terminal unificado para diversas operações como compilação, deploy, debug e gerenciamento de configurações, consolidando ferramentas anteriormente dispersas.
 
 \subsection{O Patch-Hub}
 
 O Patch-Hub é uma ferramenta desenvolvida como parte do ecossistema KWorkflow, especificamente projetada para interagir com a API do lore.kernel.org~\cite{patch_hub_github}. Sua missão é agilizar a navegação e revisão de contribuições para o kernel Linux, fornecendo uma interface de usuário baseada em terminal (TUI) que simplifica o processo de descoberta, análise e acompanhamento de patches.
+
+(screenshot do patch-hub)
 
 A ferramenta permite aos desenvolvedores navegar por listas de patches, aplicar filtros de busca, visualizar conteúdo de patches e gerenciar seu fluxo de trabalho de revisão diretamente do terminal, eliminando a necessidade de alternar entre interfaces web e ferramentas de linha de comando.
 
@@ -35,7 +39,7 @@ A ferramenta permite aos desenvolvedores navegar por listas de patches, aplicar 
 A implementação original do Patch-Hub seguia uma arquitetura majoritariamente single-threaded e monolítica com inspirações no padrão arquitetural MVC. A organização do código era dada em termos dos seguintes módulos:
 
 \begin{itemize}
-    \item \textbf{\texttt{lore}}: Interface para interagir com a API do lore para buscar dados de patches
+    \item \textbf{\texttt{lore}}: Interação com a API do lore.kernel.org
     \item \textbf{\texttt{ui}}: Renderização de terminal e lógica de exibição
     \item \textbf{\texttt{cli}}: Parsing de argumentos de linha de comando
     \item \textbf{\texttt{app}}: Estado central da aplicação e gerenciamento de dados
@@ -51,20 +55,21 @@ A implementação original do Patch-Hub seguia uma arquitetura majoritariamente 
 
 A implementação do Patch-Hub (tanto a original quanto a refatorada) fornece um conjunto de funcionalidades para interagir com o arquivo de patches do kernel Linux. O sistema permite a seleção e navegação de listas de discussão arquivadas no \textit{lore.kernel.org}, apresentando os conjuntos de patches associados. Ao examinar uma série específica, a interface disponibiliza o conteúdo individual dos patches juntamente com metadados relevantes, incluindo título, autor, versão, quantidade de patches e timestamp da última atualização.
 
--- imagem --
+(screenshot dos patch details do patch-hub original)
 
 O sistema implementa operações fundamentais para o workflow de revisão de patches: aplicação de patches em repositórios locais do kernel, organização de séries em um sistema de favoritos, e composição de respostas com tags de revisão padrão, como \texttt{Reviewed-by}.
 
-A renderização do conteúdo dos patches é implementada com suporte a múltiplos backends, incluindo ferramentas externas, além de um renderizador padrão. Esta arquitetura permite variação na apresentação visual dos patches ao gosto do usuário sem comprometer a portabilidade da aplicação.
+A renderização do conteúdo dos patches é implementada com suporte a múltiplos backends, incluindo ferramentas externas, além de um renderizador padrão. Esta abordagem permite variação na apresentação visual dos patches ao gosto do usuário sem comprometer a portabilidade da aplicação.
+
 \section{Limitações da Arquitetura Original}
 
 Apesar de sua funcionalidade, a implementação original do Patch-Hub apresentava limitações arquiteturais fundamentais que comprometiam sua extensibilidade, manutenibilidade e capacidade de evolução. Essas limitações vinham de decisões de design que, embora funcionais para o escopo inicial, criavam gargalos estruturais que dificultavam a adição de novas funcionalidades e a manutenção do código no longo prazo.
 
 \subsection{Gargalo de Mutação Centralizada}
 
-O principal problema arquitetural reside na concentração de todo o estado da aplicação em uma única estrutura \texttt{App} que deve ser passada como \texttt{\&mut App} através de todo o código. Esta abordagem cria um \textit{gargalo de mutação centralizada} que viola princípios fundamentais de design modular.
+O principal problema arquitetural reside na concentração de todo o estado da aplicação em uma única estrutura \texttt{App} que deve ser passada como \texttt{\&mut App} através de todo o código. Esta abordagem cria um \textit{gargalo de mutação centralizada} que viola princípios de \textit{borrow checking} do Rust.
 
-O sistema de ownership do Rust impõe que quando uma função recebe \texttt{\&mut App}, ela adquire uma referência mutável exclusiva de toda a estrutura. Isso significa que:
+O sistema de \textit{ownership} do Rust impõe que quando uma função recebe \texttt{\&mut App}, ela adquire uma referência mutável exclusiva de toda a estrutura. Isso significa que:
 
 \begin{itemize}
     \item Nenhum outro código pode ler ou escrever qualquer campo de \texttt{App} até que essa referência seja liberada
@@ -74,11 +79,11 @@ O sistema de ownership do Rust impõe que quando uma função recebe \texttt{\&m
 
 Esta restrição força a centralização de toda lógica de mutação nos métodos de \texttt{App}, impedindo que componentes gerenciem seu próprio estado de forma independente. 
 
-O resultado é uma violação do princípio da responsabilidade única, forçando a estrutura central a conhecer detalhes de implementação de todos os seus componentes. Além disso, o princípio da inversão de dependência também é isolado fazendo com que a estrutura de alto nível dependa diretamente de mecanismos baixo nível de seus componentes internos.
+O resultado é uma violação do princípio da responsabilidade única, forçando a estrutura central a conhecer detalhes de implementação de todos os seus componentes. Além disso, o princípio da inversão de dependência também é violado, fazendo com que a estrutura de alto nível dependa diretamente de mecanismos de baixo nível de seus componentes internos.
 
 \subsection{Impossibilidade de Composição Modular}
 
-O design atual impede a composição modular de handlers e componentes devido às restrições de borrowing. Handlers de eventos devem receber \texttt{\&mut App} inteiro mesmo quando precisam acessar apenas um subconjunto específico de dados. Isso cria uma situação onde handlers não podem ser decompostos em funções auxiliares menores e também funções auxiliares que precisam de múltiplos campos de \texttt{App} enfrentam conflitos por tentarem pegar referências a partes de algo que já possui uma referência mutável.
+O design atual impede a composição modular de \textit{handlers} e componentes devido às restrições de \textit{borrowing}. \textit{Handlers} de eventos devem receber \texttt{\&mut App} inteiro mesmo quando precisam acessar apenas um subconjunto específico de dados. Isso cria uma situação onde \textit{handlers} não podem ser decompostos em funções auxiliares menores e também funções auxiliares que precisam de múltiplos campos de \texttt{App} enfrentam conflitos por tentarem pegar referências a partes de algo que já possui uma referência mutável.
 
 Esta limitação força a criação de métodos monolíticos em \texttt{App} que conhecem detalhes de implementação de múltiplos componentes, aumentando a complexidade e reduzindo a testabilidade.
 
@@ -97,7 +102,9 @@ A natureza single-threaded da aplicação cria gargalos significativos durante o
     \item Impossibilidade de realizar operações paralelas independentes
 \end{itemize}
 
-Para contornar esse problema, foi feito uso de mecanismos complicados para deixar certas regiões do código paralelas. A complicação aqui é que referências em Rust não podem ser compartilhadas entre threads pois não há garantias que uma thread vá ser encerrada antes do dono do valor referido, o que poderia causar vazamentos de memória ou condições de corrida indesejáveis.
+Para contornar esse problema, foi feito uso de mecanismos para paralelizar certas regiões do código. A complicação aqui é que referências em Rust não podem ser compartilhadas entre \textit{threads} pois não há garantias que uma \textit{thread} vá ser encerrada antes do dono do valor referido, o que poderia causar vazamentos de memória ou condições de corrida indesejáveis.
+
+(exemplo de como foi feito o paralelismo no patch-hub original)
 
 \subsection{Dificuldades de Testabilidade}
 
@@ -107,16 +114,14 @@ A arquitetura monolítica torna extremamente difícil a criação de testes unit
     \item Testes lentos devido à necessidade de inicialização completa
     \item Testes frágeis que quebram quando componentes não relacionados são modificados
     \item Impossibilidade de isolar comportamento específico para teste
-    \item Dificuldade em criar mocks e stubs para dependências externas
+    \item Dificuldade em criar \textit{mocks} e \textit{stubs} para dependências externas
 \end{itemize}
 
 Esta limitação compromete significativamente a capacidade de garantir qualidade através de testes automatizados, aumentando o risco de regressões em mudanças futuras.
 
-\textbf{Nota}: As limitações descritas acima pertenciam à implementação monolítica original do Patch-Hub. A refatoração para o Modelo de Atores resolve essas questões através de message passing, gestão independente de estado por ator, e integração com mockall para testabilidade.
-
 \section{Objetivos}
 
-Fica evidente que o Patch-Hub necessita de refatorações para tentar resolver os problemas supracitados. Em especial, fica notável uma grande necessidade de melhorias do ponto de vista da flexibilidade do sistema. Tendo em vista que o Modelo de Atores proporciona alta modularidade e baixo acoplamento aos sistemas, isso torna o Patch-Hub  um candidato interessante para experimentação e avaliação de valor da proposta. Além disso, o Patch-Hub toca em domínios suficientemente diversos para que o experimento seja bastante completo.
+Fica evidente que o Patch-Hub necessita de refatorações para tentar resolver os problemas supracitados. Em especial, fica notável uma grande necessidade de melhorias do ponto de vista da flexibilidade do sistema. Tendo em vista que o Modelo de Atores proporciona alta modularidade e baixo acoplamento aos sistemas, isso torna o Patch-Hub um candidato interessante para experimentação e avaliação de valor da proposta. Além disso, o Patch-Hub toca em domínios suficientemente diversos para que o experimento seja bastante completo.
 
 Este trabalho não criará uma reescrita completa com 100\% de compatibilidade de funcionalidades. Ao invés disso, um subconjunto das funcionalidades foi escolhido para implementação, suficiente para ter as funcionalidades principais do Patch-Hub, que são:
 
@@ -132,16 +137,18 @@ Este trabalho não criará uma reescrita completa com 100\% de compatibilidade d
 
 \section{Modelagem com Atores}
 
-Com objetivos estabelecidos, resta apenas modelar a arquitetura do Patch-Hub com o uso de atores. A modelagem é feita adotando os princípios SOLID como guias. Os atores serão aqui categorizados em 2 grupos considerando o tipo de interação que eles são responsáveis: externas ou internas.
+Com objetivos estabelecidos, foi feita uma modelagem da arquitetura do Patch-Hub com o uso de atores. A modelagem adota os princípios SOLID como guias. Os atores serão categorizados em 2 grupos considerando o tipo de interação que eles são responsáveis: externas ou internas.
 
-Os atores responsáveis por interações com componentes externos ao sistema, como por exemplo o sistema de arquivos, a internet ou o terminal. Este grupo será chamado de atores de integração pois permitem a integração do programa com outros sistemas, geral assim efeitos no mundo real.
+O primeiro grupo é formado pelos atores responsáveis por interações com componentes externos ao sistema, como por exemplo o sistema de arquivos, a internet ou o terminal. Este grupo será chamado de atores de integração pois permitem a integração do programa com outros sistemas, gerando, assim, efeitos colaterais no mundo real.
 
-O segundo grupo é formado pelos atores que irão interagir apenas com demais atores, ou seja, componentes internos ao sistema. Este grupo tem uma diferença fundamental no que diz respeito a sua testabilidade. Por dependerem apenas de outros atores, testes unitários se tornam triviais uma vez que se criem dublês (mocks). Uma vez que, testando um ator contra dublês, dá a garantia que apenas o código do próprio ator é o que influencia no resultado dos testes. Este grupo será chamado de atores de lógica pois conterá, majoritariamente, atores modelados pela lógica de negócio da aplicação.
+O segundo grupo é formado pelos atores que irão interagir apenas com demais atores, ou seja, componentes internos ao sistema. Este grupo tem uma diferença fundamental no que diz respeito a sua testabilidade. 
+
+Por dependerem apenas de outros atores, testes unitários se tornam triviais uma vez que se criem \textit{mocks}. Uma vez que, testando um ator contra \textit{mocks} que imitem o comportamento desejado dos atores de dependência, dá a garantia que apenas o código do próprio ator é o que influencia no resultado dos testes. Este grupo será chamado de atores internos por não interagirem diretamente com sistemas externos.
 
 
 \subsection{Atores de Integração}
 
-Primeiramente é necessário identificar quais são as capacidades do Patch-Hub que dependem unicamente de interação com sistemas externos ao programa, elas serão:
+Primeiramente, foi catalogado quais capacidades do Patch-Hub dependem unicamente de interação com sistemas externos ao programa que serão inclusas na versão reescrita do projeto. As capacidades escolhidas foram:
 
 \begin{itemize}
     \item Operações do sistema de arquivos
@@ -151,7 +158,7 @@ Primeiramente é necessário identificar quais são as capacidades do Patch-Hub 
     \item Execução de comandos externos
 \end{itemize}
 
-Essas capacidades não fazem parte da lógica de negócio do Patch-Hub, mas servem de bases para permitir a sua implementação. Cada uma dessas capacidades pode ser traduzida para um ator em nossa aplicação seguindo os princípios SOLID, especialmente os princípios de responsabilidade única e de segregação de interfaces.
+Essas capacidades não fazem parte da lógica de negócio do Patch-Hub, mas servem de bases para permitir a sua implementação. Cada uma delas pode ser traduzida para um ator em nossa aplicação seguindo os princípios SOLID, especialmente os princípios de responsabilidade única e de segregação de interfaces.
 
 \subsubsection{Sistema de Arquivos}
 
@@ -239,16 +246,16 @@ O ator Shell é responsável por executar comandos integrando o Patch-Hub ao she
     \item \texttt{Execute}: Executa um programa externo com comando, argumentos e entrada stdin opcionais retornando a saída padrão do programa 
 \end{itemize}
 
-\subsection{Atores de Lógica}
+\subsection{Atores Internos}
 
-É chegado o momento de se identificar as demais capacidades relacionadas à lógica da aplicação que não foram cobertas pelos atores de integração. São elas:
+As demais capacidades foram catalogadas. Dessa vez são capacidades de alto nível, ou seja, que não dependem de detalhes de implementação específicos. Elas vão depender das abstrações feitas para os atores de integração, endereçando, assim, o DIP. As capacidades escolhidas foram:
 
 \begin{itemize}
 	\item Registrar eventos com um sistema de logs
 	\item Gerenciar configurações
 	\item Acessar a Lore API
 	\item Suporte a caching das requests feitas
-	\item Desenhar a interface do usuário
+	\item Desenhar a interface do usuário (TUI)
 \end{itemize}
 
 \subsubsection{Logs}
