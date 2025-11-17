@@ -2,7 +2,11 @@
 
 Todo sistema é desenvolvido com um propósito. A forma de saber se o sistema está atendendo ao seu propósito é estabelecendo requisitos que impõem restrições e direcionam o processo de desenvolvimento para a direção correta. Os requisitos em si são uma grande área de pesquisa, mas podem ser principalmente divididos em dois grupos: funcionais e não funcionais.
 
-\textbf{Requisitos funcionais} são restrições que especificam o que o sistema deve ser capaz de fazer. Um requisito funcional para uma rede social pode ser a capacidade de postar fotos. Por outro lado, \textbf{requisitos não funcionais}, ou requisitos de qualidade, são restrições que definem como algo deve ser feito. Um requisito não funcional para a rede social mencionada pode ser o armazenamento seguro das fotos dos usuários, impedindo acesso não autorizado a elas. Em resumo, requisitos funcionais definem funcionalidades, enquanto os não funcionais estabelecem expectativas de qualidade.
+\textbf{Requisitos funcionais} são restrições que especificam o que o sistema deve ser capaz de fazer, estando fortemente relacionados à lógica de negócio do sistema, ou seja, à sua política de como operar os dados. Um requisito funcional para uma rede social pode ser a capacidade de postar fotos. 
+
+Por outro lado, \textbf{requisitos não funcionais}, ou requisitos de qualidade, são restrições que definem como algo deve ser feito. Um requisito não funcional para a rede social mencionada pode ser o armazenamento criptografado das fotos dos usuários, impedindo acesso não autorizado a elas. 
+
+Em resumo, requisitos funcionais definem funcionalidades, enquanto os não funcionais estabelecem expectativas de qualidade.
 
 
 \section{Padrões Arquiteturais}
@@ -17,25 +21,29 @@ Todavia, como explorado pelo artigo \emph{Software Patterns in Practice: an Empi
 
 Por isso, é necessário estudar e entender os padrões existentes e como isso traz consequências de longo prazo para confiabilidade, manutenibilidade, testabilidade, entre outras complicações para um sistema.
 
-A seguir, apresentam-se alguns padrões arquiteturais fundamentais que servirão como base conceitual para as discussões subsequentes neste trabalho.
+A seguir, apresentam-se alguns princípios e padrões fundamentais relacionados a arquitetura de software que servirão como base conceitual para as discussões subsequentes neste trabalho.
 
 \subsection{Princípios SOLID}
 
 Os princípios SOLID são um conjunto de diretrizes para o design de software introduzidos por Robert Martin no ano 2000. Originalmente, os princípios tinham como alvo principal sistemas orientados a objetos, todavia suas lições podem se extender muito além e ser aplicados a diversos domínios. Seus principais objetivos são criar sistemas mais flexíveis, manuteníveis e extensíveis. Seu nome, é uma sigla com as iniciais de cada um dos 5 princípios, que são:
 
 \begin{itemize}
-    \item \textbf{Single Responsibility}: Uma classe deve ter apenas uma razão para mudar, ou seja, deve ter apenas uma responsabilidade.
+    \item \textit{\textbf{Single Responsibility}} (SRP): Uma classe deve ter apenas uma razão para mudar, ou seja, deve ter apenas uma responsabilidade.
     
-    \item \textbf{Open/Closed}: Entidades de software devem estar abertas para extensão, mas fechadas para modificação.
+    \item \textit{\textbf{Open/Closed}} (OCP): Classes devem estar abertas para extensão, mas fechadas para modificação.
     
-    \item \textbf{Liskov Substitution}: Objetos de uma superclasse devem ser substituíveis por objetos de suas subclasses sem alterar a funcionalidade do programa.
+    \item \textit{\textbf{Liskov Substitution}} (LSP): Objetos de uma classe devem ser substituíveis por objetos de suas subclasses sem necessidade de modificações.
     
-    \item \textbf{Interface Segregation}: Clientes não devem ser forçados a depender de interfaces que não utilizam.
+    \item \textit{\textbf{Interface Segregation}} (ISP): Clientes não devem ser forçados a depender de interfaces que não utilizam.
     
-    \item \textbf{Dependency Inversion}: Módulos de alto nível não devem depender de módulos de baixo nível. Ambos devem depender de abstrações.
+    \item \textit{\textbf{Dependency Inversion}} (DIP): Classes de alto nível não devem depender de classes de baixo nível. Ambos devem depender de abstrações.
 \end{itemize}
 
-Estes princípios são especialmente relevantes para o Modelo de Atores, pois cada ator pode ser visto como uma unidade que segue o princípio de responsabilidade única, enquanto a comunicação baseada em mensagens facilita a inversão de dependências e a segregação de interfaces.
+Estes princípios são especialmente relevantes para o contexto do Modelo de Atores que será destrinchado no próximo capítulo. Todavia, já podem-se traçar relações entre esses princípios e as características do Modelo de Atores. 
+
+Na definição dos atores que compõem o sistema, cada ator deve, idealmente, ter apenas uma responsabilidade, seguindo, assim, o SRP. A comunicação baseada em mensagens é extremamente poderosa e flexível. Ela permite que os atores sejam facilmente estendidos apenas com a definição de uma nova mensagem e do código que a implementa, seguindo, assim, o OCP. 
+
+Além disso, as mensagens permitem a criação de uma abstração para encapsular comportamentos de baixo nível, endereçando, assim, o DIP. Por fim, o ISP pode ser garantido ao corretamente segmentar os atores de acordo com as dependências do sistema, permitindo, assim, que cada ator dependa diretamente apenas de atores relevantes para a sua responsabilidade.
 
 
 \subsection{Padrão MVC}
@@ -45,16 +53,16 @@ O padrão Model-View-Controller (MVC) é um padrão arquitetural que divide uma 
 Os três componentes do padrão MVC são:
 
 \begin{itemize}
-    \item \textbf{Model}: Representa os dados e a lógica de negócio da aplicação. É responsável por manter o estado do sistema e realizar operações sobre os dados. O Model não possui conhecimento sobre como os dados são exibidos.
+    \item \textbf{Model}: Representa os dados e a lógica de negócio da aplicação. É responsável por manter o estado do sistema e realizar operações sobre os dados. O Model não possui conhecimento sobre como os dados são exibidos nem como são coletados.
     
-    \item \textbf{View}: É responsável pela apresentação dos dados ao usuário. A View consome dados do Model e os exibe de forma adequada à interface (web, desktop, terminal, etc.). A View não deve conter lógica de negócio complexa.
+    \item \textbf{View}: É responsável pela apresentação dos dados ao usuário. A View consome dados do Model e os exibe de forma adequada à interface (web, desktop, terminal, etc.). A View não deve conter lógica complexa, apenas a lógica de apresentação.
     
-    \item \textbf{Controller}: Funciona como intermediário entre a View e o Model. Recebe entradas do usuário através da View, processa essas entradas (frequentemente chamando operações no Model) e atualiza o estado da aplicação. O Controller orquestra a comunicação entre os outros dois componentes.
+    \item \textbf{Controller}: Funciona como intermediário entre o usuário e o Model. Recebe entradas do usuário, processa essas entradas e atualiza o estado da aplicação no Model.
 \end{itemize}
 
-O MVC oferece benefícios significativos para a manutenibilidade e testabilidade de sistemas. A separação de responsabilidades permite que a lógica de negócio seja testada independentemente da interface, facilitando testes unitários. Além disso, múltiplas Views podem ser criadas para consumir o mesmo Model, permitindo reutilização de código e adaptação a diferentes contextos.
+O MVC oferece benefícios significativos para a manutenibilidade e testabilidade de sistemas. A separação de responsabilidades permite que a lógica de negócio seja testada independentemente das interfaces humano-computador, facilitando testes unitários. Além disso, múltiplas Views e multiplos Controllers podem ser criados para interagir com o mesmo Model, permitindo reutilização de código e adaptação a diferentes contextos.
 
-No entanto, o padrão MVC tradicional apresenta algumas limitações em contextos específicos. Em aplicações com requisitos complexos de concorrência ou que precisam lidar com múltiplas operações assíncronas, o Controller pode se tornar um ponto de gargalo. Além disso, em aplicações distribuídas, a comunicação síncrona típica do MVC pode não ser suficiente para atender aos requisitos de resiliência e escalabilidade.
+No entanto, o padrão MVC tradicional apresenta algumas limitações quando aplicado na prática. Em muitas de suas implementações, a View e o Controller acabam sendo implementados de forma muito acoplada, o que acabou por dar origem a novas derivações do padrão, como o Model-View-ViewModel (MVVM).
 
 
 \section{Avaliação de Adequação de Padrões}
@@ -63,18 +71,24 @@ O primeiro e mais importante fator a ser analisado para se identificar a adequa�
 
 Uma outra caracteristica a ser considerada é o contexto da aplicação. Existem padrões que abordam desafios comuns para aplicações de nuvem, outros para aplicações de interface gráfica. Escolher um padrão de um domínio distinto irá fornecer poucas ferramentas úteis para a resolução do problema.
 
-Por fim, é necessário entender os custos que aquele padrão trás. Qual impacto esperado na performance do sistema? O quanto ele enrijece a estrutura pro projeto? O quão mais complicado fica a organização do código? Todas essas perguntas precisam ser feitas.
+Por fim, é necessário entender os custos que aquele padrão trás. Qual impacto esperado na performance do sistema? O quanto ele enrijece a estrutura pro projeto? O quão mais complicado fica a organização do código? Todas essas perguntas precisam ser feitas durante a análise.
 
-\section{Justificativa para o Modelo de Atores}
+\subsection{Adequação do Modelo de Atores}
 
-O propósito deste trabalho é experimentar com um padrão arquitetural específico chamado Modelo de Atores. A ideia é usar este padrão em um projeto que está bem distante dos requisitos de qualidade que ele tradicionalmente atende e entender quais são as consequências.
+O Modelo de Atores será bem definido do ponto de vista teórico e prático no próximo capítulo. Porém, avaliando o Modelo de Atores em termos de adequação para a criação de aplicações centralizadas, é possível identificar que o padrão não é adequado para o contexto.
 
-Esta abordagem experimental permitirá:
+Primeiramente, pelo fato de que o Modelo de Atores foi originalmente concebido para sistemas distribuídos, isso por si só já é um indicativo de que ele não é adequado para o contexto de aplicações centralizadas. Aplicações distribuídas tem necessidade de ser resilientes, escaláveis tolerantes a falhas e permitir comunicação assíncrona remota, nenhuma dessas características é algo fortemente procurado em aplicações centralizadas.
+
+Ademais, a linguagem de programação Rust, escolhida para a implementação do projeto, não possui o Modelo de Atores como paradigma central, diferentemente de linguagens como Elixir. Apesar de isso não ser um impeditivo para a aplicação do padrão, é uma característica que deve ser considerada. Rust é uma linguagem que prioriza a segurança de memória e a concorrência confiável através de checagens em tempo de compilação, enquanto o Modelo de Atores necessita de tecnologias mais flexíveis e dinâmicas.
+
+Desse modo, com os critérios de adequação utilizados, é possível concluir que o Modelo de Atores não é adequado para a criação de aplicações centralizadas em Rust e que aplicar ele neste contexto irá trazer consequências negativas para o projeto.
+
+O objetivo deste trabalho é então realizar um esforço para adaptar o Modelo de Atores para o contexto de aplicações centralizadas em Rust, buscando entender se é possível extrair valor dele mesmo fora do seu contexto natural. Esse experimento vai permitir:
 
 \begin{itemize}
-    \item Explorar os limites do Modelo de Atores em contextos não distribuídos
+    \item Explorar os limites do Modelo de Atores
     \item Avaliar se os benefícios do padrão se mantêm em aplicações centralizadas
-    \item Identificar possíveis adaptações necessárias para diferentes domínios
+    \item Identificar possíveis adaptações do padrão
     \item Contribuir para o conhecimento sobre a aplicabilidade de padrões arquiteturais
 \end{itemize}
 

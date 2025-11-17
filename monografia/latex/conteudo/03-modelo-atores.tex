@@ -36,7 +36,7 @@ Isso significa que as mensagens enviadas podem levar tempo ilimitado para chegar
 
 A ordenação indeterminada de mensagens, somada ao fato de que as mensagens podem alterar o comportamento de um Ator, tem por consequência que as mesmas condições iniciais podem resultar em resultados diferentes. Além disso, o próprio sistema é dito não ter um estado global definido. Como a comunicação é assíncrona, a qualquer momento é possível ter mensagens transito ou Atores em estado transitório não sendo possível garantir que em algum momento todos os atores estarão em estados bem definidos.
 
-Isso é o que garante a justiça (fairness).
+Em resumo, a indeterminação é uma característica fundamental do Modelo de Atores que é essencial para a garantia de justiça e deve ser sempre considerada durante o desenvolvimento de um sistema para assegurar o seu correto funcionamento.
 
 \section{Implementações Conhecidas}
 
