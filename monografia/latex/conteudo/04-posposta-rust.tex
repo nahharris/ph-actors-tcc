@@ -304,7 +304,7 @@ Também vale ressaltar que o "uso após liberação" de um canal oneshot é veri
 
 \section{Representação do Ator}
 
-Uma vez definidas quais abstrações a serem usadas, é hora de definir como um ator será em termos de código Rust. 
+Uma vez definidas quais abstrações a serem usadas, é hora de definir como um ator será em termos de código Rust.
 
 Primeiramente, haverá um módulo para cada ator, e se um ator é subordinado à existência de outro ator pela lógica de negócio, ele pode ser criado como um submódulo.
 
@@ -496,6 +496,8 @@ impl App {
 No exemplo acima, a struct \texttt{App} encapsula o \texttt{Sender} do canal \texttt{mpsc} e fornece métodos públicos que abstraem completamente a lógica de envio de mensagens. O método \texttt{thing()} cria um canal \texttt{oneshot} para receber a resposta, envia a mensagem \texttt{GetThing} e aguarda a resposta. O método \texttt{thing\_alt()} oferece uma alternativa onde retorna o \texttt{Receiver} diretamente, permitindo que o invocador decida quando aguardar pela resposta. O método \texttt{set\_thing()} simplesmente envia a mensagem \texttt{SetThing} com o valor fornecido.
 
 Essa abstração permite que outros atores interajam com o ator sem precisar se preocupar com detalhes de comunicação por canais, mantendo a interface limpa e tipada.
+
+(diagrama ator)
 
 \section{Tratamento de Erros}
 
