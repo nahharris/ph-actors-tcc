@@ -1,7 +1,6 @@
 \section{Análise de Resultados}
 
--- Resolveu os problemas arquiteturais do sistema original --
-
+Por fim, foi feita uma análise qualitativa e quantitativa da aplicação produzida. O foco é em analisar o impacto da arquitetura proposta no sistema, buscando entender quais benefícios foram obtidos e quais custos foram incorridos.
 
 \subsection{Desempenho}
 
@@ -13,11 +12,34 @@
 
 \subsection{Testabilidade}
 
+A abordagem do Modelo de Atores facilita imensamente a criação de testes unitários. Como cada ator, seguindo o SRP, possui um domínio bem definido, é fácil de se criar \textit{mocks} para suas dependências. Desse modo, é possível testar cada ator isoladamente, garantindo que o sistema comporte-se corretamente.
+
+Um dos principais ganhos desse isolamento é a facilidade de se testar atores diferentes em paralelo, realizando testes com resultados determinísticos e rápidos.
+
+Um exemplo dessa melhoria pode se notar comparando a abordagem anterior para testes do antigo Patch-Hub com foco nas variáveis de ambiente. Como a versão antiga não isolava o gerenciamento de variáveis de ambiente, os testes quando executados em paralelo podiam ser afetados por condições de corrida ao modificarem o ambiente de execução. A solução para isso no projeto original, foi forçar a execução em série de alguns testes que eram dependentes de variáveis de ambiente.
+
+Na versão reescrita, os testes que vão interagir (direta ou indiretamente) com variáveis de ambiente recebem uma instância \textit{mock} do ator Variáveis de Ambiente que é completamente independente das demais instâncias. Com isso, todos os testes podem ser executados em paralelo sem risco de condições de corrida ou qualquer outro tipo de interferência.
+
+Quantitativamente, a facilidade de testabilidade pode ser medida pela cobertura de testes que saiu de 18\% para 49\%
 -- Facilmente testável, aumentando de 18\% para +60\% de cobertura --
 
 \subsection{Experiência do Desenvolvedor}
 
--- Fácil de entender e modificar, aumentando a produtividade --
+O mais notável ganho no que toca a experiência do desenvolvedor é a facilidade de compreensão e modificação do código. Tendo-se isolado as responsabilidades em unidades menores e mais focadas, fica mais fácil entender o propósito de cada parte do código.
+
+Por outro lado, existem alguns custos a serem pagos se tratando da transparência do código em si. Observe a seguinte invocação de método realizada em um \textit{handler} do ator Lore API:
+
+
+\begin{lstlisting}[language=Rust, caption=Exemplo de envio de mensagem para um ator]
+    let response = self
+        .net
+        .get(ArcStr::from(&url), Some(headers))
+        .await?;
+\end{lstlisting}
+
+Existe uma dificuldade de encontrar o código que será executado ao se enviar essa mensagem. Note que o método \texttt{get} do ator Rede é apenas um \textit{wrapper} para fazer o uso de um canal para enviar a mensagem e receber a resposta, logo, sua definição não informa ao usuário o que de fato será executado.
+
+Para poder encontrar o código que será executado, é necessário navegar manualmente pelo código fonte encontrando o módulo \texttt{net/core.rs} e encontrar o método \texttt{handle_get}. Essa indireção torna o código opaco para o usuário, além de evidentemente criar uma sobrecarga em tempo de execução.
 
 \subsection{Trabalhos Futuros}
 
