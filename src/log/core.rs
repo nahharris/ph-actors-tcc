@@ -94,50 +94,11 @@ impl Core {
         let latest_log_path = ArcPath::from(&log_dir.join("latest.log"));
 
         // Create log directory and files
-        fs.mkdir(log_dir.clone()).await.map_err(|e| match e {
-            crate::error::FsError::Fatal(fatal) => LogError::Fatal(fatal),
-            crate::error::FsError::OperationFailed {
-                path,
-                operation,
-                source,
-                ..
-            } => LogError::FileOperationFailed {
-                path: path.unwrap_or_else(|| log_dir.to_string_lossy().to_string()),
-                operation,
-                source,
-            },
-        })?;
+        fs.mkdir(log_dir.clone()).await?;
 
-        let log_file = fs.write_file(log_path.clone()).await.map_err(|e| match e {
-            crate::error::FsError::Fatal(fatal) => LogError::Fatal(fatal),
-            crate::error::FsError::OperationFailed {
-                path,
-                operation,
-                source,
-                ..
-            } => LogError::FileOperationFailed {
-                path: path.unwrap_or_else(|| log_path.to_string_lossy().to_string()),
-                operation,
-                source,
-            },
-        })?;
+        let log_file = fs.write_file(log_path.clone()).await?;
 
-        let latest_log_file =
-            fs.write_file(latest_log_path.clone())
-                .await
-                .map_err(|e| match e {
-                    crate::error::FsError::Fatal(fatal) => LogError::Fatal(fatal),
-                    crate::error::FsError::OperationFailed {
-                        path,
-                        operation,
-                        source,
-                        ..
-                    } => LogError::FileOperationFailed {
-                        path: path.unwrap_or_else(|| latest_log_path.to_string_lossy().to_string()),
-                        operation,
-                        source,
-                    },
-                })?;
+        let latest_log_file = fs.write_file(latest_log_path.clone()).await?;
 
         Ok(Self {
             fs,

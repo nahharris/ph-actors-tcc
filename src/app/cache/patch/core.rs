@@ -204,23 +204,7 @@ impl Core {
     ) -> Result<String, CacheError> {
         let cache_path = self.data.get_cache_path(list, message_id);
 
-        let file = self
-            .fs
-            .read_file(cache_path.clone())
-            .await
-            .map_err(|e| match e {
-                crate::error::FsError::Fatal(fatal) => CacheError::Fatal(fatal),
-                crate::error::FsError::OperationFailed {
-                    path,
-                    operation,
-                    source,
-                    ..
-                } => CacheError::FileOperationFailed {
-                    path: path.unwrap_or_else(|| cache_path.to_string_lossy().to_string()),
-                    operation,
-                    source,
-                },
-            })?;
+        let file = self.fs.read_file(cache_path.clone()).await?;
 
         // Read the content
         use tokio::io::AsyncReadExt;
@@ -248,42 +232,11 @@ impl Core {
 
         // Create parent directory if it doesn't exist
         if let Some(parent) = cache_path.parent() {
-            self.fs
-                .mkdir(ArcPath::from(parent))
-                .await
-                .map_err(|e| match e {
-                    crate::error::FsError::Fatal(fatal) => CacheError::Fatal(fatal),
-                    crate::error::FsError::OperationFailed {
-                        path,
-                        operation,
-                        source,
-                        ..
-                    } => CacheError::FileOperationFailed {
-                        path: path.unwrap_or_else(|| cache_path.to_string_lossy().to_string()),
-                        operation,
-                        source,
-                    },
-                })?;
+            self.fs.mkdir(ArcPath::from(parent)).await?;
         }
 
         // Write the file
-        let mut file = self
-            .fs
-            .write_file(cache_path.clone())
-            .await
-            .map_err(|e| match e {
-                crate::error::FsError::Fatal(fatal) => CacheError::Fatal(fatal),
-                crate::error::FsError::OperationFailed {
-                    path,
-                    operation,
-                    source,
-                    ..
-                } => CacheError::FileOperationFailed {
-                    path: path.unwrap_or_else(|| cache_path.to_string_lossy().to_string()),
-                    operation,
-                    source,
-                },
-            })?;
+        let mut file = self.fs.write_file(cache_path.clone()).await?;
 
         use tokio::io::AsyncWriteExt;
         file.write_all(content.as_bytes())

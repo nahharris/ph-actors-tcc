@@ -582,3 +582,79 @@ pub fn fs_error(
         source,
     }
 }
+
+fn fs_path_or_unknown(path: Option<String>) -> String {
+    path.unwrap_or_else(|| "unknown filesystem path".to_string())
+}
+
+impl From<NetError> for LoreApiError {
+    fn from(error: NetError) -> Self {
+        match error {
+            NetError::Fatal(fatal) => LoreApiError::Fatal(fatal),
+            NetError::RequestFailed {
+                url,
+                message,
+                retryable,
+                ..
+            } => LoreApiError::RequestFailed {
+                endpoint: url,
+                message,
+                retryable,
+            },
+        }
+    }
+}
+
+impl From<FsError> for ConfigError {
+    fn from(error: FsError) -> Self {
+        match error {
+            FsError::Fatal(fatal) => ConfigError::Fatal(fatal),
+            FsError::OperationFailed {
+                path,
+                operation,
+                source,
+                ..
+            } => ConfigError::FileOperationFailed {
+                path: fs_path_or_unknown(path),
+                operation,
+                source,
+            },
+        }
+    }
+}
+
+impl From<FsError> for CacheError {
+    fn from(error: FsError) -> Self {
+        match error {
+            FsError::Fatal(fatal) => CacheError::Fatal(fatal),
+            FsError::OperationFailed {
+                path,
+                operation,
+                source,
+                ..
+            } => CacheError::FileOperationFailed {
+                path: fs_path_or_unknown(path),
+                operation,
+                source,
+            },
+        }
+    }
+}
+
+impl From<FsError> for LogError {
+    fn from(error: FsError) -> Self {
+        match error {
+            FsError::Fatal(fatal) => LogError::Fatal(fatal),
+            FsError::OperationFailed {
+                path,
+                operation,
+                source,
+                ..
+            } => LogError::FileOperationFailed {
+                path: fs_path_or_unknown(path),
+                operation,
+                source,
+            },
+        }
+    }
+}

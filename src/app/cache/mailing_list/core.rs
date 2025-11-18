@@ -218,44 +218,11 @@ impl Core {
 
         // Create parent directory if it doesn't exist
         if let Some(parent) = self.data.cache_path.parent() {
-            self.fs
-                .mkdir(ArcPath::from(parent))
-                .await
-                .map_err(|e| match e {
-                    FsError::Fatal(fatal) => CacheError::Fatal(fatal),
-                    FsError::OperationFailed {
-                        path,
-                        operation,
-                        source,
-                        ..
-                    } => CacheError::FileOperationFailed {
-                        path: path
-                            .unwrap_or_else(|| self.data.cache_path.to_string_lossy().to_string()),
-                        operation,
-                        source,
-                    },
-                })?;
+            self.fs.mkdir(ArcPath::from(parent)).await?;
         }
 
         // Write the file
-        let mut file = self
-            .fs
-            .write_file(self.data.cache_path.clone())
-            .await
-            .map_err(|e| match e {
-                FsError::Fatal(fatal) => CacheError::Fatal(fatal),
-                FsError::OperationFailed {
-                    path,
-                    operation,
-                    source,
-                    ..
-                } => CacheError::FileOperationFailed {
-                    path: path
-                        .unwrap_or_else(|| self.data.cache_path.to_string_lossy().to_string()),
-                    operation,
-                    source,
-                },
-            })?;
+        let mut file = self.fs.write_file(self.data.cache_path.clone()).await?;
 
         use tokio::io::AsyncWriteExt;
         file.write_all(content.as_bytes())

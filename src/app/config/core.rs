@@ -103,23 +103,7 @@ impl Core {
     /// `Ok(())` if the configuration was loaded successfully.
     async fn handle_load(&mut self) -> Result<(), ConfigError> {
         let path_str = self.path.to_string_lossy().to_string();
-        let mut file = self
-            .fs
-            .read_file(self.path.clone())
-            .await
-            .map_err(|e| match e {
-                crate::error::FsError::Fatal(fatal) => ConfigError::Fatal(fatal),
-                crate::error::FsError::OperationFailed {
-                    path,
-                    operation,
-                    source,
-                    ..
-                } => ConfigError::FileOperationFailed {
-                    path: path.unwrap_or_else(|| path_str.clone()),
-                    operation,
-                    source,
-                },
-            })?;
+        let mut file = self.fs.read_file(self.path.clone()).await?;
         let mut contents = String::new();
         use tokio::io::AsyncReadExt;
         file.read_to_string(&mut contents)
@@ -157,23 +141,7 @@ impl Core {
                 ),
             }
         })?;
-        let mut file = self
-            .fs
-            .write_file(self.path.clone())
-            .await
-            .map_err(|e| match e {
-                crate::error::FsError::Fatal(fatal) => ConfigError::Fatal(fatal),
-                crate::error::FsError::OperationFailed {
-                    path,
-                    operation,
-                    source,
-                    ..
-                } => ConfigError::FileOperationFailed {
-                    path: path.unwrap_or_else(|| path_str.clone()),
-                    operation,
-                    source,
-                },
-            })?;
+        let mut file = self.fs.write_file(self.path.clone()).await?;
         use tokio::io::AsyncWriteExt;
         file.write_all(contents.as_bytes()).await.map_err(|e| {
             ConfigError::FileOperationFailed {

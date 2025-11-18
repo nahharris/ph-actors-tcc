@@ -447,48 +447,45 @@ impl App {
         let (tx, rx) = oneshot::channel();
         let message = Message::GetThing { tx };
         
-        self.tx.send(message).await
-            .map_err(|_| {
-                AppError::Fatal(FatalActorError::ActorSendFailed {
-                    actor_name: "App",
-                    operation: "get thing".to_string(),
-                })
-            })?;
-        
-        rx.await
-            .map_err(|_| {
-                AppError::Fatal(FatalActorError::ActorRecvFailed {
-                    actor_name: "App",
-                    operation: "get thing".to_string(),
-                })
-            })?
+        self.tx.send(message).await.map_err(|_| {
+            AppError::Fatal(FatalActorError::ActorSendFailed {
+                actor_name: "App",
+                operation: "get thing".to_string(),
+            })
+        })?;
+
+        rx.await.map_err(|e| {
+            AppError::Fatal(FatalActorError::ActorRecvFailed {
+                actor_name: "App",
+                operation: "get thing".to_string(),
+                source: e,
+            })
+        })?
     }
     
     pub async fn thing_alt(&self) -> Result<oneshot::Receiver<Result<i32, AppError>>, AppError> {
         let (tx, rx) = oneshot::channel();
         let message = Message::GetThing { tx };
         
-        self.tx.send(message).await
-            .map_err(|_| {
-                AppError::Fatal(FatalActorError::ActorSendFailed {
-                    actor_name: "App",
-                    operation: "get thing".to_string(),
-                })
-            })?;
-        
+        self.tx.send(message).await.map_err(|_| {
+            AppError::Fatal(FatalActorError::ActorSendFailed {
+                actor_name: "App",
+                operation: "get thing".to_string(),
+            })
+        })?;
+
         Ok(rx)
     }
     
     pub async fn set_thing(&self, value: i32) -> Result<(), AppError> {
         let message = Message::SetThing { value };
         
-        self.tx.send(message).await
-            .map_err(|_| {
-                AppError::Fatal(FatalActorError::ActorSendFailed {
-                    actor_name: "App",
-                    operation: "set thing".to_string(),
-                })
+        self.tx.send(message).await.map_err(|_| {
+            AppError::Fatal(FatalActorError::ActorSendFailed {
+                actor_name: "App",
+                operation: "set thing".to_string(),
             })
+        })
     }
 }
 \end{lstlisting}
@@ -647,30 +644,7 @@ Note que o operador \texttt{?} é usado para propagar erros automaticamente. Se 
 
 \subsection{Erros Recuperáveis e Não-Recuperáveis}
 
-O sistema distingue entre erros recuperáveis e não-recuperáveis através de um atributo \texttt{retryable} que indica se a operação pode ser tentada novamente.
-
-Essa distinção permite que a aplicação tome decisões inteligentes sobre como lidar com erros, como implementar retry automático para erros, ou desligar graciosamente para erros fatais.
-
-\subsection{Funções Auxiliares para Criação de Erros}
-
-Para simplificar a criação de erros específicos de domínio a partir de erros de bibliotecas externas, o sistema fornece funções auxiliares. Por exemplo, para converter erros de IO do sistema de arquivos em \texttt{FsError}:
-
-\begin{lstlisting}[language=Rust, caption=Função auxiliar para criação de erros de sistema de arquivos]
-pub fn fs_error(
-    path: Option<impl Into<String>>,
-    operation: impl Into<String>,
-    source: std::io::Error,
-) -> FsError {
-    FsError::OperationFailed {
-        path: path.map(|p| p.into()),
-        operation: operation.into(),
-        retryable: source.is_retryable(),
-        source,
-    }
-}
-\end{lstlisting}
-
-Essas funções auxiliares garantem que informações relevantes sobre o contexto do erro sejam preservadas e que a informação sobre recuperabilidade seja determinada automaticamente baseada nas características do erro subjacente.
+O sistema distingue entre erros recuperáveis e não-recuperáveis através de atributos ou da variante \texttt{Fatal}. Essa distinção permite que a aplicação tome decisões inteligentes sobre como lidar com erros, como implementar \textit{retry} automático para erros, ou desligar graciosamente para erros fatais.
 
 \section{Testabilidade e Mocks}
 
@@ -678,7 +652,7 @@ Uma das principais vantagens da arquitetura baseada em atores é a facilidade de
 
 \subsection{Mockall}
 
-Para simplificar a criação de mocks, este trabalho faz uso da biblioteca \texttt{mockall}, que gera automaticamente implementações mock a partir de traits ou structs. Isso elimina a necessidade de escrever manualmente código boilerplate para mocks e garante que os mocks permaneçam sincronizados com as interfaces reais. O código para mock de um ator deve ser colocado no arquivo \texttt{mock.rs} do módulo do ator e o módulo deve ser declarado como:
+Para simplificar a criação de mocks, este trabalho faz uso da biblioteca \texttt{mockall}, que gera automaticamente implementações \textit{mock} a partir de traits ou structs. Isso elimina a necessidade de escrever manualmente código \textit{boilerplate} para \textit{mocks} e garante que os \textit{mocks} permaneçam sincronizados com as interfaces reais. O código para \textit{mock} de um ator deve ser colocado no arquivo \texttt{mock.rs} do módulo do ator e o módulo deve ser declarado como:
 
 \begin{lstlisting}[language=Rust, caption=Exemplo de declaração de módulo para mock]
 #[cfg(test)]
@@ -704,7 +678,7 @@ A macro \texttt{mock!} do mockall gera automaticamente uma estrutura com nome \t
 
 \subsection{Integração de Mocks}
 
-Para permitir a substituição fácil entre implementações reais e mockadas, o sistema usa atributos de compilação condicional (\texttt{\#[cfg(test)]} e \texttt{\#[cfg(not(test))]}) para alternar entre as implementações:
+Para permitir a substituição fácil entre implementações reais e mockadas, deve-se usar atributos de compilação condicional (\texttt{\#[cfg(test)]} e \texttt{\#[cfg(not(test))]}) para alternar entre as implementações:
 
 \begin{lstlisting}[language=Rust, caption=Alternância entre implementações reais e mockadas]
 #[cfg(not(test))]
@@ -724,26 +698,29 @@ impl App {
 }
 \end{lstlisting}
 
-Durante a compilação normal, o sistema usa a implementação real \texttt{OtherActor}. Durante a compilação de testes, automaticamente substitui por \texttt{MockOtherActor}. Com o uso de compilação condicional, é possível implementar uma infraestrutura de testes bastante robusta que terá nenhum impacto no código de produção.
+Durante a compilação normal, a implementação real \texttt{OtherActor} é usada. Durante a compilação de testes, automaticamente substitui por \texttt{MockOtherActor}. Com o uso de compilação condicional, é possível implementar uma infraestrutura de testes bastante robusta que terá nenhum impacto no código de produção.
 
 \subsection{Testes Unitários}
 
-Com mocks em vigor, escrever testes unitários torna-se direto. Cada teste pode configurar o comportamento esperado de suas dependências mockadas e verificar que o ator sob teste se comporta corretamente:
+Com \textit{mocks} em vigor, escrever testes unitários torna-se direto. Cada teste pode configurar o comportamento esperado de suas dependências \textit{mockadas} e verificar que o ator sob teste se comporta corretamente:
 
 \begin{lstlisting}[language=Rust, caption=Exemplo de teste unitário com mocks]
 #[tokio::test]
 async fn test_my_actor_operation() {
     let mut mock_dep = MockOtherActor::new();
-    mock_dep
+    
+    // Configura o comportamento esperado do mock
+    mock_dep 
         .expect_get_value()
         .times(1)
         .returning(|| Ok(42));
     
     let actor = App::spawn(mock_dep);
+
     let result = actor.operation().await;
     
     assert_eq!(result, Ok(42));
 }
 \end{lstlisting}
 
-Os mocks permitem testar tanto cenários de sucesso quanto de falha, validando o tratamento de erros e garantindo que as interações entre atores funcionam corretamente em isolamento.
+Os \textit{mocks} permitem testar tanto cenários de sucesso quanto de falha, validando o tratamento de erros e garantindo que as interações entre atores funcionam corretamente em isolamento.

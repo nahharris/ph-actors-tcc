@@ -137,23 +137,7 @@ impl Core {
             ArcStr::from("text/html,application/xhtml+xml,application/xml"),
         );
 
-        let response = self
-            .net
-            .get(ArcStr::from(&url), Some(headers))
-            .await
-            .map_err(|e| match e {
-                crate::error::NetError::Fatal(fatal) => LoreApiError::Fatal(fatal),
-                crate::error::NetError::RequestFailed {
-                    url,
-                    message,
-                    retryable,
-                    ..
-                } => LoreApiError::RequestFailed {
-                    endpoint: url,
-                    message,
-                    retryable,
-                },
-            })?;
+        let response = self.net.get(ArcStr::from(&url), Some(headers)).await?;
         // Check for end of feed indicator
         if <ArcStr as AsRef<str>>::as_ref(&response) == "</feed>"
             || response.contains("[No results found]")
@@ -200,23 +184,7 @@ impl Core {
             ArcStr::from("text/html,application/xhtml+xml,application/xml"),
         );
 
-        let html = self
-            .net
-            .get(url, Some(headers))
-            .await
-            .map_err(|e| match e {
-                crate::error::NetError::Fatal(fatal) => LoreApiError::Fatal(fatal),
-                crate::error::NetError::RequestFailed {
-                    url,
-                    message,
-                    retryable,
-                    ..
-                } => LoreApiError::RequestFailed {
-                    endpoint: url,
-                    message,
-                    retryable,
-                },
-            })?;
+        let html = self.net.get(url, Some(headers)).await?;
         parse::parse_available_lists_html(&html, min_index)
     }
 
@@ -234,22 +202,7 @@ impl Core {
             ArcStr::from("text/html,application/xhtml+xml,application/xml"),
         );
 
-        self.net
-            .get(ArcStr::from(&url), Some(headers))
-            .await
-            .map_err(|e| match e {
-                crate::error::NetError::Fatal(fatal) => LoreApiError::Fatal(fatal),
-                crate::error::NetError::RequestFailed {
-                    url,
-                    message,
-                    retryable,
-                    ..
-                } => LoreApiError::RequestFailed {
-                    endpoint: url,
-                    message,
-                    retryable,
-                },
-            })
+        Ok(self.net.get(ArcStr::from(&url), Some(headers)).await?)
     }
 
     /// Handles GET raw patch requests
@@ -263,22 +216,7 @@ impl Core {
         let mut headers = HashMap::new();
         headers.insert(ArcStr::from("Accept"), ArcStr::from("text/plain"));
 
-        self.net
-            .get(ArcStr::from(&url), Some(headers))
-            .await
-            .map_err(|e| match e {
-                crate::error::NetError::Fatal(fatal) => LoreApiError::Fatal(fatal),
-                crate::error::NetError::RequestFailed {
-                    url,
-                    message,
-                    retryable,
-                    ..
-                } => LoreApiError::RequestFailed {
-                    endpoint: url,
-                    message,
-                    retryable,
-                },
-            })
+        Ok(self.net.get(ArcStr::from(&url), Some(headers)).await?)
     }
 
     /// Handles GET patch metadata requests
@@ -292,21 +230,6 @@ impl Core {
         let mut headers = HashMap::new();
         headers.insert(ArcStr::from("Accept"), ArcStr::from("application/json"));
 
-        self.net
-            .get(ArcStr::from(&url), Some(headers))
-            .await
-            .map_err(|e| match e {
-                crate::error::NetError::Fatal(fatal) => LoreApiError::Fatal(fatal),
-                crate::error::NetError::RequestFailed {
-                    url,
-                    message,
-                    retryable,
-                    ..
-                } => LoreApiError::RequestFailed {
-                    endpoint: url,
-                    message,
-                    retryable,
-                },
-            })
+        Ok(self.net.get(ArcStr::from(&url), Some(headers)).await?)
     }
 }
