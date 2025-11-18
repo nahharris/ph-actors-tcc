@@ -8,7 +8,11 @@ Por fim, foi feita uma análise qualitativa e quantitativa da aplicação produz
 
 \subsection{Extensibilidade}
 
--- Fácil adição de novos atores, facil implementação de novas mensagens --
+Extender funcionalidades do sistema é uma tarefa bastante simples. Como o código todo segue padrões de design bem definidos, é possível adicionar novas funcionalidades sem a necessidade de grandes refatorações.
+
+Um exemplo dessa facilidade é a adição de novos atores. Para adicionar um novo ator, basta criar um novo módulo seguindo o padrão estabelecido, intanciá-lo e injetá-lo como dependência dos atores que vão usufruir de suas funcionalidades.
+
+Também criar uma nova mensagem é muito simples. Apenas é necessário adicionar uma nova variante ao enum de mensagens do ator correspondente, atualizar o bloco \texttt{match} que lida com as mensagens recebidas pelo ator para chamar o novo \textit{handler} e implementar um método na interface pública do ator para que outros atores possam enviar essa nova mensagem.
 
 \subsection{Testabilidade}
 
@@ -20,8 +24,11 @@ Um exemplo dessa melhoria pode se notar comparando a abordagem anterior para tes
 
 Na versão reescrita, os testes que vão interagir (direta ou indiretamente) com variáveis de ambiente recebem uma instância \textit{mock} do ator Variáveis de Ambiente que é completamente independente das demais instâncias. Com isso, todos os testes podem ser executados em paralelo sem risco de condições de corrida ou qualquer outro tipo de interferência.
 
-Quantitativamente, a facilidade de testabilidade pode ser medida pela cobertura de testes que saiu de 18\% para 49\%
--- Facilmente testável, aumentando de 18\% para +60\% de cobertura --
+%% 48.95% coverage, 1707/3487 lines covered
+%% 16.53% coverage, 281/1700 lines covered
+
+Quantitativamente, a facilidade de testabilidade pode ser medida pela cobertura de testes que saiu de 16.53\% para 48.95\%. Evidente que a reescrita não corresponde exatamente à implementação original, todavia, o aumento de cobertura é significativo.
+
 
 \subsection{Experiência do Desenvolvedor}
 
@@ -41,7 +48,8 @@ Existe uma dificuldade de encontrar o código que será executado ao se enviar e
 
 Para poder encontrar o código que será executado, é necessário navegar manualmente pelo código fonte encontrando o módulo \texttt{net/core.rs} e encontrar o método \texttt{handle_get}. Essa indireção torna o código opaco para o usuário, além de evidentemente criar uma sobrecarga em tempo de execução.
 
-\subsection{Trabalhos Futuros}
+\subsection{Complexidade do Código}
 
-- Ciclos de dependência
-- Supervisores
+Uma diferença a ser considerada é o tamanho da base de código. A versão reescrita possui aproximadamente o dobro do tamanho da versão original, apesar de não ser uma implementação completa. Isso é um forte indicativo de que a abordagem do Modelo de Atores tende a produzir uma base de código maior. Apesar disso não necessariamente ser um problema, uma base de código maior carece de cuidados especiais para manter a qualidade e a legibilidade a longo prazo.
+
+Outra dificuldade crucial a ser considerada está no uso de código assíncrono. Rust é uma linguagem que foi projetada para ser segura em primeiro lugar, o que implica numa série de asserções de segurança que devem ser feitas para garantir que o código assíncrono seja usado corretamente. O suporte a programação assíncrona em Rust ainda está em desenvolvimento, onde várias ferramentas da linguagem ainda não estão perfeitamente maduras. Isso não foi um impeditivo para o desenvolvimento deste trabalho, mas poderia ser em um projeto diferente e mais complexo.
