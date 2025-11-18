@@ -1,0 +1,34 @@
+\section{Conclusão}
+
+
+
+\subsection{Trabalhos Futuros}
+
+Por fim, ficam sugestões para trabalhos futuros considerando pontos da proposta que não foram implementados e que podem ser melhorados.
+
+\subsubsection{Gerenciamento de Ciclos de Dependências}
+
+O primeiro ponto a ser considerado é o gerenciamento de ciclos de dependências. Neste trabalho, não é oferecida uma solução universal para ciclos de dependências. No escopo do trabalho, houveram duas situações que geraram ciclos de dependências:
+
+\begin{itemize}
+    \item Ciclos de dependência entre o ator Log e o ator Fs.
+    \item Ciclos de dependência entre o ator Terminal e o ator App.
+\end{itemize}
+
+Para o primeiro caso, o Log depende do Fs para persistir as mensagens em arquivos de log. Por sua vez, o Fs depende do Log para registrar erros de operações de arquivos.
+
+Infelizmente, a ``solução'' adotada foi a de abrir mão do registro de erros de operações de arquivos no ator Fs diretamente. AAo invés disso,ele apenas retorna valores do tipo \texttt{Result<T, FsError>} para quem solicitar algum serviço e esse, por sua vez, seria responsável por registrar o erro caso ocorra.
+
+No segundo caso, existe um ciclo de dependência maior. O App depende do ator Ui para exibir as informações na tela. Por sua vez, o Ui depende do Terminal para efetivamente desenhar na tela. Por fim, o Terminal depende do App para poder enviar eventos de teclado para que o App possa processar.
+
+Nesse segundo caso, a solução adotada foi inverter o sentido de uma dependência. Ao invés do Terminal enviar eventos para o App, o App solicita eventos ao Terminal através de \textit{polling}. O Terminal fica encarregado de manter uma fila armazenando os eventos até que o App os solicite.
+
+A segunda solução não garantidamente é satisfatória universalmente. Portanto, se faz necessária a pesquisa e desenvolvimento de uma solução mais robusta para esse problema.
+
+\subsubsection{Supervisores}
+
+Nas implementações conhecidas do Modelo de Atores, em geral existe um tipo de ator especial chamado de supervisor. Esse ator é responsável por cuidar do ciclo de vida dos atores e suas dependências. O principal papel do supervisor é de recriar atores que morreram inesperadamente. Em seguida ele deve ser capaz de reinjetar os atores ressuscitados nos atores que dependem deles.
+
+Usando a reescrita do Patch-Hub como exemplo, o ator App poderia ser elevado à categoria de supervisor. Caso um ator como o Net viesse a sofrer uma falha fatal, o supervisor poderia recriá-lo e reinjetá-lo no ator LoreApi, assim permitindo que o LoreApi e todo resto da aplicação continuem funcionando normalmente.
+
+Portanto, a proposta apresentada poderia ser enriquecida com a adição de um ator supervisor, além de mecanismos para permitir a injeção de dependências após a inicialização.
