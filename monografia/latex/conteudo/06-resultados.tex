@@ -4,7 +4,11 @@ Por fim, foi feita uma análise qualitativa e quantitativa da aplicação produz
 
 \subsection{Desempenho}
 
--- Sistema nativamente paralelo 
+De uma análise de desempenho, o grande ganho potencial da abordagem com o Modelo de Atores é o fato paralelismo nativo. Considerando que cada ator é executado em uma \textit{task} diferente, é possível de se executar código concorrentemente. Em especial, a biblioteca Tokio permite a alocação de \textit{tasks} em mais do que uma \textit{thread} do sistema operacional, o que permite a execução de código paralelo.
+
+Por outro lado, o mecanismo de passagem de mensagens entre atores possui uma sobrecarga em tempo de execução. Como cada mensagem é encapsulada e enviada através de um canal, isso representa uma indireção que requer diversas operações de sistema para ser realizada. Evidentemente, isso é mais lento que uma chamada de método direta.
+
+Em resumo, a abordagem do Modelo de Atores dá um grande potencial para melhora de performance. Porém, se não for corretamente explorado, o custo de comunicação entre atores pode ser um problema e piorar a performance do sistema.
 
 \subsection{Extensibilidade}
 
@@ -46,7 +50,7 @@ Por outro lado, existem alguns custos a serem pagos se tratando da transparênci
 
 Existe uma dificuldade de encontrar o código que será executado ao se enviar essa mensagem. Note que o método \texttt{get} do ator Rede é apenas um \textit{wrapper} para fazer o uso de um canal para enviar a mensagem e receber a resposta, logo, sua definição não informa ao usuário o que de fato será executado.
 
-Para poder encontrar o código que será executado, é necessário navegar manualmente pelo código fonte encontrando o módulo \texttt{net/core.rs} e encontrar o método \texttt{handle_get}. Essa indireção torna o código opaco para o usuário, além de evidentemente criar uma sobrecarga em tempo de execução.
+Para poder encontrar o código que será executado, é necessário navegar manualmente pelo código fonte encontrando o módulo \texttt{net/core.rs} e encontrar o método \texttt{handle\_get}. Essa indireção torna o código opaco para o usuário, além de evidentemente criar uma sobrecarga em tempo de execução.
 
 \subsection{Complexidade do Código}
 
