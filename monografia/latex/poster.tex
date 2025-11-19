@@ -10,6 +10,8 @@
 
 % Vários pacotes e opções de configuração genéricos
 \usepackage{imegoodies}
+\usepackage{graphicx}
+\usepackage{caption}
 \usepackage[poster,hidelinks]{imelooks}
 % \tcbposterset{fontsize = 32pt} % default, mude se necessário
 
@@ -149,11 +151,16 @@
 \posterbox[adjusted title = Modelo de Atores, smallmargins, equal height group = toprow]
           {name=contexto, below=titlebox, column=1, span=6}{
 
-    Teoria matemática originalmente concebida por Carl Hewitt em 1973 para sistemas distribuídos e massivamente concorrentes. 
+    Teoria matemática originalmente concebida para sistemas distribuídos. 
     
-    O Modelo de Atores enxerga sistemas computacionais em termos de unidades autônomas chamadas de \textbf{atores} que se comunicam entre si exclusivamente através de \textbf{mensagens} assíncronas.
+    Enxerga sistemas computacionais em termos de \textbf{atores} autônomos que se comunicam através de \textbf{mensagens}.
 
-    A comunicação, feita via passagem de mensagens, elimina a necessidade de compartilhamento de memória e \textit{locks}. Este padrão serviu de base para linguagens de programação como Erlang e Elixir, tornando-se o paradigma central dessas linguagens.
+    \begin{center}
+        \includegraphics[width=0.6\textwidth]{figuras/actor-model.png}
+        \captionof{figure}{Comunicação entre atores}
+        \label{fig:actor-model}
+    \end{center}
+    
 }
 
 
@@ -162,61 +169,80 @@
 \posterbox[adjusted title = Objetivo, smallmargins, equal height group = toprow]
           {name=objetivo, below=titlebox, column=7, span=6}{
 
-    Este trabalho realiza uma experimentação aplicando o Modelo de Atores em um contexto distante do seu domínio natural: \textbf{aplicações centralizadas em Rust}. Rust não possui o Modelo de Atores como paradigma central, diferentemente de linguagens como Elixir.
+    Este trabalho realiza uma experimentação aplicando o Modelo de Atores em um contexto distante do seu domínio natural: \textbf{aplicações centralizadas em Rust}.
 
-    O objetivo é entender o esforço necessário para aplicar um padrão arquitetural fora do seu contexto natural e quais consequências isso traz para o projeto. Busca-se produzir um arcabouço para permitir a aplicação do padrão fora do ambiente original.
+    O objetivo é entender o esforço necessário para aplicar um padrão arquitetural fora do seu contexto natural e quais consequências isso traz para o projeto.
+    
+    \begin{center}
+        \includegraphics[width=0.6\textwidth]{figuras/actor-design.png}
+        \captionof{figure}{Representação da estrutura de um ator em Rust}
+        \label{fig:actor-design}
+    \end{center}
 }
 
 
 %%%%%%%% Estudo de Caso: Patch-Hub %%%%%%%%
 
-\posterbox[adjusted title = Estudo de Caso: Patch-Hub, smallmargins]
-          {name=estudocaso, below=contexto, column=1, span=8}{
+\posterbox[adjusted title = Estudo de Caso: Patch-Hub, smallmargins, equal height group = patchhub]
+          {name=estudocaso, below=contexto, column=1, span=4}{
 
-    \textbf{Patch-Hub} é uma ferramenta de terminal desenvolvida como parte do ecossistema KWorkflow para interagir com a API do Lore Kernel Archive. A ferramenta permite aos desenvolvedores navegar por listas de patches do kernel Linux, aplicar filtros de busca, visualizar conteúdo de patches e gerenciar seu fluxo de trabalho de revisão.
-
-    Para validação, foi realizada uma reescrita do projeto aplicando o Modelo de Atores com as adaptações propostas.
+    \textbf{Patch-Hub} é uma ferramenta de terminal desenvolvida como parte do ecossistema KWorkflow para interagir com a API do Lore Kernel Archive. Para validação, foi realizada uma reescrita do projeto aplicando o Modelo de Atores com as adaptações propostas.
 }
 
 
 %%%%%%%% Espaço para Imagem %%%%%%%%
 
-\posterbox[adjusted title = Arquitetura, smallmargins]
-          {name=imagem, below=objetivo, column=9, span=4}{
+\posterbox[adjusted title = Original, smallmargins, equal height group = patchhub]
+          {name=original, below=objetivo, column=5, span=4}{
 
-    % Imagem será inserida aqui posteriormente
+    \begin{center}
+        \includegraphics[width=0.9\textwidth]{figuras/patch-hub-original.png}
+        \captionof{figure}{Patch-Hub original}
+        \label{fig:patch-hub-original}
+    \end{center}
 }
 
 
+%%%%%%%% Espaço para Imagem %%%%%%%%
+
+\posterbox[adjusted title = Reescrito, smallmargins, equal height group = patchhub]
+          {name=reescrito, below=objetivo, column=9, span=4}{
+    \begin{center}
+        \includegraphics[width=0.9\textwidth]{figuras/patch-hub-new.png}
+        \captionof{figure}{Patch-Hub reescrito}
+        \label{fig:patch-hub-reescrito}
+    \end{center}
+}
+
+
+%%%%%%%% Espaço para Imagem %%%%%%%%
+
+\posterbox[adjusted title = Arquitetura, smallmargins, equal height group = patchhub]
+          {name=arquitetura, below=estudocaso, column=1, span=5}{
+    \begin{center}
+        \includegraphics[width=1\textwidth]{figuras/patch-hub-actors.png}
+        \captionof{figure}{Arquitetura do Patch-Hub usando atores}
+        \label{fig:patch-hub-actors}
+    \end{center}
+}
 %%%%%%%% Resultados %%%%%%%%
 
-\posterbox[adjusted title = Testabilidade, smallmargins, equal height group = resultados]
-          {name=testabilidade, below=estudocaso, column=1, span=4}{
-
-    A abordagem facilita imensamente a criação de testes unitários. Como cada ator possui responsabilidades bem definidas, é fácil criar mocks para suas dependências. A cobertura de testes aumentou cerca de \(3x\), permitindo testes paralelos sem condições de corrida.
-}
-
-\posterbox[adjusted title = Extensibilidade, smallmargins, equal height group = resultados]
-          {name=extensibilidade, below=estudocaso, column=5, span=4}{
-
-    Adicionar novos atores e mensagens é simples seguindo padrões bem definidos. Novos atores seguem uma estrutura consistente, e novas mensagens são facilmente integradas ao esquema sem grandes modificações estruturais.
-}
-
-\posterbox[adjusted title = Complexidade, smallmargins, equal height group = resultados]
-          {name=complexidade, below=estudocaso, column=9, span=4}{
-
-    A base de código aproximadamente \textbf{dobrou} de tamanho comparada à implementação original. Isso é um indicativo de que a abordagem tende a produzir código mais verboso, exigindo cuidados especiais para manter qualidade e legibilidade a longo prazo.
+\posterbox[adjusted title = Resultados, smallmargins, equal height group = resultados]
+          {name=resultados, below=original, column=6, span=7}{
+    \begin{itemize}
+        \item \textbf{Testabilidade:}A cobertura de testes aumentou cerca de \(3x\).
+        \item \textbf{Extensibilidade:} Adição de novos atores e mensagens é simples, sem necessidade de grandes modificações.
+        \item \textbf{Complexidade:} A base de código aproximadamente \textbf{dobrou} de tamanho.
+    \end{itemize}
 }
 
 
 %%%%%%%% Conclusão %%%%%%%%
 
 \posterbox[adjusted title = Conclusão, smallmargins]
-          {name=conclusao, below=testabilidade, column=1, span=12}{
+          {name=conclusao, below=resultados, column=6, span=7}{
 
-    O principal resultado demonstra que a adequação de padrões arquiteturais pode ser \textbf{surpreendentemente flexível}. Mesmo utilizando um padrão aparentemente inapropriado para o contexto, foi possível extrair valor significativo da abordagem ao reimaginar tanto o problema quanto o padrão, permitindo que ambos se encaixassem de forma interessante.
-
-    Conclui-se que, embora os padrões arquiteturais possuam domínios naturais de aplicação, eles \textbf{não estão rigidamente limitados} a esses contextos. A exploração criativa de padrões em domínios distantes de sua origem pode resultar em soluções bem-sucedidas, desde que haja disposição para adaptar e reimaginar as abordagens estabelecidas. Naturalmente, esse processo de adaptação demanda planejamento cuidadoso e múltiplas iterações.
+    O principal resultado demonstra que a adequação de padrões arquiteturais pode ser \textbf{surpreendentemente flexível}. Sendo possível extrair valor ao se reimaginar tanto o problema quanto o padrão.
 }
 
 \end{tcbposter}
