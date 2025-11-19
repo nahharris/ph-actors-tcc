@@ -1,14 +1,14 @@
-\section{Conclusão}
+\chapter{Conclusão}
 
 O principal resultado deste trabalho demonstra que a adequação de padrões arquiteturais pode ser surpreendentemente flexível. Mesmo utilizando um padrão aparentemente inapropriado para o contexto, foi possível extrair valor significativo da abordagem ao reimaginar tanto o problema quanto o padrão, permitindo que ambos se encaixassem de forma interessante. Naturalmente, esse processo de adaptação demandou planejamento cuidadoso e múltiplas iterações.
 
 Conclui-se que, embora os padrões arquiteturais possuam domínios naturais de aplicação, eles não estão rigidamente limitados a esses contextos. A exploração criativa de padrões em domínios distantes de sua origem pode resultar em soluções bem-sucedidas, desde que haja disposição para adaptar e reimaginar as abordagens estabelecidas.
 
-\subsection{Trabalhos Futuros}
+\section{Trabalhos Futuros}
 
 Por fim, ficam sugestões para trabalhos futuros considerando pontos da proposta que não foram implementados e que podem ser melhorados.
 
-\subsubsection{Gerenciamento de Ciclos de Dependências}
+\subsection{Gerenciamento de Ciclos de Dependências}
 
 O primeiro ponto a ser considerado é o gerenciamento de ciclos de dependências. Neste trabalho, não é oferecida uma solução universal para ciclos de dependências. No escopo do trabalho, houveram duas situações que geraram ciclos de dependências:
 
@@ -27,7 +27,7 @@ Nesse segundo caso, a solução adotada foi inverter o sentido de uma dependênc
 
 A segunda solução não garantidamente é satisfatória universalmente. Portanto, se faz necessária a pesquisa e desenvolvimento de uma solução mais robusta para esse problema.
 
-\subsubsection{Supervisores}
+\subsection{Supervisores}
 
 Nas implementações conhecidas do Modelo de Atores, em geral existe um tipo de ator especial chamado de supervisor. Esse ator é responsável por cuidar do ciclo de vida dos atores e suas dependências. O principal papel do supervisor é de recriar atores que morreram inesperadamente. Em seguida ele deve ser capaz de reinjetar os atores ressuscitados nos atores que dependem deles.
 

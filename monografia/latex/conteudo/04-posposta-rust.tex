@@ -306,6 +306,13 @@ Também vale ressaltar que o "uso após liberação" de um canal oneshot é veri
 
 Uma vez definidas quais abstrações a serem usadas, é hora de definir como um ator será em termos de código Rust.
 
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.8\textwidth]{figuras/actor-design.png}
+    \caption{Representação da estrutura de um ator}
+    \label{fig:actor-design}
+\end{figure}
+
 Primeiramente, haverá um módulo para cada ator, e se um ator é subordinado à existência de outro ator pela lógica de negócio, ele pode ser criado como um submódulo.
 
 Neste trabalho, o padrão para módulos será ter um arquivo e uma pasta com o mesmo nome (exceto pela extensão \texttt{.rs}). Por exemplo, para um ator chamado App, deve haver um \texttt{app.rs} e uma pasta \texttt{app/} no mesmo diretório.

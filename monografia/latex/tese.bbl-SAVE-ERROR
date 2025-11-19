@@ -1,0 +1,285 @@
+% $ biblatex auxiliary file $
+% $ biblatex bbl format version 3.3 $
+% Do not modify the above lines!
+%
+% This is an auxiliary file used by the 'biblatex' package.
+% This file may safely be deleted. It will be recreated by
+% biber as required.
+%
+\begingroup
+\makeatletter
+\@ifundefined{ver@biblatex.sty}
+  {\@latex@error
+     {Missing 'biblatex' package}
+     {The bibliography requires the 'biblatex' package.}
+      \aftergroup\endinput}
+  {}
+\endgroup
+
+
+\refsection{0}
+  \datalist[entry]{nyt/global//global/global/global}
+    \entry{kworkflow_org}{online}{}{}
+      \name{author}{1}{}{%
+        {{un=0,uniquepart=base,hash=393d67ed7e7d828c0ed43da8e3811c0e}{%
+           family={{KWorkflow}},
+           familyi={K\bibinitperiod}}}%
+      }
+      \strng{namehash}{393d67ed7e7d828c0ed43da8e3811c0e}
+      \strng{fullhash}{393d67ed7e7d828c0ed43da8e3811c0e}
+      \strng{fullhashraw}{393d67ed7e7d828c0ed43da8e3811c0e}
+      \strng{bibnamehash}{393d67ed7e7d828c0ed43da8e3811c0e}
+      \strng{authorbibnamehash}{393d67ed7e7d828c0ed43da8e3811c0e}
+      \strng{authornamehash}{393d67ed7e7d828c0ed43da8e3811c0e}
+      \strng{authorfullhash}{393d67ed7e7d828c0ed43da8e3811c0e}
+      \strng{authorfullhashraw}{393d67ed7e7d828c0ed43da8e3811c0e}
+      \field{extraname}{1}
+      \field{labelalpha}{KWo24}
+      \field{sortinit}{K}
+      \field{sortinithash}{c02bf6bff1c488450c352b40f5d853ab}
+      \field{extradate}{1}
+      \field{extradatescope}{labelyear}
+      \field{labeldatesource}{}
+      \field{extraalpha}{1}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{title}{KWorkflow}
+      \field{urlday}{19}
+      \field{urlmonth}{12}
+      \field{urlyear}{2024}
+      \field{year}{2024}
+      \field{urldateera}{ce}
+      \verb{urlraw}
+      \verb https://kworkflow.org/
+      \endverb
+      \verb{url}
+      \verb https://kworkflow.org/
+      \endverb
+    \endentry
+    \entry{patch_hub_github}{online}{}{}
+      \name{author}{1}{}{%
+        {{un=0,uniquepart=base,hash=393d67ed7e7d828c0ed43da8e3811c0e}{%
+           family={{KWorkflow}},
+           familyi={K\bibinitperiod}}}%
+      }
+      \strng{namehash}{393d67ed7e7d828c0ed43da8e3811c0e}
+      \strng{fullhash}{393d67ed7e7d828c0ed43da8e3811c0e}
+      \strng{fullhashraw}{393d67ed7e7d828c0ed43da8e3811c0e}
+      \strng{bibnamehash}{393d67ed7e7d828c0ed43da8e3811c0e}
+      \strng{authorbibnamehash}{393d67ed7e7d828c0ed43da8e3811c0e}
+      \strng{authornamehash}{393d67ed7e7d828c0ed43da8e3811c0e}
+      \strng{authorfullhash}{393d67ed7e7d828c0ed43da8e3811c0e}
+      \strng{authorfullhashraw}{393d67ed7e7d828c0ed43da8e3811c0e}
+      \field{extraname}{2}
+      \field{labelalpha}{KWo24}
+      \field{sortinit}{K}
+      \field{sortinithash}{c02bf6bff1c488450c352b40f5d853ab}
+      \field{extradate}{2}
+      \field{extradatescope}{labelyear}
+      \field{labeldatesource}{}
+      \field{extraalpha}{2}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{title}{patch-hub}
+      \field{urlday}{19}
+      \field{urlmonth}{12}
+      \field{urlyear}{2024}
+      \field{year}{2024}
+      \field{urldateera}{ce}
+      \verb{urlraw}
+      \verb https://github.com/kworkflow/patch-hub
+      \endverb
+      \verb{url}
+      \verb https://github.com/kworkflow/patch-hub
+      \endverb
+    \endentry
+    \entry{kernel_patches}{online}{}{}
+      \name{author}{1}{}{%
+        {{un=0,uniquepart=base,hash=c592044712dfa04c732e3bd9377c8a2b}{%
+           family={{Linux Kernel Documentation}},
+           familyi={L\bibinitperiod}}}%
+      }
+      \strng{namehash}{c592044712dfa04c732e3bd9377c8a2b}
+      \strng{fullhash}{c592044712dfa04c732e3bd9377c8a2b}
+      \strng{fullhashraw}{c592044712dfa04c732e3bd9377c8a2b}
+      \strng{bibnamehash}{c592044712dfa04c732e3bd9377c8a2b}
+      \strng{authorbibnamehash}{c592044712dfa04c732e3bd9377c8a2b}
+      \strng{authornamehash}{c592044712dfa04c732e3bd9377c8a2b}
+      \strng{authorfullhash}{c592044712dfa04c732e3bd9377c8a2b}
+      \strng{authorfullhashraw}{c592044712dfa04c732e3bd9377c8a2b}
+      \field{extraname}{1}
+      \field{labelalpha}{Lin24}
+      \field{sortinit}{L}
+      \field{sortinithash}{7c47d417cecb1f4bd38d1825c427a61a}
+      \field{extradate}{1}
+      \field{extradatescope}{labelyear}
+      \field{labeldatesource}{}
+      \field{extraalpha}{1}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{title}{Submitting patches}
+      \field{urlday}{19}
+      \field{urlmonth}{12}
+      \field{urlyear}{2024}
+      \field{year}{2024}
+      \field{urldateera}{ce}
+      \verb{urlraw}
+      \verb https://docs.kernel.org/process/submitting-patches.html
+      \endverb
+      \verb{url}
+      \verb https://docs.kernel.org/process/submitting-patches.html
+      \endverb
+    \endentry
+    \entry{kernel_subsystems}{online}{}{}
+      \name{author}{1}{}{%
+        {{un=0,uniquepart=base,hash=c592044712dfa04c732e3bd9377c8a2b}{%
+           family={{Linux Kernel Documentation}},
+           familyi={L\bibinitperiod}}}%
+      }
+      \strng{namehash}{c592044712dfa04c732e3bd9377c8a2b}
+      \strng{fullhash}{c592044712dfa04c732e3bd9377c8a2b}
+      \strng{fullhashraw}{c592044712dfa04c732e3bd9377c8a2b}
+      \strng{bibnamehash}{c592044712dfa04c732e3bd9377c8a2b}
+      \strng{authorbibnamehash}{c592044712dfa04c732e3bd9377c8a2b}
+      \strng{authornamehash}{c592044712dfa04c732e3bd9377c8a2b}
+      \strng{authorfullhash}{c592044712dfa04c732e3bd9377c8a2b}
+      \strng{authorfullhashraw}{c592044712dfa04c732e3bd9377c8a2b}
+      \field{extraname}{2}
+      \field{labelalpha}{Lin24}
+      \field{sortinit}{L}
+      \field{sortinithash}{7c47d417cecb1f4bd38d1825c427a61a}
+      \field{extradate}{2}
+      \field{extradatescope}{labelyear}
+      \field{labeldatesource}{}
+      \field{extraalpha}{2}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{title}{Subsystem APIs}
+      \field{urlday}{19}
+      \field{urlmonth}{12}
+      \field{urlyear}{2024}
+      \field{year}{2024}
+      \field{urldateera}{ce}
+      \verb{urlraw}
+      \verb https://docs.kernel.org/subsystem-apis.html
+      \endverb
+      \verb{url}
+      \verb https://docs.kernel.org/subsystem-apis.html
+      \endverb
+    \endentry
+    \entry{lore_api}{online}{}{}
+      \name{author}{1}{}{%
+        {{un=0,uniquepart=base,hash=dc4ae26123589516180d86ad05ed41a7}{%
+           family={Tadokoro},
+           familyi={T\bibinitperiod},
+           given={David},
+           giveni={D\bibinitperiod},
+           givenun=0}}%
+      }
+      \strng{namehash}{dc4ae26123589516180d86ad05ed41a7}
+      \strng{fullhash}{dc4ae26123589516180d86ad05ed41a7}
+      \strng{fullhashraw}{dc4ae26123589516180d86ad05ed41a7}
+      \strng{bibnamehash}{dc4ae26123589516180d86ad05ed41a7}
+      \strng{authorbibnamehash}{dc4ae26123589516180d86ad05ed41a7}
+      \strng{authornamehash}{dc4ae26123589516180d86ad05ed41a7}
+      \strng{authorfullhash}{dc4ae26123589516180d86ad05ed41a7}
+      \strng{authorfullhashraw}{dc4ae26123589516180d86ad05ed41a7}
+      \field{labelalpha}{Tad23}
+      \field{sortinit}{T}
+      \field{sortinithash}{9af77f0292593c26bde9a56e688eaee9}
+      \field{extradatescope}{labelyear}
+      \field{labeldatesource}{}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{month}{9}
+      \field{title}{The lore.kernel.org API}
+      \field{urlday}{19}
+      \field{urlmonth}{12}
+      \field{urlyear}{2024}
+      \field{year}{2023}
+      \field{urldateera}{ce}
+      \verb{urlraw}
+      \verb https://blog.kworkflow.org/the-lore.kernel.org-api/
+      \endverb
+      \verb{url}
+      \verb https://blog.kworkflow.org/the-lore.kernel.org-api/
+      \endverb
+    \endentry
+    \entry{linux_wikipedia}{online}{}{}
+      \name{author}{1}{}{%
+        {{un=0,uniquepart=base,hash=9c677286866aad38f8e9b660f5411814}{%
+           family={{Wikipedia}},
+           familyi={W\bibinitperiod}}}%
+      }
+      \strng{namehash}{9c677286866aad38f8e9b660f5411814}
+      \strng{fullhash}{9c677286866aad38f8e9b660f5411814}
+      \strng{fullhashraw}{9c677286866aad38f8e9b660f5411814}
+      \strng{bibnamehash}{9c677286866aad38f8e9b660f5411814}
+      \strng{authorbibnamehash}{9c677286866aad38f8e9b660f5411814}
+      \strng{authornamehash}{9c677286866aad38f8e9b660f5411814}
+      \strng{authorfullhash}{9c677286866aad38f8e9b660f5411814}
+      \strng{authorfullhashraw}{9c677286866aad38f8e9b660f5411814}
+      \field{extraname}{1}
+      \field{labelalpha}{Wik24}
+      \field{sortinit}{W}
+      \field{sortinithash}{4315d78024d0cea9b57a0c6f0e35ed0d}
+      \field{extradate}{1}
+      \field{extradatescope}{labelyear}
+      \field{labeldatesource}{}
+      \field{extraalpha}{1}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{title}{Linux}
+      \field{urlday}{19}
+      \field{urlmonth}{12}
+      \field{urlyear}{2024}
+      \field{year}{2024}
+      \field{urldateera}{ce}
+      \verb{urlraw}
+      \verb https://pt.wikipedia.org/wiki/Linux
+      \endverb
+      \verb{url}
+      \verb https://pt.wikipedia.org/wiki/Linux
+      \endverb
+    \endentry
+    \entry{kernel_wikipedia}{online}{}{}
+      \name{author}{1}{}{%
+        {{un=0,uniquepart=base,hash=9c677286866aad38f8e9b660f5411814}{%
+           family={{Wikipedia}},
+           familyi={W\bibinitperiod}}}%
+      }
+      \strng{namehash}{9c677286866aad38f8e9b660f5411814}
+      \strng{fullhash}{9c677286866aad38f8e9b660f5411814}
+      \strng{fullhashraw}{9c677286866aad38f8e9b660f5411814}
+      \strng{bibnamehash}{9c677286866aad38f8e9b660f5411814}
+      \strng{authorbibnamehash}{9c677286866aad38f8e9b660f5411814}
+      \strng{authornamehash}{9c677286866aad38f8e9b660f5411814}
+      \strng{authorfullhash}{9c677286866aad38f8e9b660f5411814}
+      \strng{authorfullhashraw}{9c677286866aad38f8e9b660f5411814}
+      \field{extraname}{2}
+      \field{labelalpha}{Wik24}
+      \field{sortinit}{W}
+      \field{sortinithash}{4315d78024d0cea9b57a0c6f0e35ed0d}
+      \field{extradate}{2}
+      \field{extradatescope}{labelyear}
+      \field{labeldatesource}{}
+      \field{extraalpha}{2}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{title}{Linux (núcleo)}
+      \field{urlday}{19}
+      \field{urlmonth}{12}
+      \field{urlyear}{2024}
+      \field{year}{2024}
+      \field{urldateera}{ce}
+      \verb{urlraw}
+      \verb https://pt.wikipedia.org/wiki/Linux_(n%C3%BAcleo)
+      \endverb
+      \verb{url}
+      \verb https://pt.wikipedia.org/wiki/Linux_(n%C3%BAcleo)
+      \endverb
+    \endentry
+  \enddatalist
+\endrefsection
+\endinput
+

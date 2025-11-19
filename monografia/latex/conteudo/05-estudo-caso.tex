@@ -145,6 +145,13 @@ O segundo grupo é formado pelos atores que irão interagir apenas com demais at
 
 Por dependerem apenas de outros atores, testes unitários se tornam triviais uma vez que se criem \textit{mocks}. Uma vez que, testando um ator contra \textit{mocks} que imitem o comportamento desejado dos atores de dependência, dá a garantia que apenas o código do próprio ator é o que influencia no resultado dos testes. Este grupo será chamado de atores internos por não interagirem diretamente com sistemas externos.
 
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\textwidth]{figuras/patch-hub-actors.png}
+    \caption{Diagrama de atores do Patch-Hub}
+    \label{fig:patch-hub-actors}
+\end{figure}
+
 
 \subsection{Atores de Integração}
 
@@ -298,6 +305,7 @@ https://github.com/nahharris/ph-actors-tcc/blob/master/src/app/config.rs
 
 \begin{itemize}
     \item \textbf{Sistema de Arquivos}: Para salvar e carregar o arquivo de configuração
+    \item \textbf{Variáveis de Ambiente}: Para obter os valores padrão das configurações
 \end{itemize}
 
 \textbf{Mensagens:}

@@ -1,8 +1,8 @@
-\section{Análise de Resultados}
+\chapter{Análise de Resultados}
 
 Por fim, foi feita uma análise qualitativa e quantitativa da aplicação produzida. O foco é em analisar o impacto da arquitetura proposta no sistema, buscando entender quais benefícios foram obtidos e quais custos foram incorridos.
 
-\subsection{Desempenho}
+\section{Desempenho}
 
 De uma análise de desempenho, o grande ganho potencial da abordagem com o Modelo de Atores é o fato paralelismo nativo. Considerando que cada ator é executado em uma \textit{task} diferente, é possível de se executar código concorrentemente. Em especial, a biblioteca Tokio permite a alocação de \textit{tasks} em mais do que uma \textit{thread} do sistema operacional, o que permite a execução de código paralelo.
 
@@ -10,7 +10,7 @@ Por outro lado, o mecanismo de passagem de mensagens entre atores possui uma sob
 
 Em resumo, a abordagem do Modelo de Atores dá um grande potencial para melhora de performance. Porém, se não for corretamente explorado, o custo de comunicação entre atores pode ser um problema e piorar a performance do sistema.
 
-\subsection{Extensibilidade}
+\section{Extensibilidade}
 
 Extender funcionalidades do sistema é uma tarefa bastante simples. Como o código todo segue padrões de design bem definidos, é possível adicionar novas funcionalidades sem a necessidade de grandes refatorações.
 
@@ -18,7 +18,7 @@ Um exemplo dessa facilidade é a adição de novos atores. Para adicionar um nov
 
 Também criar uma nova mensagem é muito simples. Apenas é necessário adicionar uma nova variante ao enum de mensagens do ator correspondente, atualizar o bloco \texttt{match} que lida com as mensagens recebidas pelo ator para chamar o novo \textit{handler} e implementar um método na interface pública do ator para que outros atores possam enviar essa nova mensagem.
 
-\subsection{Testabilidade}
+\section{Testabilidade}
 
 A abordagem do Modelo de Atores facilita imensamente a criação de testes unitários. Como cada ator, seguindo o SRP, possui um domínio bem definido, é fácil de se criar \textit{mocks} para suas dependências. Desse modo, é possível testar cada ator isoladamente, garantindo que o sistema comporte-se corretamente.
 
@@ -34,7 +34,7 @@ Na versão reescrita, os testes que vão interagir (direta ou indiretamente) com
 Quantitativamente, a facilidade de testabilidade pode ser medida pela cobertura de testes que saiu de 16.53\% para 48.95\%. Evidente que a reescrita não corresponde exatamente à implementação original, todavia, o aumento de cobertura é significativo.
 
 
-\subsection{Experiência do Desenvolvedor}
+\section{Experiência do Desenvolvedor}
 
 O mais notável ganho no que toca a experiência do desenvolvedor é a facilidade de compreensão e modificação do código. Tendo-se isolado as responsabilidades em unidades menores e mais focadas, fica mais fácil entender o propósito de cada parte do código.
 
@@ -52,7 +52,7 @@ Existe uma dificuldade de encontrar o código que será executado ao se enviar e
 
 Para poder encontrar o código que será executado, é necessário navegar manualmente pelo código fonte encontrando o módulo \texttt{net/core.rs} e encontrar o método \texttt{handle\_get}. Essa indireção torna o código opaco para o usuário, além de evidentemente criar uma sobrecarga em tempo de execução.
 
-\subsection{Complexidade do Código}
+\section{Complexidade do Código}
 
 Uma diferença a ser considerada é o tamanho da base de código. A versão reescrita possui aproximadamente o dobro do tamanho da versão original, apesar de não ser uma implementação completa. Isso é um forte indicativo de que a abordagem do Modelo de Atores tende a produzir uma base de código maior. Apesar disso não necessariamente ser um problema, uma base de código maior carece de cuidados especiais para manter a qualidade e a legibilidade a longo prazo.
 
