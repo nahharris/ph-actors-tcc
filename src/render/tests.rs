@@ -194,7 +194,6 @@ async fn test_render_command_with_stdin() {
     let mut mock_shell = MockShell::new();
     let mut mock_config = MockConfig::new();
     let patch_content = ArcStr::from("patch content to be piped");
-
     mock_config
         .expect_renderer()
         .with(mockall::predicate::eq(RendererOpt::PatchRenderer))

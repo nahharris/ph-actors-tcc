@@ -1,6 +1,8 @@
 use cursive::Cursive;
 use cursive::event::{Event, Key};
+use cursive::theme::Theme;
 use cursive::traits::*;
+use cursive::utils::markup::ansi;
 use cursive::views::{Dialog, SelectView, TextView};
 use std::collections::VecDeque;
 use std::sync::{Arc, Mutex};
@@ -48,7 +50,7 @@ impl Core {
         // But the actor itself is still a tokio task
         thread::spawn(move || {
             let mut siv = cursive::crossterm();
-
+            siv.set_theme(Theme::terminal_default());
             // Install global key callbacks to store events in the queue
             let fwd = |ev: UiEvent| {
                 let queue = ui_events_queue.clone();
@@ -189,7 +191,7 @@ impl Core {
             }
             Screen::Patch { title, content } => {
                 s.pop_layer();
-                let text = TextView::new(content.to_string()).scrollable();
+                let text = TextView::new(ansi::parse(content.to_string())).scrollable();
                 s.add_layer(Dialog::around(text).title(format!("Patch: {}", title.to_string())));
             }
         }));

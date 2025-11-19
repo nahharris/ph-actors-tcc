@@ -77,6 +77,8 @@ impl Core {
                 },
             })?;
 
+        let content = ArcStr::from(content.replace("\t", "    "));
+
         if matches!(renderer, crate::app::config::Renderer::None) {
             // No external renderer: return raw content
             return Ok(content);

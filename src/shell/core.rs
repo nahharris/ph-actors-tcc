@@ -70,6 +70,9 @@ impl Core {
         let command_str = command.to_string();
         self.log
             .info(SCOPE, format!("Executing command: {command_str}"));
+        if let Some(stdin) = &command.stdin {
+            self.log.info(SCOPE, format!("With stdin: {stdin}"));
+        }
 
         let mut cmd = Command::new(&command.program);
         for arg in command.args.iter() {
