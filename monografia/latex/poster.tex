@@ -127,189 +127,96 @@
 
 
 \posterbox[titlebox]{name=titlebox, below=top, column=1, span=12}{
-    An example poster using \LaTeX{}\\
-    by CCSL-IME/USP
+    Modelo de Atores Fora de Sistemas Distribuídos\\
+    por Jorge Harrisonn Mantovanelli Thomes Vieira
 }
 
 \posterbox[footerbox]{name=footerbox, above=bottom, column=1, span=12}{
     \large
-    ccsl.ime.usp.br\par
+    harrisonn.dev\par
     \vspace{4pt}
     \small\ttfamily
-    ccsl@ime.usp.br\par
+    jorge.harrisonn@usp.br\par
     \vspace{4pt}
     \footnotesize\rmfamily
     \textcolor{imesoftblue!30!white}
       {Department of Computer Science --- University of São Paulo}\relax
-    \footimage{\includegraphics[width=13cm]{ccsl-logo}}
 }
 
 
-\posterbox[adjusted title = The CCSL logo (full width)]
-          {name=widelogo, below=titlebox, column=1, span=12}{
+%%%%%%%% Contexto: Modelo de Atores %%%%%%%%
 
-    \centering
-    \includegraphics[width=.95\textwidth]{ccsl-logo}
+\posterbox[adjusted title = Modelo de Atores, smallmargins, equal height group = toprow]
+          {name=contexto, below=titlebox, column=1, span=6}{
+
+    Teoria matemática originalmente concebida por Carl Hewitt em 1973 para sistemas distribuídos e massivamente concorrentes. 
+    
+    O Modelo de Atores enxerga sistemas computacionais em termos de unidades autônomas chamadas de \textbf{atores} que se comunicam entre si exclusivamente através de \textbf{mensagens} assíncronas.
+
+    A comunicação, feita via passagem de mensagens, elimina a necessidade de compartilhamento de memória e \textit{locks}. Este padrão serviu de base para linguagens de programação como Erlang e Elixir, tornando-se o paradigma central dessas linguagens.
 }
 
 
-%%%%%%%% Quatro colunas com "equal height group" %%%%%%%%
+%%%%%%%% Objetivo %%%%%%%%
 
-\posterbox[adjusted title = One fourth width,
-          smallmargins, equal height group = quartos]
-          {name=quarterlogoLeft, below=widelogo, column=1, span=3}{
+\posterbox[adjusted title = Objetivo, smallmargins, equal height group = toprow]
+          {name=objetivo, below=titlebox, column=7, span=6}{
 
-    \centering
-    \includegraphics[width=.9\textwidth]{ccsl-logo}
-}
+    Este trabalho realiza uma experimentação aplicando o Modelo de Atores em um contexto distante do seu domínio natural: \textbf{aplicações centralizadas em Rust}. Rust não possui o Modelo de Atores como paradigma central, diferentemente de linguagens como Elixir.
 
-\posterbox[adjusted title = One fourth width,
-          smallmargins, equal height group = quartos]
-          {below=widelogo, column=4, span=3}{
-
-    \centering
-    This block has the same height as the logo
-
-}
-
-\posterbox[adjusted title = One fourth width,
-          smallmargins, equal height group = quartos]
-          {below=widelogo, column=7, span=3}{
-
-    \centering
-    And so does this
-}
-
-\posterbox[adjusted title = One fourth width,
-          smallmargins, equal height group = quartos]
-          {below=widelogo, column=10, span=3}{
-
-    \centering
-    Thanks to\\
-    \texttt{equal height group}
+    O objetivo é entender o esforço necessário para aplicar um padrão arquitetural fora do seu contexto natural e quais consequências isso traz para o projeto. Busca-se produzir um arcabouço para permitir a aplicação do padrão fora do ambiente original.
 }
 
 
-%%%%%%%% Duas colunas %%%%%%%%
+%%%%%%%% Estudo de Caso: Patch-Hub %%%%%%%%
 
-% Como temos 2 caixas à esquerda e uma caixa à direita, não podemos
-% simplesmente usar "equal height group" aqui, então definimos
-% manualmente a altura das caixas de maneira que as duas colunas
-% tenham o mesmo tamanho.
+\posterbox[adjusted title = Estudo de Caso: Patch-Hub, smallmargins]
+          {name=estudocaso, below=contexto, column=1, span=8}{
 
-%%% Esquerda
-\posterbox[adjusted title = Pangrams (half width)]
-          {name=pangramdef, below=quarterlogoLeft,
-           column=1, span=6, rowspan=.9}{
+    \textbf{Patch-Hub} é uma ferramenta de terminal desenvolvida como parte do ecossistema KWorkflow para interagir com a API do Lore Kernel Archive. A ferramenta permite aos desenvolvedores navegar por listas de patches do kernel Linux, aplicar filtros de busca, visualizar conteúdo de patches e gerenciar seu fluxo de trabalho de revisão.
 
-    \begin{itemize}
-      \item A \textcolor{imered}{pangram} is a sentence using
-            every letter of a given alphabet at least once.
-      \item Pangrams have been used to:
-
-      \begin{itemize}
-        \item display typefaces
-        \item test equipment
-        \item develop skills in handwriting, calligraphy, and keyboarding
-      \end{itemize}
-    \end{itemize}
-}
-
-\posterbox[adjusted title = Examples of pangrams (half width)]
-          {below=pangramdef, column=1, span=6, rowspan=1.2}{
-
-    \begin{itemize}
-      \item In English
-
-      \begin{itemize}
-        \item A quick brown fox jumps over the lazy dog
-        \item Sphinx of black quartz, judge my vow
-        \item How vexingly quick daft zebras jump
-        \item Pack my box with five dozen liquor jugs
-      \end{itemize}
-
-      \item In Portuguese
-
-      \begin{itemize}
-        \item Vejo xá gritando que fez show sem playback
-        \item Vi que ex-janota gordo fez show com playback
-        \item Já fiz vinho com toque de kiwi para belga sexy
-        \item Vejo galã sexy pôr quinze kiwis à força em baú achatado
-      \end{itemize}
-    \end{itemize}
-}
-
-%%% Direita
-\posterbox[adjusted title = The IME/USP logo (half width)]
-          {name=halflogo, below=quarterlogoLeft,
-           column=7, span=6, rowspan=2.1}{
-
-    \centering
-    \includegraphics[width=\textwidth,trim=0 0 70 0,clip]{ime-logo}\par
+    Para validação, foi realizada uma reescrita do projeto aplicando o Modelo de Atores com as adaptações propostas.
 }
 
 
-%%%%%%% Colunas assimétricas (2/3 + 1/3) %%%%%%%%
+%%%%%%%% Espaço para Imagem %%%%%%%%
 
-%%% Esquerda. Como usamos "between", a altura desta caixa
-%             é definida pela posição das outras duas.
-\posterbox[adjusted title = Bibliography (assimetrical
-           columns -- two thirds width), smallmargins]
-          {name=bibbox, between=halflogo and footerbox, column=1, span=8}{
+\posterbox[adjusted title = Arquitetura, smallmargins]
+          {name=imagem, below=objetivo, column=9, span=4}{
 
-    \nocite{FSF:GNU-GPL, MenaChalco08, biblatex,
-            waz:09, alves03:simi, carlis:09}
-    \printbibliography
+    % Imagem será inserida aqui posteriormente
 }
 
-%%% Direita, acima; aqui, ajustamos as margens manualmente
-\posterbox[adjusted title = A Table (one third width),
-          top=.5\baselineskip, bottom=.5\baselineskip]
-          {name=tablebox, below=halflogo, column=9, span=4}{
 
-    \centering
-    \singlespacing\vspace{-\baselineskip} % \singlespacing adiciona uma linha
-    \begin{tabular}{ccl}
-      \toprule
-      Code        & Abbreviation & Name       \\
-      \midrule
-      \texttt{A}  & Ala          & Alanine    \\
-      \texttt{C}  & Cys          & Cysteine   \\
-      \texttt{W}  & Trp          & Tryptophan \\
-      \texttt{Y}  & Tyr          & Tyrosine   \\
-      \bottomrule
-    \end{tabular}
+%%%%%%%% Resultados %%%%%%%%
+
+\posterbox[adjusted title = Testabilidade, smallmargins, equal height group = resultados]
+          {name=testabilidade, below=estudocaso, column=1, span=4}{
+
+    A abordagem facilita imensamente a criação de testes unitários. Como cada ator possui responsabilidades bem definidas, é fácil criar mocks para suas dependências. A cobertura de testes aumentou cerca de \(3x\), permitindo testes paralelos sem condições de corrida.
 }
 
-%%% Direita, abaixo. Como usamos "between", a altura desta caixa
-%                    é definida pela posição das outras duas.
-\posterbox[adjusted title = Sponsors (one third width),
-          colframe = imeyellow, smallmargins]
-          {between=tablebox and footerbox, column=9, span=4}{
+\posterbox[adjusted title = Extensibilidade, smallmargins, equal height group = resultados]
+          {name=extensibilidade, below=estudocaso, column=5, span=4}{
 
-    \centering
-    % Em um poster ou apresentação, normalmente basta usar \includegraphics
-    % ou \begin{tabular}, como foi feito mais acima. Só é necessário usar
-    % \begin{figure} ou \begin{table} se você quiser acrescentar legendas
-    % ou usar subfiguras. Nesses casos, [H] é obrigatório com beamer e com
-    % tcolorbox. Uma outra opção para inserir legendas é usar \captionof.
-    \begin{figure}[H]
-      \begin{subfigure}[c]{.3\textwidth}
-        \centering
-        %\raisebox{.0972\baselineskip}{\includegraphics[height=.927\baselineskip]{fapesp-logo}}
-        \includegraphics[width=.9\textwidth]{ccsl-logo}
-      \end{subfigure}
-      \begin{subfigure}[c]{.3\textwidth}
-        \centering
-        %\raisebox{-.53496\baselineskip}{\includegraphics[height=2.16\baselineskip]{capes-logo}}
-        \includegraphics[width=.9\textwidth]{ccsl-logo}
-      \end{subfigure}
-      \begin{subfigure}[c]{.3\textwidth}
-        \centering
-        %\includegraphics[height=1.08\baselineskip]{cnpq-logo}
-        \includegraphics[width=.9\textwidth]{ccsl-logo}
-      \end{subfigure}
-    \end{figure}
+    Adicionar novos atores e mensagens é simples seguindo padrões bem definidos. Novos atores seguem uma estrutura consistente, e novas mensagens são facilmente integradas ao esquema sem grandes modificações estruturais.
+}
+
+\posterbox[adjusted title = Complexidade, smallmargins, equal height group = resultados]
+          {name=complexidade, below=estudocaso, column=9, span=4}{
+
+    A base de código aproximadamente \textbf{dobrou} de tamanho comparada à implementação original. Isso é um indicativo de que a abordagem tende a produzir código mais verboso, exigindo cuidados especiais para manter qualidade e legibilidade a longo prazo.
+}
+
+
+%%%%%%%% Conclusão %%%%%%%%
+
+\posterbox[adjusted title = Conclusão, smallmargins]
+          {name=conclusao, below=testabilidade, column=1, span=12}{
+
+    O principal resultado demonstra que a adequação de padrões arquiteturais pode ser \textbf{surpreendentemente flexível}. Mesmo utilizando um padrão aparentemente inapropriado para o contexto, foi possível extrair valor significativo da abordagem ao reimaginar tanto o problema quanto o padrão, permitindo que ambos se encaixassem de forma interessante.
+
+    Conclui-se que, embora os padrões arquiteturais possuam domínios naturais de aplicação, eles \textbf{não estão rigidamente limitados} a esses contextos. A exploração criativa de padrões em domínios distantes de sua origem pode resultar em soluções bem-sucedidas, desde que haja disposição para adaptar e reimaginar as abordagens estabelecidas. Naturalmente, esse processo de adaptação demanda planejamento cuidadoso e múltiplas iterações.
 }
 
 \end{tcbposter}
