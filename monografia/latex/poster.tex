@@ -130,25 +130,36 @@
 
 \posterbox[titlebox]{name=titlebox, below=top, column=1, span=12}{
     Modelo de Atores Fora de Sistemas Distribuídos\\
-    por Jorge Harrisonn Mantovanelli Thomes Vieira
+    por J Harrisonn M T Vieira
 }
 
 \posterbox[footerbox]{name=footerbox, above=bottom, column=1, span=12}{
-    \large
-    harrisonn.dev\par
-    \vspace{4pt}
-    \small\ttfamily
-    jorge.harrisonn@usp.br\par
-    \vspace{4pt}
-    \footnotesize\rmfamily
-    \textcolor{imesoftblue!30!white}
-      {Department of Computer Science --- University of São Paulo}\relax
+    \begin{minipage}[t]{0.5\textwidth}
+        \large
+        harrisonn.dev\par
+        \vspace{4pt}
+        \small\ttfamily
+        jorge.harrisonn@usp.br\par
+        \vspace{4pt}
+        \footnotesize\rmfamily
+        \textcolor{imesoftblue!30!white}
+          {Departamento de Ciência da Computação --- Universidade de São Paulo}\relax
+    \end{minipage}%
+    \hfill
+    \begin{minipage}[t]{0.45\textwidth}
+        \raggedleft
+        \footnotesize
+        \textbf{Orientadores:}\par
+        \vspace{2pt}
+        Paulo Roberto Miranda Meirelles\par
+        David Barros Tadokoro\par
+    \end{minipage}
 }
 
 
 %%%%%%%% Contexto: Modelo de Atores %%%%%%%%
 
-\posterbox[adjusted title = Modelo de Atores, smallmargins, equal height group = toprow]
+\posterbox[adjusted title = Modelo de Atores, smallmargins, equal height group = toprow, colback=white]
           {name=contexto, below=titlebox, column=1, span=6}{
 
     Teoria matemática originalmente concebida para sistemas distribuídos. 
@@ -166,13 +177,13 @@
 
 %%%%%%%% Objetivo %%%%%%%%
 
-\posterbox[adjusted title = Objetivo, smallmargins, equal height group = toprow]
+\posterbox[adjusted title = Objetivo, smallmargins, equal height group = toprow, colback=white]
           {name=objetivo, below=titlebox, column=7, span=6}{
 
     Este trabalho realiza uma experimentação aplicando o Modelo de Atores em um contexto distante do seu domínio natural: \textbf{aplicações centralizadas em Rust}.
 
     O objetivo é entender o esforço necessário para aplicar um padrão arquitetural fora do seu contexto natural e quais consequências isso traz para o projeto.
-    
+
     \begin{center}
         \includegraphics[width=0.6\textwidth]{figuras/actor-design.png}
         \captionof{figure}{Representação da estrutura de um ator em Rust}
@@ -183,7 +194,7 @@
 
 %%%%%%%% Estudo de Caso: Patch-Hub %%%%%%%%
 
-\posterbox[adjusted title = Estudo de Caso: Patch-Hub, smallmargins, equal height group = patchhub]
+\posterbox[adjusted title = Estudo de Caso: Patch-Hub, smallmargins, equal height group = patchhub, colback=white]
           {name=estudocaso, below=contexto, column=1, span=4}{
 
     \textbf{Patch-Hub} é uma ferramenta de terminal desenvolvida como parte do ecossistema KWorkflow para interagir com a API do Lore Kernel Archive. Para validação, foi realizada uma reescrita do projeto aplicando o Modelo de Atores com as adaptações propostas.
@@ -192,7 +203,7 @@
 
 %%%%%%%% Espaço para Imagem %%%%%%%%
 
-\posterbox[adjusted title = Original, smallmargins, equal height group = patchhub]
+\posterbox[adjusted title = Original, smallmargins, equal height group = patchhub, colback=white]
           {name=original, below=objetivo, column=5, span=4}{
 
     \begin{center}
@@ -205,7 +216,7 @@
 
 %%%%%%%% Espaço para Imagem %%%%%%%%
 
-\posterbox[adjusted title = Reescrito, smallmargins, equal height group = patchhub]
+\posterbox[adjusted title = Reescrito, smallmargins, equal height group = patchhub, colback=white]
           {name=reescrito, below=objetivo, column=9, span=4}{
     \begin{center}
         \includegraphics[width=0.9\textwidth]{figuras/patch-hub-new.png}
@@ -217,7 +228,7 @@
 
 %%%%%%%% Espaço para Imagem %%%%%%%%
 
-\posterbox[adjusted title = Arquitetura, smallmargins, equal height group = patchhub]
+\posterbox[adjusted title = Arquitetura, smallmargins, colback=white]
           {name=arquitetura, below=estudocaso, column=1, span=5}{
     \begin{center}
         \includegraphics[width=1\textwidth]{figuras/patch-hub-actors.png}
@@ -227,7 +238,7 @@
 }
 %%%%%%%% Resultados %%%%%%%%
 
-\posterbox[adjusted title = Resultados, smallmargins, equal height group = resultados]
+\posterbox[adjusted title = Resultados, smallmargins, colback=white]
           {name=resultados, below=original, column=6, span=7}{
     \begin{itemize}
         \item \textbf{Testabilidade:}A cobertura de testes aumentou cerca de \(3x\).
@@ -239,7 +250,7 @@
 
 %%%%%%%% Conclusão %%%%%%%%
 
-\posterbox[adjusted title = Conclusão, smallmargins]
+\posterbox[adjusted title = Conclusão, smallmargins, colback=white]
           {name=conclusao, below=resultados, column=6, span=7}{
 
     O principal resultado demonstra que a adequação de padrões arquiteturais pode ser \textbf{surpreendentemente flexível}. Sendo possível extrair valor ao se reimaginar tanto o problema quanto o padrão.
