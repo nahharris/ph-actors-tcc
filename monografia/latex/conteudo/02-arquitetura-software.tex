@@ -16,7 +16,7 @@ Padrões tem por objetivo garantir a qualidade do software oferecendo soluções
 
 Todavia, como explorado pelo artigo \cite{kassab2018architectural}, em geral, na indústria, na concepção dos projetos, as funcionalidades são mais levadas em conta do que os requisitos de qualidade. O mesmo artigo ainda afirma que se funcionalidades fossem a única parte importante, não haveria necessidade de se ter uma arquitetura de software. 
 
-Por isso, é necessário estudar e entender os padrões existentes e eles trazem consequências de longo prazo para confiabilidade, manutenibilidade, testabilidade, entre outras complicações para um sistema.
+Por isso, é necessário estudar e entender os padrões existentes, pois eles trazem consequências de longo prazo para confiabilidade, manutenibilidade, testabilidade, entre outras complicações para um sistema.
 
 A seguir, apresentam-se alguns princípios e padrões fundamentais relacionados a arquitetura de software que servirão como base conceitual para as discussões subsequentes neste trabalho.
 
@@ -57,24 +57,24 @@ Os três componentes do padrão MVC são:
     \item \textbf{Controller}: Funciona como intermediário entre o usuário e o Model. Recebe entradas do usuário, processa essas entradas e atualiza o estado da aplicação no Model.
 \end{itemize}
 
-O MVC oferece benefícios significativos para a manutenibilidade e testabilidade de sistemas. A separação de responsabilidades permite que a lógica de negócio seja testada independentemente das interfaces humano-computador, facilitando testes unitários. Além disso, múltiplas Views e multiplos Controllers podem ser criados para interagir com o mesmo Model, permitindo reutilização de código e adaptação a diferentes contextos.
+O MVC oferece benefícios significativos para a manutenibilidade e testabilidade de sistemas. A separação de responsabilidades permite que a lógica de negócio seja testada independentemente das interfaces humano-computador, facilitando testes unitários. Além disso, múltiplas Views e múltiplos Controllers podem ser criados para interagir com o mesmo Model, permitindo reutilização de código e adaptação a diferentes contextos.
 
 No entanto, o padrão MVC tradicional apresenta algumas limitações quando aplicado na prática. Em muitas de suas implementações, a View e o Controller acabam sendo implementados de forma muito acoplada, o que acabou por dar origem a novas derivações do padrão, como o Model-View-ViewModel (MVVM).
 
 
 \section{Avaliação de Adequação de Padrões}
 
-O primeiro e mais importante fator a ser analisado para se identificar a adequação de um padrão para um projeto é, evidentemente, o casamento entre os requisitos de qualidade que o padrão aborda e o requisitos de qualidade do sistema.
+O primeiro e mais importante fator a ser analisado para se identificar a adequação de um padrão para um projeto é, evidentemente, o casamento entre os requisitos de qualidade que o padrão aborda e os requisitos de qualidade do sistema.
 
-Uma outra caracteristica a ser considerada é o contexto da aplicação. Existem padrões que abordam desafios comuns para aplicações de nuvem, outros para aplicações de interface gráfica. Escolher um padrão de um domínio distinto irá fornecer poucas ferramentas úteis para a resolução do problema.
+Uma outra característica a ser considerada é o contexto da aplicação. Existem padrões que abordam desafios comuns para aplicações de nuvem, outros para aplicações de interface gráfica. Escolher um padrão de um domínio distinto irá fornecer poucas ferramentas úteis para a resolução do problema.
 
-Por fim, é necessário entender os custos que aquele padrão trás. Qual impacto esperado na performance do sistema? O quanto ele enrijece a estrutura pro projeto? O quão mais complicado fica a organização do código? Todas essas perguntas precisam ser feitas durante a análise.
+Por fim, é necessário entender os custos que aquele padrão traz. Qual impacto esperado na \emph{performance} do sistema? O quanto ele enrijece a estrutura do projeto? O quão mais complicada fica a organização do código? Todas essas perguntas precisam ser feitas durante a análise.
 
 \subsection{Adequação do Modelo de Atores}
 
 O Modelo de Atores será bem definido do ponto de vista teórico e prático no próximo capítulo. Porém, avaliando o Modelo de Atores em termos de adequação para a criação de aplicações centralizadas, é possível identificar que o padrão não é adequado para o contexto.
 
-Primeiramente, pelo fato de que o Modelo de Atores foi originalmente concebido para sistemas distribuídos, isso por si só já é um indicativo de que ele não é adequado para o contexto de aplicações centralizadas. Aplicações distribuídas tem necessidade de ser resilientes, escaláveis tolerantes a falhas e permitir comunicação assíncrona remota, nenhuma dessas características é algo fortemente procurado em aplicações centralizadas.
+Primeiramente, pelo fato de que o Modelo de Atores foi originalmente concebido para sistemas distribuídos, isso por si só já é um indicativo de que ele não é adequado para o contexto de aplicações centralizadas. Aplicações distribuídas têm necessidade de ser resilientes, escaláveis, tolerantes a falhas e permitir comunicação assíncrona remota, nenhuma dessas características é algo fortemente procurado em aplicações centralizadas.
 
 Ademais, a linguagem de programação Rust, escolhida para a implementação do projeto, não possui o Modelo de Atores como paradigma central, diferentemente de Elixir. Apesar de isso não ser um impeditivo para a aplicação do padrão, é uma característica que deve ser considerada. Rust é uma linguagem que prioriza a segurança de memória e a concorrência confiável através de checagens em tempo de compilação, enquanto o Modelo de Atores é tradicionalmente implementado em tecnologias mais flexíveis e dinâmicas.
 

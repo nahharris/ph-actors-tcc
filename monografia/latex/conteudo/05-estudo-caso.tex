@@ -2,7 +2,7 @@
 
 Uma vez apresentadas as propostas de adaptação do Modelo de Atores para experimentação fora do domínio dos sistemas distribuídos, chega o momento de realizar um estudo de caso para aplicar a proposta em um projeto real para posterior análise de resultados. 
 
-O projeto escolhido foi uma ferramenta de código aberto desenvolvida sob a organização KWorkflow (kw) chamado de Patch-Hub. Neste capítulo, será apresentado o contexto do projeto, a arquitetura original e suas limitações, os objetivos do estudo de caso e a proposta de refatoração do projeto com o uso do Modelo de Atores cuja implementação estará disponível na integra no repositório do projeto no GitHub(incluir link).
+O projeto escolhido foi uma ferramenta de código aberto desenvolvida sob a organização KWorkflow (kw) chamada de Patch-Hub. Neste capítulo, será apresentado o contexto do projeto, a arquitetura original e suas limitações, os objetivos do estudo de caso e a proposta de refatoração do projeto com o uso do Modelo de Atores, cuja implementação estará disponível na íntegra no repositório do projeto no GitHub (incluir link).
 
 \section{Contexto}
 
@@ -16,9 +16,9 @@ Essa forma de contribuição é um processo tradicional e bem estabelecido, mas 
 
 \subsection{O Projeto lore.kernel.org}
 
-Para mitigar essas dificuldades, foi criado o projeto lore.kernel.org, um arquivo público que fornece uma interface web para visualizar e pesquisar mensagens das listas de discussão do kernel~\cite{lore_api}. O lore.kernel.org oferece uma API que permite acesso programático aos patches arquivados, incluindo funcionalidades de busca, paginação e filtros avançados.
+Para mitigar essas dificuldades, foi criado o projeto lore.kernel.org, um arquivo público que fornece uma interface web para visualizar e pesquisar mensagens das listas de discussão do kernel~\cite{lore_api}. O lore.kernel.org oferece uma \emph{API} que permite acesso programático aos \emph{patches} arquivados, incluindo funcionalidades de busca, paginação e filtros avançados.
 
-A API do lore suporta consultas complexas através de parâmetros de query string, permitindo filtrar patches por critérios como assunto, autor, data e conteúdo. Esta funcionalidade é fundamental para ferramentas que buscam automatizar ou simplificar a interação com o ecossistema de patches do kernel.
+A \emph{API} do lore suporta consultas complexas através de parâmetros de \emph{query string}, permitindo filtrar \emph{patches} por critérios como assunto, autor, data e conteúdo. Esta funcionalidade é fundamental para ferramentas que buscam automatizar ou simplificar a interação com o ecossistema de \emph{patches} do kernel.
 
 \subsection{O Projeto KWorkflow}
 
@@ -28,7 +28,7 @@ O projeto oferece um utilitário de terminal unificado para diversas operações
 
 \subsection{O Patch-Hub}
 
-O Patch-Hub é uma ferramenta desenvolvida como parte do ecossistema KWorkflow, especificamente projetada para interagir com a API do lore.kernel.org~\cite{patch_hub_github}. Sua missão é agilizar a navegação e revisão de contribuições para o kernel Linux, fornecendo uma interface de usuário baseada em terminal (TUI) que simplifica o processo de descoberta, análise e acompanhamento de patches.
+O Patch-Hub é uma ferramenta desenvolvida como parte do ecossistema KWorkflow, especificamente projetada para interagir com a \emph{API} do lore.kernel.org~\cite{patch_hub_github}. Sua missão é agilizar a navegação e revisão de contribuições para o kernel Linux, fornecendo uma interface de usuário baseada em terminal (\emph{TUI}) que simplifica o processo de descoberta, análise e acompanhamento de \emph{patches}.
 
 (screenshot do patch-hub)
 
@@ -36,16 +36,16 @@ A ferramenta permite aos desenvolvedores navegar por listas de patches, aplicar 
 
 \section{Arquitetura Original}
 
-A implementação original do Patch-Hub seguia uma arquitetura majoritariamente single-threaded e monolítica com inspirações no padrão arquitetural MVC. A organização do código era dada em termos dos seguintes módulos:
+A implementação original do Patch-Hub seguia uma arquitetura majoritariamente \emph{single-threaded} e monolítica com inspirações no padrão arquitetural MVC. A organização do código era dada em termos dos seguintes módulos:
 
 \begin{itemize}
-    \item \textbf{\texttt{lore}}: Interação com a API do lore.kernel.org
+    \item \textbf{\texttt{lore}}: Interação com a \emph{API} do lore.kernel.org
     \item \textbf{\texttt{ui}}: Renderização de terminal e lógica de exibição
-    \item \textbf{\texttt{cli}}: Parsing de argumentos de linha de comando
+    \item \textbf{\texttt{cli}}: \emph{Parsing} de argumentos de linha de comando
     \item \textbf{\texttt{app}}: Estado central da aplicação e gerenciamento de dados
     \begin{itemize}
-        \item \texttt{logger}: Gerencia funcionalidade de logging
-        \item \texttt{popup}: Cria e gerencia diálogos popup
+        \item \texttt{logger}: Gerencia funcionalidade de \emph{logging}
+        \item \texttt{popup}: Cria e gerencia diálogos \emph{popup}
         \item \texttt{config}: Gerencia configurações da aplicação
     \end{itemize}
     \item \textbf{\texttt{handler}}: Manipulação de entrada do usuário e processamento de eventos
@@ -53,11 +53,15 @@ A implementação original do Patch-Hub seguia uma arquitetura majoritariamente 
 
 \subsection{Funcionalidades Principais}
 
-A implementação do Patch-Hub (tanto a original quanto a refatorada) fornece um conjunto de funcionalidades para interagir com o arquivo de patches do kernel Linux. O sistema permite a seleção e navegação de listas de discussão arquivadas no \textit{lore.kernel.org}, apresentando os conjuntos de patches associados. Ao examinar uma série específica, a interface disponibiliza o conteúdo individual dos patches juntamente com metadados relevantes, incluindo título, autor, versão, quantidade de patches e timestamp da última atualização.
+A implementação do Patch-Hub (tanto a original quanto a refatorada) fornece um conjunto de funcionalidades para interagir com o arquivo de \emph{patches} do kernel Linux. O sistema permite a seleção e navegação de listas de discussão arquivadas no \textit{lore.kernel.org}, apresentando os conjuntos de \emph{patches} associados. Ao examinar uma série específica, a interface disponibiliza o conteúdo individual dos \emph{patches} juntamente com metadados relevantes, incluindo título, autor, versão, quantidade de \emph{patches} e \emph{timestamp} da última atualização.
 
-(screenshot dos patch details do patch-hub original)
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\textwidth]{figuras/patch-hub-original.png}
+    \caption{Interface do Patch-Hub.\label{fig:patch-hub-original}}
+\end{figure}
 
-O sistema implementa operações fundamentais para o workflow de revisão de patches: aplicação de patches em repositórios locais do kernel, organização de séries em um sistema de favoritos, e composição de respostas com tags de revisão padrão, como \texttt{Reviewed-by}.
+O sistema implementa operações fundamentais para o \emph{workflow} de revisão de \emph{patches}: aplicação de \emph{patches} em repositórios locais do kernel, organização de séries em um sistema de favoritos, e composição de respostas com tags de revisão padrão, como \texttt{Reviewed-by}.
 
 A renderização do conteúdo dos patches é implementada com suporte a múltiplos backends, incluindo ferramentas externas, além de um renderizador padrão. Esta abordagem permite variação na apresentação visual dos patches ao gosto do usuário sem comprometer a portabilidade da aplicação.
 
@@ -67,7 +71,7 @@ Apesar de sua funcionalidade, a implementação original do Patch-Hub apresentav
 
 \subsection{Gargalo de Mutação Centralizada}
 
-O principal problema arquitetural reside na concentração de todo o estado da aplicação em uma única estrutura \texttt{App} que deve ser passada como \texttt{\&mut App} através de todo o código. Esta abordagem cria um \textit{gargalo de mutação centralizada} que viola princípios de \textit{borrow checking} do Rust.
+O principal problema arquitetural reside na concentração de todo o estado da aplicação em uma única estrutura \texttt{App} que deve ser passada como \texttt{\&mut App} através de todo o código. Esta abordagem cria um \emph{gargalo de mutação centralizada} que viola princípios de \emph{borrow checking} do Rust.
 
 O sistema de \textit{ownership} do Rust impõe que quando uma função recebe \texttt{\&mut App}, ela adquire uma referência mutável exclusiva de toda a estrutura. Isso significa que:
 
@@ -83,7 +87,7 @@ O resultado é uma violação do princípio da responsabilidade única, forçand
 
 \subsection{Impossibilidade de Composição Modular}
 
-O design atual impede a composição modular de \textit{handlers} e componentes devido às restrições de \textit{borrowing}. \textit{Handlers} de eventos devem receber \texttt{\&mut App} inteiro mesmo quando precisam acessar apenas um subconjunto específico de dados. Isso cria uma situação onde \textit{handlers} não podem ser decompostos em funções auxiliares menores e também funções auxiliares que precisam de múltiplos campos de \texttt{App} enfrentam conflitos por tentarem pegar referências a partes de algo que já possui uma referência mutável.
+O design atual impede a composição modular de \emph{handlers} e componentes devido às restrições de \emph{borrowing}. \emph{Handlers} de eventos devem receber \texttt{\&mut App} inteiro mesmo quando precisam acessar apenas um subconjunto específico de dados. Isso cria uma situação onde \emph{handlers} não podem ser decompostos em funções auxiliares menores e também funções auxiliares que precisam de múltiplos campos de \texttt{App} enfrentam conflitos por tentarem pegar referências a partes de algo que já possui uma referência mutável.
 
 Esta limitação força a criação de métodos monolíticos em \texttt{App} que conhecem detalhes de implementação de múltiplos componentes, aumentando a complexidade e reduzindo a testabilidade.
 
@@ -93,7 +97,7 @@ A arquitetura torna impossível a atualização direta de estado entre component
 
 \subsection{Concorrência e Responsividade Limitadas}
 
-A natureza single-threaded da aplicação cria gargalos significativos durante operações de I/O, resultando em:
+A natureza \emph{single-threaded} da aplicação cria gargalos significativos durante operações de I/O, resultando em:
 
 \begin{itemize}
     \item Interfaces não responsivas durante requisições de rede
@@ -102,19 +106,19 @@ A natureza single-threaded da aplicação cria gargalos significativos durante o
     \item Impossibilidade de realizar operações paralelas independentes
 \end{itemize}
 
-Para contornar esse problema, foi feito uso de mecanismos para paralelizar certas regiões do código. A complicação aqui é que referências em Rust não podem ser compartilhadas entre \textit{threads} pois não há garantias que uma \textit{thread} vá ser encerrada antes do dono do valor referido, o que poderia causar vazamentos de memória ou condições de corrida indesejáveis.
+Para contornar esse problema, foi feito uso de mecanismos para paralelizar certas regiões do código. A complicação aqui é que referências em Rust não podem ser compartilhadas entre \emph{threads} pois não há garantias de que uma \emph{thread} vá ser encerrada antes do dono do valor referido, o que poderia causar vazamentos de memória ou condições de corrida indesejáveis.
 
 (exemplo de como foi feito o paralelismo no patch-hub original)
 
 \subsection{Dificuldades de Testabilidade}
 
-A arquitetura monolítica torna extremamente difícil a criação de testes unitários eficazes. Testes de handlers individuais requerem a construção de toda a estrutura \texttt{App}, incluindo dependências que podem não ser relevantes para o teste específico. Isso resulta em:
+A arquitetura monolítica torna extremamente difícil a criação de testes unitários eficazes. Testes de \emph{handlers} individuais requerem a construção de toda a estrutura \texttt{App}, incluindo dependências que podem não ser relevantes para o teste específico. Isso resulta em:
 
 \begin{itemize}
     \item Testes lentos devido à necessidade de inicialização completa
     \item Testes frágeis que quebram quando componentes não relacionados são modificados
     \item Impossibilidade de isolar comportamento específico para teste
-    \item Dificuldade em criar \textit{mocks} e \textit{stubs} para dependências externas
+    \item Dificuldade em criar \emph{mocks} e \emph{stubs} para dependências externas
 \end{itemize}
 
 Esta limitação compromete significativamente a capacidade de garantir qualidade através de testes automatizados, aumentando o risco de regressões em mudanças futuras.
@@ -127,7 +131,7 @@ Este trabalho não criará uma reescrita completa com 100\% de compatibilidade d
 
 \begin{itemize}
     \item Uma interface de usuário de texto interativa
-    \item Integração com API do Lore com suporte a cache
+    \item Integração com \emph{API} do Lore com suporte a \emph{cache}
     \item Navegar através das listas de discussão catalogadas
     \item Acesso a um feed de patches enviados para uma lista de discussão
     \item Fornecer uma visualização do conteúdo e metadados de um patch
@@ -139,11 +143,11 @@ Este trabalho não criará uma reescrita completa com 100\% de compatibilidade d
 
 Com objetivos estabelecidos, foi feita uma modelagem da arquitetura do Patch-Hub com o uso de atores. A modelagem adota os princípios SOLID como guias. Os atores serão categorizados em 2 grupos considerando o tipo de interação que eles são responsáveis: externas ou internas.
 
-O primeiro grupo é formado pelos atores responsáveis por interações com componentes externos ao sistema, como por exemplo o sistema de arquivos, a internet ou o terminal. Este grupo será chamado de atores de integração pois permitem a integração do programa com outros sistemas, gerando, assim, efeitos colaterais no mundo real.
+O primeiro grupo é formado pelos atores responsáveis por interações com componentes externos ao sistema, como, por exemplo, o sistema de arquivos, a internet ou o terminal. Este grupo será chamado de atores de integração pois permitem a integração do programa com outros sistemas, gerando, assim, efeitos colaterais no mundo real.
 
 O segundo grupo é formado pelos atores que irão interagir apenas com demais atores, ou seja, componentes internos ao sistema. Este grupo tem uma diferença fundamental no que diz respeito a sua testabilidade. 
 
-Por dependerem apenas de outros atores, testes unitários se tornam triviais uma vez que se criem \textit{mocks}. Uma vez que, testando um ator contra \textit{mocks} que imitem o comportamento desejado dos atores de dependência, dá a garantia que apenas o código do próprio ator é o que influencia no resultado dos testes. Este grupo será chamado de atores internos por não interagirem diretamente com sistemas externos.
+Por dependerem apenas de outros atores, testes unitários se tornam triviais uma vez que se criem \emph{mocks}. Ao testar um ator contra \emph{mocks} que imitem o comportamento desejado dos atores de dependência, dá-se a garantia de que apenas o código do próprio ator é o que influencia no resultado dos testes. Este grupo será chamado de atores internos por não interagirem diretamente com sistemas externos.
 
 \begin{figure}[H]
     \centering
@@ -171,7 +175,7 @@ Essas capacidades não fazem parte da lógica de negócio do Patch-Hub, mas serv
 
 O ator Sistema de Arquivos é responsável por gerenciar as operações de leitura, escrita, remoção e listagem de arquivos e diretórios. Ele é responsável por garantir que as operações sejam realizadas de forma segura, garantindo que o sistema de arquivos seja consistente e que os arquivos e diretórios sejam gerenciados corretamente.
 
-https://github.com/nahharris/ph-actors-tcc/blob/master/src/fs.rs
+\textit{Implementação:} \href{https://github.com/nahharris/ph-actors-tcc/blob/master/src/fs.rs}{\texttt{src/fs.rs}}
 
 \textbf{Mensagens:}
 
@@ -187,9 +191,9 @@ https://github.com/nahharris/ph-actors-tcc/blob/master/src/fs.rs
 
 \subsubsection{Rede}
 
-O ator Rede é responsável por gerenciar as operações de requisição HTTP. Ele é o mecanismo base que vai permitir a integração do sistema com a API web do lore.kernel.org.
+O ator Rede é responsável por gerenciar as operações de requisição HTTP. Ele é o mecanismo base que vai permitir a integração do sistema com a \emph{API} web do lore.kernel.org.
 
-https://github.com/nahharris/ph-actors-tcc/blob/master/src/net.rs
+\textit{Implementação:} \href{https://github.com/nahharris/ph-actors-tcc/blob/master/src/net.rs}{\texttt{src/net.rs}}
 
 \textbf{Depende:}
 
@@ -212,7 +216,7 @@ https://github.com/nahharris/ph-actors-tcc/blob/master/src/net.rs
 
 O ator Variáveis de Ambiente é responsável por gerenciar as operações de definição, remoção e recuperação de variáveis de ambiente.
 
-https://github.com/nahharris/ph-actors-tcc/blob/master/src/env.rs
+\textit{Implementação:} \href{https://github.com/nahharris/ph-actors-tcc/blob/master/src/env.rs}{\texttt{src/env.rs}}
 
 \textbf{Mensagens:}
 
@@ -224,9 +228,9 @@ https://github.com/nahharris/ph-actors-tcc/blob/master/src/env.rs
 
 \subsubsection{Terminal}
 
-O ator Terminal gerencia o loop de eventos da interface de usuário baseada na biblioteca Cursive. Ele mantém uma fila FIFO interna de eventos de UI (teclas pressionadas, seleções, etc.) além de ser responsável por desenhar no terminal. Ele também expõe uma API baseada em mensagens para atualizar a interface e recuperar os eventos de UI ocorridos.
+O ator Terminal gerencia o \emph{loop} de eventos da interface de usuário baseada na biblioteca Cursive. Ele mantém uma fila FIFO interna de eventos de \emph{UI} (teclas pressionadas, seleções, etc.) além de ser responsável por desenhar no terminal. Ele também expõe uma \emph{API} baseada em mensagens para atualizar a interface e recuperar os eventos de \emph{UI} ocorridos.
 
-https://github.com/nahharris/ph-actors-tcc/blob/master/src/terminal.rs
+\textit{Implementação:} \href{https://github.com/nahharris/ph-actors-tcc/blob/master/src/terminal.rs}{\texttt{src/terminal.rs}}
 
 \textbf{Depende:}
 
@@ -238,9 +242,9 @@ https://github.com/nahharris/ph-actors-tcc/blob/master/src/terminal.rs
 
 \begin{itemize}
     \item \texttt{Show}: Atualiza a tela exibida com um novo tipo de tela
-    \item \texttt{GetUiEvent}: Recupera o próximo evento de UI da fila
-    \item \texttt{ClearUiEvents}: Limpa a fila de eventos de UI
-    \item \texttt{Quit}: Termina a UI e sai da aplicação
+    \item \texttt{GetUiEvent}: Recupera o próximo evento de \emph{UI} da fila
+    \item \texttt{ClearUiEvents}: Limpa a fila de eventos de \emph{UI}
+    \item \texttt{Quit}: Termina a \emph{UI} e sai da aplicação
 \end{itemize}
 
 O método \texttt{spawn()} do ator Terminal retorna uma tupla contendo a interface do ator e um \texttt{JoinHandle} que permite que outros atores detectem quando o terminal foi encerrado, permitindo encerramento gracioso da aplicação. Este design evita a necessidade de envolver o \texttt{JoinHandle} em um \texttt{Arc} e simplifica o gerenciamento do ciclo de vida do terminal.
@@ -249,7 +253,7 @@ O método \texttt{spawn()} do ator Terminal retorna uma tupla contendo a interfa
 
 O ator Shell é responsável por executar comandos integrando o Patch-Hub ao shell do sistema hospedeiro. Através dele é possível expandir as funcionalidades do Patch-Hub com o uso de ferramentas externas.
 
-https://github.com/nahharris/ph-actors-tcc/blob/master/src/shell.rs
+\textit{Implementação:} \href{https://github.com/nahharris/ph-actors-tcc/blob/master/src/shell.rs}{\texttt{src/shell.rs}}
 
 \textbf{Depende:}
 
@@ -277,9 +281,9 @@ As demais capacidades foram catalogadas. Dessa vez são capacidades de alto nív
 
 \subsubsection{Logs}
 
-Fornece um serviço de logging centralizado e thread-safe. Ele recebe mensagens de log de outros atores e as escreve em um arquivo de log designado, fornecendo diferentes níveis de log para debugging e monitoramento.
+Fornece um serviço de \emph{logging} centralizado e \emph{thread-safe}. Ele recebe mensagens de log de outros atores e as escreve em um arquivo de log designado, fornecendo diferentes níveis de log para \emph{debugging} e monitoramento.
 
-https://github.com/nahharris/ph-actors-tcc/blob/master/src/log.rs
+\textit{Implementação:} \href{https://github.com/nahharris/ph-actors-tcc/blob/master/src/log.rs}{\texttt{src/log.rs}}
 
 \textbf{Depende:}
 
@@ -299,7 +303,7 @@ https://github.com/nahharris/ph-actors-tcc/blob/master/src/log.rs
 
 Responsável por carregar configurações de um arquivo de configuração, fornecê-las a outros atores sob demanda e persistir mudanças.
 
-https://github.com/nahharris/ph-actors-tcc/blob/master/src/app/config.rs
+\textit{Implementação:} \href{https://github.com/nahharris/ph-actors-tcc/blob/master/src/app/config.rs}{\texttt{src/app/config.rs}}
 
 \textbf{Depende:}
 
@@ -325,9 +329,9 @@ https://github.com/nahharris/ph-actors-tcc/blob/master/src/app/config.rs
 
 \subsubsection{Lore API}
 
-Gerencia toda a comunicação com a API externa do Lore patchwork. Ele abstrai os detalhes das requisições HTTP e parsing de dados, fornecendo uma interface limpa e tipada para buscar dados como listas de discussão, séries de patches e patches individuais. Ele atua como um tradutor entre as estruturas de dados internas da aplicação e as respostas brutas da API. Ele não realiza nenhum cache por si só.
+Gerencia toda a comunicação com a \emph{API} externa do Lore patchwork. Ele abstrai os detalhes das requisições HTTP e \emph{parsing} de dados, fornecendo uma interface limpa e tipada para buscar dados como listas de discussão, séries de \emph{patches} e \emph{patches} individuais. Ele atua como um tradutor entre as estruturas de dados internas da aplicação e as respostas brutas da \emph{API}. Ele não realiza nenhum \emph{cache} por si só.
 
-https://github.com/nahharris/ph-actors-tcc/blob/master/src/api/lore.rs
+\textit{Implementação:} \href{https://github.com/nahharris/ph-actors-tcc/blob/master/src/api/lore.rs}{\texttt{src/api/lore.rs}}
 
 \textbf{Depende:}
 
@@ -342,15 +346,15 @@ https://github.com/nahharris/ph-actors-tcc/blob/master/src/api/lore.rs
     \item \texttt{GetAvailableListsPage}: Busca uma lista paginada de listas de discussão disponíveis
     \item \texttt{GetPatchFeedPage}: Busca um feed paginado de patches para uma lista de discussão específica
     \item \texttt{GetRawPatch}: Busca o conteúdo bruto de um único patch em formato texto
-    \item \texttt{GetPatchHtml}: Busca o conteúdo HTML de um único patch
-    \item \texttt{GetPatchMetadata}: Busca os metadados de um único patch em formato JSON
+    \item \texttt{GetPatchHtml}: Busca o conteúdo HTML de um único \emph{patch}
+    \item \texttt{GetPatchMetadata}: Busca os metadados de um único \emph{patch} em formato JSON
 \end{itemize}
 
 \subsubsection{Interface de Usuário}
 
 O ator UI gerencia a lógica de navegação e estado da interface, coordenando a comunicação entre os caches e o Terminal. Ele mantém o estado de navegação (lista atual, página, seleção) e decide quais telas mostrar com base nas ações do usuário.
 
-https://github.com/nahharris/ph-actors-tcc/blob/master/src/app/ui.rs
+\textit{Implementação:} \href{https://github.com/nahharris/ph-actors-tcc/blob/master/src/app/ui.rs}{\texttt{src/app/ui.rs}}
 
 \textbf{Depende:}
 
@@ -372,7 +376,7 @@ https://github.com/nahharris/ph-actors-tcc/blob/master/src/app/ui.rs
     \item \texttt{UpdateSelection}: Atualiza o item selecionado na visão atual (sem retorno)
     \item \texttt{PreviousPage}: Navega para a página anterior na visão atual
     \item \texttt{NextPage}: Navega para a próxima página na visão atual
-    \item \texttt{NavigateBack}: Navega de volta na hierarquia (patch → feed → listas; nas listas, encerra a aplicação)
+    \item \texttt{NavigateBack}: Navega de volta na hierarquia (patch, depois feed, depois listas; nas listas, encerra a aplicação)
     \item \texttt{SubmitSelection}: Submete a seleção atual, retornando uma ação de navegação (abre feed, abre patch, ou encerra)
     \item \texttt{GetState}: Recupera o estado atual da UI
 \end{itemize}
@@ -381,7 +385,7 @@ https://github.com/nahharris/ph-actors-tcc/blob/master/src/app/ui.rs
 
 O ator Render é responsável por processar conteúdo bruto de patches e convertê-los em uma representação visual formatada. Ele suporta múltiplos backends de renderização, incluindo ferramentas externas como \texttt{bat} ou \texttt{delta}.
 
-https://github.com/nahharris/ph-actors-tcc/blob/master/src/render.rs
+\textit{Implementação:} \href{https://github.com/nahharris/ph-actors-tcc/blob/master/src/render.rs}{\texttt{src/render.rs}}
 
 \textbf{Depende:}
 
@@ -398,17 +402,17 @@ https://github.com/nahharris/ph-actors-tcc/blob/master/src/render.rs
 
 \subsubsection{Cache}
 
-https://github.com/nahharris/ph-actors-tcc/blob/master/src/app/cache.rs
+\textit{Implementação:} \href{https://github.com/nahharris/ph-actors-tcc/blob/master/src/app/cache.rs}{\texttt{src/app/cache.rs}}
 
-A fim de agilizar o acesso a dados diminuindo a quantidade de operações que dependam de chamadas de API ou do sistema de arquivos, será feito o uso de técnicas de \emph{caching}.
+A fim de agilizar o acesso a dados diminuindo a quantidade de operações que dependam de chamadas de \emph{API} ou do sistema de arquivos, será feito o uso de técnicas de \emph{caching}.
 
-Para cada domínio de dados, será criado um ator específico que se encarregará de gerenciar o cache para esse domínio. Sendo responsavel por lidar com \emph{cache misses} e \emph{cache hits}, assim como com a validação de cache, garantindo consistência dos dados realizando o mínimo de acessos necessários a sistemas externos.
+Para cada domínio de dados, será criado um ator específico que se encarregará de gerenciar o \emph{cache} para esse domínio. Sendo responsável por lidar com \emph{cache misses} e \emph{cache hits}, assim como com a validação de \emph{cache}, garantindo consistência dos dados realizando o mínimo de acessos necessários a sistemas externos.
 
 \textbf{Listas de Discussão}
 
-Armazena em cache a lista de todas as listas de discussão disponíveis da API do Lore. Ele busca a lista completa, ordena alfabeticamente e a persiste no sistema de arquivos para acelerar inicializações subsequentes da aplicação. Ele gerencia validação de cache para atualizar periodicamente a lista.
+Armazena em \emph{cache} a lista de todas as listas de discussão disponíveis da \emph{API} do Lore. Ele busca a lista completa, ordena alfabeticamente e a persiste no sistema de arquivos para acelerar inicializações subsequentes da aplicação. Ele gerencia validação de \emph{cache} para atualizar periodicamente a lista.
 
-https://github.com/nahharris/ph-actors-tcc/blob/master/src/app/cache/mailing\_list.rs
+\textit{Implementação:} \href{https://github.com/nahharris/ph-actors-tcc/blob/master/src/app/cache/mailing_list.rs}{\texttt{src/app/cache/mailing\_list.rs}}
 
 \textbf{Depende:}
 
@@ -433,9 +437,9 @@ https://github.com/nahharris/ph-actors-tcc/blob/master/src/app/cache/mailing\_li
 
 \textbf{Feed}
 
-Fornece cache por lista de discussão de metadados de patches (como autor, assunto e data). Ele busca feeds de patches sob demanda, suporta paginação e persiste os metadados no sistema de arquivos. Ele usa uma estratégia de validação inteligente para buscar apenas patches novos quando um feed foi atualizado no servidor.
+Fornece \emph{cache} por lista de discussão de metadados de \emph{patches} (como autor, assunto e data). Ele busca \emph{feeds} de \emph{patches} sob demanda, suporta paginação e persiste os metadados no sistema de arquivos. Ele usa uma estratégia de validação inteligente para buscar apenas \emph{patches} novos quando um \emph{feed} foi atualizado no servidor.
 
-https://github.com/nahharris/ph-actors-tcc/blob/master/src/app/cache/feed.rs
+\textit{Implementação:} \href{https://github.com/nahharris/ph-actors-tcc/blob/master/src/app/cache/feed.rs}{\texttt{src/app/cache/feed.rs}}
 
 \textbf{Depende:}
 
@@ -449,22 +453,22 @@ https://github.com/nahharris/ph-actors-tcc/blob/master/src/app/cache/feed.rs
 \textbf{Mensagens:}
 
 \begin{itemize}
-    \item \texttt{Get}: Recupera metadados de um único patch por seu índice dentro de um feed de lista de discussão
-    \item \texttt{GetSlice}: Recupera um intervalo de metadados de patches para paginação
-    \item \texttt{Refresh}: Atualiza inteligentemente o cache para uma lista de discussão específica, buscando apenas itens novos
-    \item \texttt{Invalidate}: Limpa o cache para uma lista de discussão específica
-    \item \texttt{IsAvailable}: Verifica se um intervalo de índices está disponível em cache para uma lista
-    \item \texttt{Len}: Retorna o número de entradas de metadados em cache para uma lista
-    \item \texttt{Persist}: Persiste o cache de uma lista no sistema de arquivos
-    \item \texttt{Load}: Carrega o cache de uma lista do sistema de arquivos
-    \item \texttt{IsLoaded}: Verifica se o cache de uma lista foi carregado do disco
+    \item \texttt{Get}: Recupera metadados de um único \emph{patch} por seu índice dentro de um \emph{feed} de lista de discussão
+    \item \texttt{GetSlice}: Recupera um intervalo de metadados de \emph{patches} para paginação
+    \item \texttt{Refresh}: Atualiza inteligentemente o \emph{cache} para uma lista de discussão específica, buscando apenas itens novos
+    \item \texttt{Invalidate}: Limpa o \emph{cache} para uma lista de discussão específica
+    \item \texttt{IsAvailable}: Verifica se um intervalo de índices está disponível em \emph{cache} para uma lista
+    \item \texttt{Len}: Retorna o número de entradas de metadados em \emph{cache} para uma lista
+    \item \texttt{Persist}: Persiste o \emph{cache} de uma lista no sistema de arquivos
+    \item \texttt{Load}: Carrega o \emph{cache} de uma lista do sistema de arquivos
+    \item \texttt{IsLoaded}: Verifica se o \emph{cache} de uma lista foi carregado do disco
 \end{itemize}
 
 \textbf{Patches}
 
-Armazena em cache o conteúdo bruto de patches individuais (formato \texttt{.mbox}). Como o conteúdo do patch é imutável, uma vez que um patch é buscado e armazenado em cache, ele é considerado válido para sempre. Este ator armazena cada patch em um arquivo separado no disco e usa um buffer LRU (Least Recently Used) em memória para fornecer acesso rápido a patches visualizados recentemente.
+Armazena em \emph{cache} o conteúdo bruto de \emph{patches} individuais (formato \texttt{.mbox}). Como o conteúdo do \emph{patch} é imutável, uma vez que um \emph{patch} é buscado e armazenado em \emph{cache}, ele é considerado válido para sempre. Este ator armazena cada \emph{patch} em um arquivo separado no disco e usa um \emph{buffer} LRU (\emph{Least Recently Used}) em memória para fornecer acesso rápido a \emph{patches} visualizados recentemente.
 
-https://github.com/nahharris/ph-actors-tcc/blob/master/src/app/cache/patch.rs
+\textit{Implementação:} \href{https://github.com/nahharris/ph-actors-tcc/blob/master/src/app/cache/patch.rs}{\texttt{src/app/cache/patch.rs}}
 
 \textbf{Depende:}
 
@@ -478,16 +482,16 @@ https://github.com/nahharris/ph-actors-tcc/blob/master/src/app/cache/patch.rs
 \textbf{Mensagens:}
 
 \begin{itemize}
-    \item \texttt{Get}: Recupera o conteúdo bruto de um patch dado sua lista de discussão e ID de mensagem (busca da API se não estiver em cache)
-    \item \texttt{Invalidate}: Remove um patch específico do cache em disco e buffer em memória
-    \item \texttt{IsAvailable}: Verifica se um patch está em cache sem buscá-lo
+    \item \texttt{Get}: Recupera o conteúdo bruto de um \emph{patch} dado sua lista de discussão e ID de mensagem (busca da \emph{API} se não estiver em \emph{cache})
+    \item \texttt{Invalidate}: Remove um \emph{patch} específico do \emph{cache} em disco e \emph{buffer} em memória
+    \item \texttt{IsAvailable}: Verifica se um \emph{patch} está em \emph{cache} sem buscá-lo
 \end{itemize}
 
 \subsubsection{App}
 
 O ator App atua como entidade central da aplicação, gerenciando o ciclo de vida e estado da aplicação. Ele é responsável pela inicialização da aplicação, processamento de eventos de UI do Terminal e encerramento gracioso quando apropriado.
 
-https://github.com/nahharris/ph-actors-tcc/blob/master/src/app.rs
+\textit{Implementação:} \href{https://github.com/nahharris/ph-actors-tcc/blob/master/src/app.rs}{\texttt{src/app.rs}}
 
 \textbf{Depende:}
 
@@ -505,4 +509,4 @@ https://github.com/nahharris/ph-actors-tcc/blob/master/src/app.rs
     \item \texttt{Shutdown}: Inicia o processo de encerramento graceful da aplicação
 \end{itemize}
 
-Note que os eventos de teclado são registrados pelo Terminal e processados pelo App. Todavia isto não é feito com uma mensagem enviada pelo Terminal para o App. Mas sim o App que vai solicitar os eventos de UI ao Terminal no momento apropriado. Caso contrário, existiria um ciclo de dependências entre o Terminal e o App. Pois o App depende de Ui, que por sua vez depende de Terminal. Caso o Terminal tivesse de enviar mensagens ao App, então o Terminal dependeria do App, fechando o ciclo. Na presente proposta, as dependencias precisam de ser organizadas sem ciclos.
+Note que os eventos de teclado são registrados pelo Terminal e processados pelo App. Todavia isto não é feito com uma mensagem enviada pelo Terminal para o App, mas sim o App que vai solicitar os eventos de \emph{UI} ao Terminal no momento apropriado. Caso contrário, existiria um ciclo de dependências entre o Terminal e o App. Pois o App depende de Ui, que por sua vez depende de Terminal. Caso o Terminal tivesse de enviar mensagens ao App, então o Terminal dependeria do App, fechando o ciclo. Na presente proposta, as dependências precisam ser organizadas sem ciclos.

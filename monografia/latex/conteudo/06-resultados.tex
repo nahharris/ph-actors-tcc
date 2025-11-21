@@ -2,31 +2,37 @@
 
 Por fim, foi feita uma análise qualitativa e quantitativa da aplicação produzida. O foco é em analisar o impacto da arquitetura proposta no sistema, buscando entender quais benefícios foram obtidos e quais custos foram incorridos.
 
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\textwidth]{figuras/patch-hub-new.png}
+    \caption{Interface do Patch-Hub reescrito com o Modelo de Atores.\label{fig:patch-hub-new}}
+\end{figure}
+
 \section{Desempenho}
 
-De uma análise de desempenho, o grande ganho potencial da abordagem com o Modelo de Atores é o fato paralelismo nativo. Considerando que cada ator é executado em uma \textit{task} diferente, é possível de se executar código concorrentemente. Em especial, a biblioteca Tokio permite a alocação de \textit{tasks} em mais do que uma \textit{thread} do sistema operacional, o que permite a execução de código paralelo.
+De uma análise de desempenho, o grande ganho potencial da abordagem com o Modelo de Atores é o fato do paralelismo nativo. Considerando que cada ator é executado em uma \emph{task} diferente, é possível executar código concorrentemente. Em especial, a biblioteca Tokio permite a alocação de \emph{tasks} em mais do que uma \emph{thread} do sistema operacional, o que permite a execução de código paralelo.
 
 Por outro lado, o mecanismo de passagem de mensagens entre atores possui uma sobrecarga em tempo de execução. Como cada mensagem é encapsulada e enviada através de um canal, isso representa uma indireção que requer diversas operações de sistema para ser realizada. Evidentemente, isso é mais lento que uma chamada de método direta.
 
-Em resumo, a abordagem do Modelo de Atores dá um grande potencial para melhora de performance. Porém, se não for corretamente explorado, o custo de comunicação entre atores pode ser um problema e piorar a performance do sistema.
+Em resumo, a abordagem do Modelo de Atores dá um grande potencial para melhora de \emph{performance}. Porém, se não for corretamente explorado, o custo de comunicação entre atores pode ser um problema e piorar a \emph{performance} do sistema.
 
 \section{Extensibilidade}
 
 Extender funcionalidades do sistema é uma tarefa bastante simples. Como o código todo segue padrões de design bem definidos, é possível adicionar novas funcionalidades sem a necessidade de grandes refatorações.
 
-Um exemplo dessa facilidade é a adição de novos atores. Para adicionar um novo ator, basta criar um novo módulo seguindo o padrão estabelecido, intanciá-lo e injetá-lo como dependência dos atores que vão usufruir de suas funcionalidades.
+Um exemplo dessa facilidade é a adição de novos atores. Para adicionar um novo ator, basta criar um novo módulo seguindo o padrão estabelecido, instanciá-lo e injetá-lo como dependência dos atores que vão usufruir de suas funcionalidades.
 
-Também criar uma nova mensagem é muito simples. Apenas é necessário adicionar uma nova variante ao enum de mensagens do ator correspondente, atualizar o bloco \texttt{match} que lida com as mensagens recebidas pelo ator para chamar o novo \textit{handler} e implementar um método na interface pública do ator para que outros atores possam enviar essa nova mensagem.
+Também criar uma nova mensagem é muito simples. Apenas é necessário adicionar uma nova variante ao \emph{enum} de mensagens do ator correspondente, atualizar o bloco \texttt{match} que lida com as mensagens recebidas pelo ator para chamar o novo \emph{handler} e implementar um método na interface pública do ator para que outros atores possam enviar essa nova mensagem.
 
 \section{Testabilidade}
 
-A abordagem do Modelo de Atores facilita imensamente a criação de testes unitários. Como cada ator, seguindo o SRP, possui um domínio bem definido, é fácil de se criar \textit{mocks} para suas dependências. Desse modo, é possível testar cada ator isoladamente, garantindo que o sistema comporte-se corretamente.
+A abordagem do Modelo de Atores facilita imensamente a criação de testes unitários. Como cada ator, seguindo o SRP, possui um domínio bem definido, é fácil criar \emph{mocks} para suas dependências. Desse modo, é possível testar cada ator isoladamente, garantindo que o sistema comporte-se corretamente.
 
 Um dos principais ganhos desse isolamento é a facilidade de se testar atores diferentes em paralelo, realizando testes com resultados determinísticos e rápidos.
 
-Um exemplo dessa melhoria pode se notar comparando a abordagem anterior para testes do antigo Patch-Hub com foco nas variáveis de ambiente. Como a versão antiga não isolava o gerenciamento de variáveis de ambiente, os testes quando executados em paralelo podiam ser afetados por condições de corrida ao modificarem o ambiente de execução. A solução para isso no projeto original, foi forçar a execução em série de alguns testes que eram dependentes de variáveis de ambiente.
+Um exemplo dessa melhoria pode ser notado comparando a abordagem anterior para testes do antigo Patch-Hub com foco nas variáveis de ambiente. Como a versão antiga não isolava o gerenciamento de variáveis de ambiente, os testes quando executados em paralelo podiam ser afetados por condições de corrida ao modificarem o ambiente de execução. A solução para isso no projeto original foi forçar a execução em série de alguns testes que eram dependentes de variáveis de ambiente.
 
-Na versão reescrita, os testes que vão interagir (direta ou indiretamente) com variáveis de ambiente recebem uma instância \textit{mock} do ator Variáveis de Ambiente que é completamente independente das demais instâncias. Com isso, todos os testes podem ser executados em paralelo sem risco de condições de corrida ou qualquer outro tipo de interferência.
+Na versão reescrita, os testes que vão interagir (direta ou indiretamente) com variáveis de ambiente recebem uma instância \emph{mock} do ator Variáveis de Ambiente que é completamente independente das demais instâncias. Com isso, todos os testes podem ser executados em paralelo sem risco de condições de corrida ou qualquer outro tipo de interferência.
 
 %% 48.95% coverage, 1707/3487 lines covered
 %% 16.53% coverage, 281/1700 lines covered
@@ -38,17 +44,17 @@ Quantitativamente, a facilidade de testabilidade pode ser medida pela cobertura 
 
 O mais notável ganho no que toca a experiência do desenvolvedor é a facilidade de compreensão e modificação do código. Tendo-se isolado as responsabilidades em unidades menores e mais focadas, fica mais fácil entender o propósito de cada parte do código.
 
-Por outro lado, existem alguns custos a serem pagos se tratando da transparência do código em si. Observe a seguinte invocação de método realizada em um \textit{handler} do ator Lore API:
+Por outro lado, existem alguns custos a serem pagos se tratando da transparência do código em si. Observe a seguinte invocação de método realizada em um \emph{handler} do ator Lore API:
 
 
-\begin{lstlisting}[language=Rust, caption=Exemplo de envio de mensagem para um ator]
-    let response = self
-        .net
-        .get(ArcStr::from(&url), Some(headers))
-        .await?;
-\end{lstlisting}
+\begin{program}
+  \lstinputlisting[
+    language=Rust,
+  ]{conteudo/codigo/rust-envio-mensagem.rs}
+  \caption{Exemplo de envio de mensagem para um ator.\label{prog:rust-envio-mensagem}}
+\end{program}
 
-Existe uma dificuldade de encontrar o código que será executado ao se enviar essa mensagem. Note que o método \texttt{get} do ator Rede é apenas um \textit{wrapper} para fazer o uso de um canal para enviar a mensagem e receber a resposta, logo, sua definição não informa ao usuário o que de fato será executado.
+Existe uma dificuldade de encontrar o código que será executado ao se enviar essa mensagem. Note que o método \texttt{get} do ator Rede é apenas um \emph{wrapper} para fazer o uso de um canal para enviar a mensagem e receber a resposta, logo, sua definição não informa ao usuário o que de fato será executado.
 
 Para poder encontrar o código que será executado, é necessário navegar manualmente pelo código fonte encontrando o módulo \texttt{net/core.rs} e encontrar o método \texttt{handle\_get}. Essa indireção torna o código opaco para o usuário, além de evidentemente criar uma sobrecarga em tempo de execução.
 

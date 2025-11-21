@@ -4,11 +4,11 @@ Uma das principais contribuições deste trabalho é a proposta de um \emph{fram
 
 \section{Rust}
 
-O Modelo de Atores é amplamente conhecido por sua dinamicidade e flexibilidade, com a maioria de suas implementações famosas sendo em runtimes flexíveis como BEAM ou JVM. Rust é bem o oposto disso, uma linguagem moderna com um sistema de tipos forte e um compilador poderoso o suficiente para validar quase tudo em tempo de compilação.
+O Modelo de Atores é amplamente conhecido por sua dinamicidade e flexibilidade, com a maioria de suas implementações famosas sendo em \emph{runtimes} flexíveis como BEAM ou JVM. Rust \cite{rust_lang} é bem o oposto disso, uma linguagem moderna com um sistema de tipos forte e um compilador poderoso o suficiente para validar quase tudo em tempo de compilação.
 
 Pode soar contraditório usar uma linguagem rígida com um padrão flexível, mas é exatamente o propósito deste trabalho: experimentar com o Modelo de Atores fora do seu domínio específico. Assim, além de testar no contexto centralizado, iremos implementá-lo numa tecnologia que não foi pensada pra isso.
 
-Apesar desta distância, Rust ainda possui diversos recursos de linguagem análogos a mecanismos fornecidos por Elixir, fazendo essa adaptação ser possível. Além disso, se Elixir foi eleita a segunda linguagem mais amadas nos últimos 3 anos. A mesma pesquisa aponta Rust como sendo a linguagem mais amada desde 2016. Vale ressaltar que Rust 1.0 foi lançado em 2015.
+Apesar desta distância, Rust ainda possui diversos recursos de linguagem análogos a mecanismos fornecidos por Elixir, tornando essa adaptação possível. Além disso, se Elixir foi eleita a segunda linguagem mais amada nos últimos 3 anos, a mesma pesquisa aponta Rust como sendo a linguagem mais amada desde 2016. Vale ressaltar que Rust 1.0 foi lançado em 2015.
 
 Rust é conhecido por seus mecanismos de segurança que forçam verificação em tempo de compilação, tornando diversos estados inválidos impossíveis de serem representados como código.
 
@@ -124,7 +124,7 @@ Com conhecimento básico da linguagem, é momento de começar a introduzir os el
 
 \section{Concorrência e Paralelismo}
 
-Esta proposta contempla o uso de \emph{green-threads} que não têm suporte nativo em Rust. Isso é porque a linguagem, ao contrário de Elixir, Golang, ou Java, tem um runtime muito mínimo, similar ao runtime do C. O suporte para green-threads é fornecido pela biblioteca Tokio e eles são chamados de \emph{tasks} e serão usados de forma equivalente aos processos Erlang.
+Esta proposta contempla o uso de \emph{green-threads} que não têm suporte nativo em Rust. Isso é porque a linguagem, ao contrário de Elixir, Golang, ou Java, tem um \emph{runtime} muito mínimo, similar ao \emph{runtime} do C. O suporte para \emph{green-threads} é fornecido pela biblioteca Tokio \cite{tokio} e eles são chamados de \emph{tasks} e serão usados de forma equivalente aos processos Erlang.
 
 As tasks são criadas e executadas com isolamento, seja de forma concorrente ou paralela, dependendo da quantidade de threads do sistema operacional que estão sendo utilizadas pelo ambiente de execução Tokio. Isso permite que múltiplas tasks sejam executadas simultaneamente sem a necessidade de gerenciar manualmente threads do sistema operacional.
 
@@ -137,11 +137,11 @@ As tasks são criadas e executadas com isolamento, seja de forma concorrente ou 
 
 No exemplo acima, duas tasks são criadas usando \texttt{tokio::spawn}, cada uma executando de forma independente e concorrente (sem garantia de ordenação). A função \texttt{tokio::join!} aguarda que ambas as tasks sejam concluídas antes de prosseguir.
 
-Similarmente ao que foi aprensentado nos exemplos com Elixir, onde um ator teria um processo dedicado para lidar com a lógica de processamento de mensagens, aqui será feito uso de \emph{tasks} para isso.
+Similarmente ao que foi apresentado nos exemplos com Elixir, onde um ator teria um processo dedicado para lidar com a lógica de processamento de mensagens, aqui será feito uso de \emph{tasks} para isso.
 
 \section{Compartilhamento de Memória}
 
-O isolamento de memória é desejável e uma característica nativa do Modelo de Atores, já que atores são projetados para executar em ambientes físicamente isolados. Isso aumenta a segurança, mas pode degradar a performance já que o compartilhamento de dados entre máquinas remotas só pode ser feito por cópia.
+O isolamento de memória é desejável e uma característica nativa do Modelo de Atores, já que atores são projetados para executar em ambientes físicamente isolados. Isso aumenta a segurança, mas pode degradar a \emph{performance} já que o compartilhamento de dados entre máquinas remotas só pode ser feito por cópia.
 
 Mas esse não é o caso para esta proposta, já que a aplicação não é distribuída, temos a garantia que a memória sempre pode ser compartilhada. Além disso, os problemas com compartilhamento de memória em sistemas concorrentes estão geralmente relacionados a condições de corrida e mutabilidade indesejada. 
 
@@ -151,7 +151,7 @@ O tipo \texttt{Arc<T>} será o principal utilizado para dados complexos, já que
 
 \section{Passagem de Mensagens e Endereços}
 
-Tanto Rust quanto Tokio têm uma abstração nativa de passagem de mensagens chamada de canal. Ao contrário da função \texttt{send} do Elixir que recebe como parametros um endereço e um dado qualquer como mensagem, o método \texttt{send} dos canais são fortemente tipados quanto a mensagem e usam um endereço bem definido.
+Tanto Rust quanto Tokio têm uma abstração nativa de passagem de mensagens chamada de canal. Ao contrário da função \texttt{send} do Elixir que recebe como parâmetros um endereço e um dado qualquer como mensagem, o método \texttt{send} dos canais é fortemente tipado quanto à mensagem e usa um endereço bem definido.
 
 Existem alguns tipos diferentes de canais. Os 2 principais tipos para o escopo deste trabalho são:
 
@@ -159,7 +159,7 @@ Existem alguns tipos diferentes de canais. Os 2 principais tipos para o escopo d
 
 Um canal de múltiplos produtores, consumidor único é a abstração que será usada como endereço de ator. Ele tem 2 extremidades: \texttt{Sender} e \texttt{Receiver}. O \texttt{Sender} pode ser compartilhado entre todos os atores que querem se comunicar com um ator particular apenas criando uma duplicata com o método \texttt{clone}. A extremidade \texttt{Receiver} é única e será mantida na \emph{task} onde a lógica do ator se encontra e receberá mensagens até o canal ser fechado, ou seja, até não existirem mais clones da extremidade \texttt{Sender} correspondente.
 
-Note que o principio de localidade e segurança do Modelo de Atores nos garante que ninguém deve ser capaz de descobrir o endereço de um ator sem que esse tenha lhe sido dado. Portanto, no momento que não existem mais extremidades \texttt{Sender} a um ator, este garantidamente não receberá mais nenhuma mensagem e pode ser finalizado. Isso acontece de forma natural em Rust com o uso de um loop, enquanto que em Elixir um ator não recebe nenhum indicativo que seu endereço se tornou desconhecido.
+Note que o princípio de localidade e segurança do Modelo de Atores nos garante que ninguém deve ser capaz de descobrir o endereço de um ator sem que esse tenha lhe sido dado. Portanto, no momento que não existem mais extremidades \texttt{Sender} a um ator, este garantidamente não receberá mais nenhuma mensagem e pode ser finalizado. Isso acontece de forma natural em Rust com o uso de um \emph{loop}, enquanto que em Elixir um ator não recebe nenhum indicativo de que seu endereço se tornou desconhecido.
 
 \begin{program}
   \lstinputlisting[
@@ -168,7 +168,7 @@ Note que o principio de localidade e segurança do Modelo de Atores nos garante 
   \caption{Exemplo de loop de recebimento de mensagens.\label{prog:rust-loop-mensagens}}
 \end{program}
 
-No exemplo acima, o loop \texttt{while let Some(message) = rx.recv().await} continuará processando mensagens enquanto houver extremidades \texttt{Sender} ativas. Quando todas as extremidades \texttt{Sender} são descartadas (saem de escopo ou são explicitamente liberadas com o uso de \texttt{drop}), o método \texttt{recv()} retorna \texttt{None}, fazendo com que o loop se encerre naturalmente e a task do ator seja finalizada.
+No exemplo acima, o \emph{loop} \texttt{while let Some(message) = rx.recv().await} continuará processando mensagens enquanto houver extremidades \texttt{Sender} ativas. Quando todas as extremidades \texttt{Sender} são descartadas (saem de escopo ou são explicitamente liberadas com o uso de \texttt{drop}), o método \texttt{recv()} retorna \texttt{None}, fazendo com que o \emph{loop} se encerre naturalmente e a \emph{task} do ator seja finalizada.
 
 Em Elixir, o equivalente seria:
 
@@ -179,7 +179,7 @@ Em Elixir, o equivalente seria:
   \caption{Exemplo equivalente em Elixir.\label{prog:elixir-loop-equivalente}}
 \end{program}
 
-Exemplo acima, em Elixir, é um ator que pode se tornar um ator zumbi, ou seja, que está consumindo recursos ainda que não seja mais usado. Para resolver isso é necessário o uso de um timeout ou de uma mensagem que indique ao ator que ele pode terminar.
+O exemplo acima, em Elixir, é um ator que pode se tornar um ator zumbi, ou seja, que está consumindo recursos ainda que não seja mais usado. Para resolver isso é necessário o uso de um \emph{timeout} ou de uma mensagem que indique ao ator que ele pode terminar.
 
 É importante notar que o Rust garante, em tempo de compilação, que o receptor de um canal é único. Assim, é garantido que as mensagens chegam ao destino correto. Além disso, o canal tem uma fila com tamanho configurável, e é garantido que a mensagem chegará se a fila não estiver cheia.
 
@@ -237,7 +237,7 @@ A seguir está destrinchado em mais detalhes o que estará em cada uma das 3 par
 
 \subsection{Mensagens}
 
-Assim como tudo em Rust, as mensagens enviadas através de canais devem ser tipadas. Caso um ator só execute um tipo de ação, ou seja, só receba um tipo de mensagem então qualquer tipo pode ser usado para representar as mensagens. Caso ele lide com diferentes tipos de mensagens (o que acontece na maioria dos casos) um \emph{enum} será usado.
+Assim como tudo em Rust, as mensagens enviadas através de canais devem ser tipadas. Caso um ator só execute um tipo de ação, ou seja, só receba um tipo de mensagem, então qualquer tipo pode ser usado para representar as mensagens. Caso ele lide com diferentes tipos de mensagens (o que acontece na maioria dos casos), um \emph{enum} será usado.
 
 No contexto do exemplo dado, o \emph{enum} a ser criado no arquivo \texttt{app/message.rs} seria:
 
@@ -291,7 +291,7 @@ Deverá ser fornecido um método de instância \texttt{init} responsável por co
 
 Note que o método \texttt{init} recebe \texttt{mut self} como primeiro argumento (sem uso de \texttt{\&}), isso significa que ele consome a instância. Em outras palavras, aquele que tiver posse de uma instância do \texttt{Core} do App a perderá assim que \texttt{init} for invocada, impedindo que um mesmo objeto seja instanciado como 2 atores compartilhando o mesmo espaço de memória. O segundo parâmetro é a ponta de recebimento de mensagens do canal para se comunicar com o ator.
 
-O bloco \texttt{while let Some(message) = rx.recv().await} é um loop que continua processando mensagens até que o canal seja fechado. Adicionalmente, cada ramo do bloco \texttt{match} apenas delega a execução para um método privado \texttt{handle\_}. Em caso de necessidade de enviar resposta, isso é feito dentro do ramo, assim o método privado \texttt{handle\_} é responsável apenas pela lógica de processamento da mensagem e não pela comunicação com o receptor.
+O bloco \texttt{while let Some(message) = rx.recv().await} é um \emph{loop} que continua processando mensagens até que o canal seja fechado. Adicionalmente, cada ramo do bloco \texttt{match} apenas delega a execução para um método privado \texttt{handle\_}. Em caso de necessidade de enviar resposta, isso é feito dentro do ramo, assim o método privado \texttt{handle\_} é responsável apenas pela lógica de processamento da mensagem e não pela comunicação com o receptor.
 
 \subsection{Endereço}
 
@@ -307,92 +307,15 @@ Para se aproveitar ao máximo dos recursos que a linguagem Rust oferece, é idea
 No exemplo acima, a struct \texttt{App} encapsula o \texttt{Sender} do canal \texttt{mpsc} e fornece métodos públicos que abstraem completamente a lógica de envio de mensagens. O método \texttt{thing()} cria um canal \texttt{oneshot} para receber a resposta, envia a mensagem \texttt{GetThing} e aguarda a resposta. O método \texttt{thing\_alt()} oferece uma alternativa onde retorna o \texttt{Receiver} diretamente, permitindo que o invocador decida quando aguardar pela resposta. O método \texttt{set\_thing()} simplesmente envia a mensagem \texttt{SetThing} com o valor fornecido.
 
 Essa abstração permite que outros atores interajam com o ator sem precisar se preocupar com detalhes de comunicação por canais, mantendo a interface limpa e tipada.
-
 (diagrama ator)
 
-\section{Tratamento de Erros}
-
-Um aspecto fundamental do modelo de atores proposto é o tratamento de erros de forma consistente e tipada. Diferente de linguagens como Elixir, onde erros são tratados principalmente através de padrões de matching com tuplas \texttt{\{:ok, value\}} ou \texttt{\{:error, reason\}}, Rust oferece o tipo \texttt{Result<T, E>} que força, em tempo de compilação, o tratamento explícito de erros.
-
-Para facilitar a definição e manipulação de erros, este trabalho utiliza duas bibliotecas complementares: \texttt{thiserror}, que permite criar hierarquias de tipos de erro usando derive macros, e \texttt{miette}, que fornece diagnósticos ricos e informativos para erros, facilitando o debugging e a experiência do desenvolvedor.
-
-\subsection{Hierarquia de Erros}
-
-O sistema de erros é organizado hierarquicamente, com três níveis principais:
-
-\begin{itemize}
-    \item \textbf{Erros Fatais}: Falhas de nível de sistema que indicam que um ator morreu ou que a comunicação falhou de forma irreversível
-    \item \textbf{Erros Específicos de Ator}: Cada ator define apenas os erros que ele pode emitir, garantindo uma interface de erro bem definida
-\end{itemize}
-
-\subsection{Erros Fatais}
-
-Erros fatais representam falhas de comunicação que não podem ser recuperadas sem reiniciar o componente afetado. Esses erros são comuns a todos os atores e indicam problemas com o sistema de passagem de mensagens:
-
-\begin{program}
-  \lstinputlisting[
-    language=Rust,
-  ]{conteudo/codigo/rust-fatal-errors.rs}
-  \caption{Definição de erros fatais.\label{prog:rust-fatal-errors}}
-\end{program}
-
-Erros fatais ocorrem quando o canal de comunicação é fechado, o que acontece quando não há mais extremidades \texttt{Sender} ativas para o ator. Isso pode indicar que o ator terminou inesperadamente ou que todas as referências a ele foram liberadas.
-
-\subsection{Erros Específicos de Ator}
-
-Cada ator define seu próprio tipo de erro, que encapsula tanto os erros específicos do domínio quanto os erros fatais de comunicação. Por exemplo, o ator (\texttt{Env}) define:
-
-\begin{program}
-  \lstinputlisting[
-    language=Rust,
-  ]{conteudo/codigo/rust-actor-error.rs}
-  \caption{Exemplo de erro específico de ator.\label{prog:rust-actor-error}}
-\end{program}
-
-A variante \texttt{Fatal} permite que erros fatais sejam propagados automaticamente através do operador \texttt{?}, mantendo a hierarquia de erros enquanto permite tratamento específico quando necessário.
-
-\subsection{Propagação de Erros através de Canais}
-
-Quando um ator precisa retornar um resultado que pode falhar, o tipo de retorno deve ser \texttt{Result<T, E>}, onde \texttt{E} é o tipo de erro específico do ator. O resultado é enviado através do canal \texttt{oneshot} como parte da resposta:
-
-\begin{program}
-  \lstinputlisting[
-    language=Rust,
-  ]{conteudo/codigo/rust-error-handling.rs}
-  \caption{Processamento de mensagens com tratamento de erros.\label{prog:rust-error-handling}}
-\end{program}
-
-\subsection{Tratamento de Erros na Interface Pública}
-
-Na interface pública do ator, erros podem ocorrer em dois pontos:
-
-\begin{enumerate}
-    \item Ao enviar a mensagem para o ator (falha de comunicação)
-    \item Ao receber a resposta do ator (falha de comunicação ou erro de domínio)
-\end{enumerate}
-
-Ambos os casos devem ser tratados e convertidos em erros fatais quando apropriado:
-
-\begin{program}
-  \lstinputlisting[
-    language=Rust,
-  ]{conteudo/codigo/rust-error-interface.rs}
-  \caption{Tratamento de erros na interface pública do ator.\label{prog:rust-error-interface}}
-\end{program}
-
-Note que o operador \texttt{?} é usado para propagar erros automaticamente. Se o envio da mensagem falhar (por exemplo, porque o canal foi fechado), o erro é convertido em um \texttt{FatalActorError}. Se a recepção falhar, também é convertido em um erro fatal. Caso contrário, o resultado (que pode conter um erro de domínio como \texttt{NotFound}) é retornado.
-
-\subsection{Erros Recuperáveis e Não-Recuperáveis}
-
-O sistema distingue entre erros recuperáveis e não-recuperáveis através de atributos ou da variante \texttt{Fatal}. Essa distinção permite que a aplicação tome decisões inteligentes sobre como lidar com erros, como implementar \textit{retry} automático para erros, ou desligar graciosamente para erros fatais.
-
-\section{Testabilidade e Mocks}
+\section{Testabilidade}
 
 Uma das principais vantagens da arquitetura baseada em atores é a facilidade de testar componentes isoladamente. Como cada ator possui dependências injetadas através de suas interfaces, é possível substituir dependências reais por implementações mockadas durante os testes.
 
 \subsection{Mockall}
 
-Para simplificar a criação de mocks, este trabalho faz uso da biblioteca \texttt{mockall}, que gera automaticamente implementações \textit{mock} a partir de traits ou structs. Isso elimina a necessidade de escrever manualmente código \textit{boilerplate} para \textit{mocks} e garante que os \textit{mocks} permaneçam sincronizados com as interfaces reais. O código para \textit{mock} de um ator deve ser colocado no arquivo \texttt{mock.rs} do módulo do ator e o módulo deve ser declarado como:
+Para simplificar a criação de mocks, este trabalho faz uso da biblioteca \texttt{mockall} \cite{mockall}, que gera automaticamente implementações \textit{mock} a partir de traits ou structs. Isso elimina a necessidade de escrever manualmente código \textit{boilerplate} para \textit{mocks} e garante que os \textit{mocks} permaneçam sincronizados com as interfaces reais. O código para \textit{mock} de um ator deve ser colocado no arquivo \texttt{mock.rs} do módulo do ator e o módulo deve ser declarado como:
 
 \begin{program}
   \lstinputlisting[
@@ -437,3 +360,4 @@ Com \textit{mocks} em vigor, escrever testes unitários torna-se direto. Cada te
 \end{program}
 
 Os \textit{mocks} permitem testar tanto cenários de sucesso quanto de falha, validando o tratamento de erros e garantindo que as interações entre atores funcionam corretamente em isolamento.
+
