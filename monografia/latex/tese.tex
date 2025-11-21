@@ -48,6 +48,7 @@
 % também define os comandos para capa, folha de rosto etc.
 \usepackage{imegoodies}
 \usepackage[thesis]{imelooks}
+\usepackage[most]{tcolorbox}
 
 %\nocolorlinks % para impressão em P&B
 
@@ -65,6 +66,20 @@
 % \texten{blah} -> o texto "blah" é em inglês
 % \textbr{blah} -> o texto "blah" é em português
 \babeltags{br = brazilian, en = english}
+
+%% Takeaway Boxes %%
+\newenvironment{highlight-box}[1]{%
+  \begin{tcolorbox}[colback=gray!10, colframe=gray!50!black, boxrule=0.5pt,
+                    left=1mm, right=1mm, top=1mm, bottom=1mm, sharp corners]
+  \textbf{#1:} \itshape}{\end{tcolorbox}}
+%% Takeaway Boxes %%
+
+%% DRY Highlight Box %%
+\newenvironment{dry-highlight-box}[1]{%
+  \begin{tcolorbox}[colback=blue!5!white, colframe=blue!60!black, boxrule=0.5pt,
+                    left=1mm, right=1mm, top=1mm, bottom=1mm, sharp corners]
+    \textbf{[#1]} \itshape}{\end{tcolorbox}}
+%% DRY Highlight Box %%
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -224,15 +239,15 @@ Dedicado a meus avós Elizete e Jorge e à minha finada mãe Sarah.
 
 Agradeço primeiramente aos meus avós por terem cuidado de mim após a minha mãe vir a óbito poucos dias após o meu nascimento. Apesar das dificuldades de crescer vindo do interior de Jaguaré, Espírito Santo, viram o potencial que existia em mim e me incentivaram a seguir com os meus estudos, assim como a minha mãe desejaria.
 
-Agradeço a meus professores do ensino fundamental que mesmo com os recursos limitados do meu pequeno colégio municipal ainda fizeram seu trabalho e me colocaram no caminho do conhecimento. Em especial, a professora Romilda Sartori que, lá em 2014, enquanto eu estava no quinto ano, disse para mim que um dia eu iria me tornar cientista e pediu para que eu me lembrasse dela neste dia. Eu me lembrei.
+Agradeço à professora Romilda Sartori que, lá em 2014, enquanto eu estava no quinto ano do ensino fundamental, disse para mim que um dia eu iria me tornar cientista e pediu para que eu me lembrasse dela neste dia. Eu me lembrei.
 
-Agradecimentos aos professores João Panceri e Weksley Gama do Instituto Federal de Educação, Ciência e Tecnologia do Espírito Santo que me fizeram olhar mais longe e mirar a Universidade de São Paulo como próximo passo na minha carreira acadêmica.
+Agradeço aos professores João Panceri e Weksley Gama do Instituto Federal de Educação, Ciência e Tecnologia do Espírito Santo que me fizeram abrir os olhos e sonhar mais alto, visando a Universidade de São Paulo como próximo passo na minha carreira acadêmica.
 
-Agradeço imensamente a meus amigos Murilo Siloti, Vitor Thompson e Arthur Garcia por terem seguido comigo na dificil jornada que foi o vestibular e também por todos momentos que compartilhamos juntos.
+Agradeço imensamente aos meus amigos Murilo Siloti, Vitor Thompson e Arthur Garcia por terem seguido comigo na difícil jornada que foi o vestibular e também por todos os momentos que compartilhamos juntos no ensino médio.
 
-Agradeço muito aos professores Daniel Batista, Fábio Kon e Paulo Meirelles, assim como ao meu coorientador David Tadokoro por toda orientação e suporte que me proporcionaram em projetos que foram além da sala de aula e que me ajudaram a moldar meu futuro profissional.
+Agradeço muito aos professores Daniel Batista, Fábio Kon e Paulo Meirelles, assim como ao meu coorientador David Tadokoro, por toda a orientação e suporte que me proporcionaram em projetos que foram além da sala de aula e que me ajudaram a moldar meu futuro profissional.
 
-Por fim, ...
+Por fim, deixo meus agradecimentos aos meus amigos que dividiram essa jornada de 4 anos de estudos e que me ajudaram a chegar até aqui.
 
 \input{conteudo/resumoabstract}
 
