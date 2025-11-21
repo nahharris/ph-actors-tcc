@@ -1,0 +1,71 @@
+\NeedsTeXFormat{LaTeX2e}[1994/06/01]
+\ProvidesPackage{listings-elixir}[2025/01/23 Custom Package]
+
+\RequirePackage{color}
+\RequirePackage{listings}
+
+\lstdefinelanguage{Elixir}{%
+  sensitive%
+, morecomment=[l]{\#}%
+, morestring=[b]{"}%
+, morestring=[b]{'}%
+, morestring=[s]{"""}{"""}%
+, morestring=[s]{'''}{'''}%
+, alsodigit={}%
+, alsoother={}%
+, alsoletter={!}%
+%
+% [1] reserved keywords
+% [2] special forms
+% [3] built-in types
+% [4] value constructors
+% [5] operators
+%
+, morekeywords={after, and, catch, cond, do, else, end, false, fn, in, nil, not, or, rescue, true, when}  % reserved keywords
+, morekeywords=[2]{alias, case, def, defdelegate, defexception, defimpl, defmacro, defmacrop, defmodule, defoverridable, defp, defprotocol, defstruct, import, quote, receive, require, send, super, throw, try, unquote, unquote_splicing, use, with}  % special forms
+, morekeywords=[3]{Atom, Binary, BitString, Boolean, Float, Function, Integer, List, Map, PID, Port, Reference, String, Tuple}  % built-in types
+, morekeywords=[4]{:ok, :error, :nil, :true, :false}  % common atoms
+, morekeywords=[5]{|>, <|, <>, <<>>, <<~, ~>>, ~r, ~R, ~s, ~S, ~w, ~W, ~a, ~A, ~c, ~C, ~D, ~N, ~T, ~U}  % pipe and sigil operators
+%
+% Common Elixir modules and functions
+, morekeywords=[2]{Agent, Application, Code, Date, DateTime, Enum, File, GenServer, IO, Kernel, List, Map, Process, Registry, Stream, String, Supervisor, System, Task, Time, URI}  % common modules
+%
+% Common macros and functions
+, morekeywords=[5]{defmodule, defp, defmacro, defmacrop, defstruct, defprotocol, defimpl, defexception, defdelegate, defoverridable}  % definition macros
+, morekeywords=[5]{if, unless, cond, case, with, for, while, try, rescue, catch, after}  % control flow macros
+, morekeywords=[5]{defguard, defguardp, defcallback, defmacrocallback}  % additional definition macros
+}%
+
+\lstdefinestyle{colouredElixir}%
+{ basicstyle=\ttfamily%
+, identifierstyle=%
+, commentstyle=\color[gray]{0.4}%
+, stringstyle=\color[rgb]{0, 0, 0.5}%
+, keywordstyle=\bfseries% reserved keywords
+, keywordstyle=[2]\color[rgb]{0.75, 0, 0}% special forms and modules
+, keywordstyle=[3]\color[rgb]{0, 0.5, 0}% built-in types
+, keywordstyle=[4]\color[rgb]{0.5, 0, 0.5}% atoms
+, keywordstyle=[5]\color[rgb]{0, 0, 0.75}% operators and macros
+, columns=spaceflexible%
+, keepspaces=true%
+, showspaces=false%
+, showtabs=false%
+, showstringspaces=true%
+}%
+
+\lstdefinestyle{boxed}{
+  style=colouredElixir%
+, numbers=left%
+, firstnumber=auto%
+, numberblanklines=true%
+, frame=trbL%
+, numberstyle=\tiny%
+, frame=leftline%
+, numbersep=7pt%
+, framesep=5pt%
+, framerule=10pt%
+, xleftmargin=15pt%
+, backgroundcolor=\color[gray]{0.97}%
+, rulecolor=\color[gray]{0.90}%
+}
+
