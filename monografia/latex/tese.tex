@@ -106,13 +106,13 @@
 % repetir o comando quantas vezes forem necessárias
 \coorientador{David Tadokoro}
 
-\banca{
-  \profa{} \dra{} Fulana de Tal (orientadora) -- IME-USP [sem ponto final],
+%\banca{
+  %\profa{} \dra{} Fulana de Tal (orientadora) -- IME-USP [sem ponto final],
   % Em inglês, não há o "ª"
   %Prof. Dr. Fulana de Tal (advisor) -- IME-USP [sem ponto final],
-  Prof. Dr. Ciclano de Tal -- IME-USP [sem ponto final],
-  \profa{} \dra{} Convidada de Tal -- IMPA [sem ponto final],
-}
+  %Prof. Dr. Ciclano de Tal -- IME-USP [sem ponto final],
+  %\profa{} \dra{} Convidada de Tal -- IMPA [sem ponto final],
+%}
 
 % A página de rosto da versão para depósito (ou seja, a versão final
 % antes da defesa) deve ser diferente da página de rosto da versão
@@ -129,7 +129,7 @@
 
 \defesa{
   local={São Paulo},
-  data=2025-12-01, % YYYY-MM-DD
+  data=2025-12-02, % YYYY-MM-DD
 }
 
 % Se não houve bolsa, remova
@@ -220,12 +220,19 @@ Dedicado a meus avós Elizete e Jorge e à minha finada mãe Sarah.
 % epígrafes em todos os capítulos. O comando "\chapter*" faz esta seção
 % não ser incluída no sumário.
 \chapter*{Agradecimentos}
-\epigrafe{Do. Or do not. There is no try.}{Mestre Yoda}
+\epigrafe{I've never, ever been this far away from home \par [...] \par But now I know \par It gets dark so I can see the stars}{Sigrid Solbakk Raabe}
 
-Texto texto texto texto texto texto texto texto texto texto texto texto texto
-texto texto texto texto texto texto texto texto texto texto texto texto texto
-texto texto texto texto texto texto texto texto texto texto texto texto texto
-texto texto texto texto. Texto opcional.
+Agradeço primeiramente aos meus avós por terem cuidado de mim após a minha mãe vir a óbito poucos dias após o meu nascimento. Apesar das dificuldades de crescer vindo do interior de Jaguaré, Espírito Santo, viram o potencial que existia em mim e me incentivaram a seguir com os meus estudos, assim como a minha mãe desejaria.
+
+Agradeço a meus professores do ensino fundamental que mesmo com os recursos limitados do meu pequeno colégio municipal ainda fizeram seu trabalho e me colocaram no caminho do conhecimento. Em especial, a professora Romilda Sartori que, lá em 2014, enquanto eu estava no quinto ano, disse para mim que um dia eu iria me tornar cientista e pediu para que eu me lembrasse dela neste dia. Eu me lembrei.
+
+Agradecimentos aos professores João Panceri e Weksley Gama do Instituto Federal de Educação, Ciência e Tecnologia do Espírito Santo que me fizeram olhar mais longe e mirar a Universidade de São Paulo como próximo passo na minha carreira acadêmica.
+
+Agradeço imensamente a meus amigos Murilo Siloti, Vitor Thompson e Arthur Garcia por terem seguido comigo na dificil jornada que foi o vestibular e também por todos momentos que compartilhamos juntos.
+
+Agradeço muito aos professores Daniel Batista, Fábio Kon e Paulo Meirelles, assim como ao meu coorientador David Tadokoro por toda orientação e suporte que me proporcionaram em projetos que foram além da sala de aula e que me ajudaram a moldar meu futuro profissional.
+
+Por fim, ...
 
 \input{conteudo/resumoabstract}
 
@@ -381,35 +388,35 @@ texto texto texto texto. Texto opcional.
 
 %%%% Apêndices %%%%
 
-\cleardoublepage
+%\cleardoublepage
 
-\pagestyle{appendix}
+%\pagestyle{appendix}
 
-\appendix
+%\appendix
 
 % \addappheadtotoc acrescenta a palavra "Apêndice" ao sumário; se
 % só há apêndices, sem anexos, provavelmente não é necessário.
 % \addappheadtotoc
 
 %\input{conteudo/apendice-exemplo-faq}
-\par
+%\par
 
 %%%% Anexos %%%%
 
-\cleardoublepage
+%\cleardoublepage
 
-\pagestyle{appendix} % repete o anterior, caso você não use apêndices
+%\pagestyle{appendix} % repete o anterior, caso você não use apêndices
 
-\annex
+%\annex
 
 % \addappheadtotoc acrescenta a palavra "Anexo" ao sumário; se
 % só há anexos, sem apêndices, provavelmente não é necessário.
 % \addappheadtotoc
 
 %\input{conteudo/anexo-exemplo-imegoodies}
-\par
+%\par
 %\input{conteudo/anexo-exemplo-pseudocodigo}
-\par
+%\par
 
 
 %%%%%%%%%%%%%%% SEÇÕES FINAIS (BIBLIOGRAFIA E ÍNDICE REMISSIVO) %%%%%%%%%%%%%%%%
@@ -430,6 +437,6 @@ texto texto texto texto. Texto opcional.
   heading=bibintoc, % Inclui a bibliografia no sumário
 ]
 
-\printindex % imprime o índice remissivo no documento (opcional)
+%\printindex % imprime o índice remissivo no documento (opcional)
 
 \end{document}
