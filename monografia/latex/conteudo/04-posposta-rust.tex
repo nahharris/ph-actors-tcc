@@ -18,35 +18,19 @@ Os conceitos mais importantes aqui são:
 
 Um espaço de memória tem um, e apenas um, proprietário (uma variável), este proprietário determina o ciclo de vida do espaço de memória. Uma vez que o proprietário é destruído, o espaço de memória é liberado. O proprietário também determina se a região é mutável ou não.
 
-\begin{lstlisting}[language=Rust, caption=Declaração de variáveis e mutabilidade]
-fn main() {
-    let a = 10;
-    let mut b = 20;
-    
-    // a += 1; // Proibido: a não é mutável
-    b += 1; // Permitido: b é mutável
-    
-    // Quando o código termina aqui, a e b são liberados da memória
-}
-\end{lstlisting}
+\begin{program}
+  \lstinputlisting[
+    language=Rust,
+  ]{conteudo/codigo/rust-var-mutabilidade.rs}
+  \caption{Declaração de variáveis e mutabilidade.\label{prog:rust-var-mutabilidade}}
+\end{program}
 
-\begin{lstlisting}[language=Rust, caption=Transferência de propriedade]
-fn main() {
-    let data = [1, 2, 3, 4]; // Cria variável imutável
-    // As duas operações a seguir são proibidas pelo compilador
-    // data = [2, 3, 4, 5];
-    // data[0] = 0;
-
-    let mut data2 = data; // Variável mutável data2
-    // Uso de data proibido pelo compilador desse ponto em diante,
-    // já que seu conteúdo foi transferido para data2
-    // println!("{}", data[0]); // Erro de compilação
-
-    // Permitido
-    data2[0] = 0;
-    data2 = [2, 3, 4, 5]; 
-}
-\end{lstlisting}
+\begin{program}
+  \lstinputlisting[
+    language=Rust,
+  ]{conteudo/codigo/rust-transferencia-propriedade.rs}
+  \caption{Transferência de propriedade.\label{prog:rust-transferencia-propriedade}}
+\end{program}
 
 Um valor pode ser emprestado com o uso de referências, mas existem regras checadas pelo compilador:
 
@@ -58,51 +42,26 @@ Um valor pode ser emprestado com o uso de referências, mas existem regras checa
     \item Um valor não pode ter ambas referências ao mesmo tempo
 \end{enumerate}
 
-\begin{lstlisting}[language=Rust, caption=Referências imutáveis]
-fn main() {
-    let numbers = vec![1, 2, 3, 4];
-    let nref = &numbers;
-    println!("{}", nref[1]); // -> 2
-    
-    // Permitido: múltiplas referências imutáveis
-    let nref2 = &numbers;
-    
-    // Proibido: não pode ter referência mutável 
-    // quando já existem referências imutáveis
-    // let mref = &mut numbers;
-}
-\end{lstlisting}
+\begin{program}
+  \lstinputlisting[
+    language=Rust,
+  ]{conteudo/codigo/rust-refs-imutaveis.rs}
+  \caption{Referências imutáveis.\label{prog:rust-refs-imutaveis}}
+\end{program}
 
-\begin{lstlisting}[language=Rust, caption=Referências mutáveis]
-fn main() {
-    let mut numbers = vec![1, 2, 3];
-    let nref = &mut numbers;
-    
-    // Permitido: operação mutável usando &mut
-    nref.push(4);
-    
-    // Proibido: só pode haver uma referência mutável
-    // let nref2 = &mut numbers;
-    
-    // Proibido: não pode usar o valor original
-    // enquanto existe referência mutável
-    // numbers.push(5);
-}
-\end{lstlisting}
+\begin{program}
+  \lstinputlisting[
+    language=Rust,
+  ]{conteudo/codigo/rust-refs-mutaveis.rs}
+  \caption{Referências mutáveis.\label{prog:rust-refs-mutaveis}}
+\end{program}
 
-\begin{lstlisting}[language=Rust, caption=Ciclo de vida de referências]
-fn main() {
-    let numbers = vec![1, 2, 3, 4];
-    let nref = &numbers;
-    println!("{}", nref[1]); // -> 2
-    
-    drop(numbers); // Libera numbers da memória
-    
-    // A partir deste ponto, o compilador proibirá
-    // o uso de tanto numbers quanto nref
-    // println!("{}", nref[1]); // Erro de compilação
-}
-\end{lstlisting}
+\begin{program}
+  \lstinputlisting[
+    language=Rust,
+  ]{conteudo/codigo/rust-ciclo-vida-refs.rs}
+  \caption{Ciclo de vida de referências.\label{prog:rust-ciclo-vida-refs}}
+\end{program}
 
 \subsection{Sistema de Tipos}
 
@@ -112,96 +71,54 @@ O sistema de tipos forte e expressivo é uma característica-chave do Rust. Ele 
 
 Uma tupla é simplesmente um tipo produto, tem tamanho fixo e cada campo (nomeado por seu índice) pode ter um tipo diferente. Não é uma coleção!
 
-\begin{lstlisting}[language=Rust, caption=Declaração e uso de tuplas]
-fn main() {
-    let value: (i32, f32) = (20, 3.14);
-    println!("{}", value.0); // -> 20
-}
-\end{lstlisting}
+\begin{program}
+  \lstinputlisting[
+    language=Rust,
+  ]{conteudo/codigo/rust-tuplas.rs}
+  \caption{Declaração e uso de tuplas.\label{prog:rust-tuplas}}
+\end{program}
 
 \subsubsection{Structs}
 
 Um struct é similar a uma tupla, mas tem campos nomeados e pode ter métodos com o uso de um bloco \texttt{impl}:
 
-\begin{lstlisting}[language=Rust, caption=Definição e uso de structs]
-struct Point {
-    timestamp: i32,
-    value: f32
-}
-
-impl Point {
-    // Método que pode mutar o valor de self
-    fn add(&mut self, value: f32) {
-        self.value += value;
-    }
-    
-    // Método estático que serve como construtor
-    fn new(timestamp: i32, value: f32) -> Self {
-        Self { timestamp, value } // Sintaxe abreviada
-    }
-}
-
-fn main() {
-    let mut p = Point::new(20, 2.14);
-    p.add(1.0);
-}
-\end{lstlisting}
+\begin{program}
+  \lstinputlisting[
+    language=Rust,
+  ]{conteudo/codigo/rust-structs.rs}
+  \caption{Definição e uso de structs.\label{prog:rust-structs}}
+\end{program}
 
 Existe também um construto chamado tuple-struct que é um struct mas os campos são nomeados por seus índices, como uma tupla:
 
-\begin{lstlisting}[language=Rust, caption=Tuple-struct]
-struct Coordinate(i32, i32);
-
-fn main() {
-    let origin = Coordinate(0, 0);
-}
-\end{lstlisting}
+\begin{program}
+  \lstinputlisting[
+    language=Rust,
+  ]{conteudo/codigo/rust-tuple-struct.rs}
+  \caption{Tuple-struct.\label{prog:rust-tuple-struct}}
+\end{program}
 
 \subsubsection{Enums}
 
 Diferente da maioria das linguagens, enums em Rust podem ter payloads já que cada variante pode ser tratada como um struct:
 
-\begin{lstlisting}[language=Rust, caption=Enums com payloads]
-enum Coordinate {
-    Polar { 
-        theta: f32, 
-        radius: f32
-    },
-    Cartesian(f32, f32),
-    Origin,
-}
-
-fn main() {
-    let origin: Coordinate = Coordinate::Origin;
-    let point1: Coordinate = Coordinate::Cartesian(1.0, 1.0);
-    let point2: Coordinate = Coordinate::Polar { theta: 45.0, radius: 2.0 };
-}
-\end{lstlisting}
+\begin{program}
+  \lstinputlisting[
+    language=Rust,
+  ]{conteudo/codigo/rust-enums.rs}
+  \caption{Enums com payloads.\label{prog:rust-enums}}
+\end{program}
 
 \subsubsection{Traits}
 
 Traits são o equivalente Rust de uma interface, define métodos que devem ser implementados por um tipo para que ele tenha uma dada característica. São úteis para limitar tipos genéricos ou sobrecarregar operadores:
 
-\begin{lstlisting}[language=Rust, caption=Implementação de traits]
-use std::fmt::{Display, Formatter, Error};
-
-// Display é um trait usado para formatação de string com {}
-impl Display for Coordinate {
-    fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), Error> {
-        match self {
-            Coordinate::Origin => write!(f, "Origin"),
-            Coordinate::Cartesian(x, y) => write!(f, "({}, {})", x, y),
-            Coordinate::Polar { theta, radius } => 
-                write!(f, "{} ({})", radius, theta)
-        }
-    }
-}
-
-fn main() {
-    let coord = Coordinate::Polar { radius: 10.0, theta: 75.0 };
-    println!("A coordenada é {}", coord); // -> 10 (75)
-}
-\end{lstlisting}
+\begin{program}
+  \lstinputlisting[
+    language=Rust,
+  ]{conteudo/codigo/rust-traits.rs}
+  \caption{Implementação de traits.\label{prog:rust-traits}}
+\end{program}
 
 Com conhecimento básico da linguagem, é momento de começar a introduzir os elementos da proposta em si. Para isso, os elementos da linguagem Elixir que foram discutidos previamente serão usados como referência fortemente.
 
@@ -211,25 +128,12 @@ Esta proposta contempla o uso de \emph{green-threads} que não têm suporte nati
 
 As tasks são criadas e executadas com isolamento, seja de forma concorrente ou paralela, dependendo da quantidade de threads do sistema operacional que estão sendo utilizadas pelo ambiente de execução Tokio. Isso permite que múltiplas tasks sejam executadas simultaneamente sem a necessidade de gerenciar manualmente threads do sistema operacional.
 
-\begin{lstlisting}[language=Rust, caption=Exemplo de tasks concorrentes com Tokio]
-use tokio;
-
-#[tokio::main]
-async fn main() {
-    // Gera a primeira task
-    let task1 = tokio::spawn(async {
-        println!("Task 1 executando!");
-    });
-    
-    // Gera a segunda task
-    let task2 = tokio::spawn(async {
-        println!("Task 2 executando!");
-    });
-    
-    // Aguarda ambas as tasks terminarem
-    let _ = tokio::join!(task1, task2);
-}
-\end{lstlisting}
+\begin{program}
+  \lstinputlisting[
+    language=Rust,
+  ]{conteudo/codigo/rust-tasks-tokio.rs}
+  \caption{Exemplo de tasks concorrentes com Tokio.\label{prog:rust-tasks-tokio}}
+\end{program}
 
 No exemplo acima, duas tasks são criadas usando \texttt{tokio::spawn}, cada uma executando de forma independente e concorrente (sem garantia de ordenação). A função \texttt{tokio::join!} aguarda que ambas as tasks sejam concluídas antes de prosseguir.
 
@@ -257,39 +161,23 @@ Um canal de múltiplos produtores, consumidor único é a abstração que será 
 
 Note que o principio de localidade e segurança do Modelo de Atores nos garante que ninguém deve ser capaz de descobrir o endereço de um ator sem que esse tenha lhe sido dado. Portanto, no momento que não existem mais extremidades \texttt{Sender} a um ator, este garantidamente não receberá mais nenhuma mensagem e pode ser finalizado. Isso acontece de forma natural em Rust com o uso de um loop, enquanto que em Elixir um ator não recebe nenhum indicativo que seu endereço se tornou desconhecido.
 
-\begin{lstlisting}[language=Rust, caption=Exemplo de loop de recebimento de mensagens]
-// Loop que processa mensagens até o canal ser fechado
-while let Some(message) = rx.recv().await {
-    match message {
-        Message::SetThing { value } => {
-            println!("Definindo valor: {}", value);
-        }
-        Message::GetThing { tx } => {
-            let _ = tx.send(42); // Envia resposta
-        }
-    }
-}
-// Quando não há mais Senders, rx.recv() retorna None
-// e o loop se encerra automaticamente
-println!("Ator finalizando - canal fechado");
-\end{lstlisting}
+\begin{program}
+  \lstinputlisting[
+    language=Rust,
+  ]{conteudo/codigo/rust-loop-mensagens.rs}
+  \caption{Exemplo de loop de recebimento de mensagens.\label{prog:rust-loop-mensagens}}
+\end{program}
 
 No exemplo acima, o loop \texttt{while let Some(message) = rx.recv().await} continuará processando mensagens enquanto houver extremidades \texttt{Sender} ativas. Quando todas as extremidades \texttt{Sender} são descartadas (saem de escopo ou são explicitamente liberadas com o uso de \texttt{drop}), o método \texttt{recv()} retorna \texttt{None}, fazendo com que o loop se encerre naturalmente e a task do ator seja finalizada.
 
 Em Elixir, o equivalente seria:
 
-\begin{lstlisting}[language=ruby, caption=Exemplo equivalente em Elixir]
-def loop do
-    receive do
-        {:set_thing, value} ->
-        IO.puts("Definindo valor: #{value}")
-        loop()
-        {:get_thing, sender} ->
-        send(sender, {:ok, 42})
-        loop()
-    end
-end
-\end{lstlisting}
+\begin{program}
+  \lstinputlisting[
+    language=Elixir,
+  ]{conteudo/codigo/elixir-loop-equivalente.ex}
+  \caption{Exemplo equivalente em Elixir.\label{prog:elixir-loop-equivalente}}
+\end{program}
 
 Exemplo acima, em Elixir, é um ator que pode se tornar um ator zumbi, ou seja, que está consumindo recursos ainda que não seja mais usado. Para resolver isso é necessário o uso de um timeout ou de uma mensagem que indique ao ator que ele pode terminar.
 
@@ -353,12 +241,12 @@ Assim como tudo em Rust, as mensagens enviadas através de canais devem ser tipa
 
 No contexto do exemplo dado, o \emph{enum} a ser criado no arquivo \texttt{app/message.rs} seria:
 
-\begin{lstlisting}[language=Rust, caption=Exemplo de mensagens tipadas]
-enum Message {
-    SetThing { value: i32 }, 
-    GetThing { tx: oneshot::Sender<i32> }
-}
-\end{lstlisting}
+\begin{program}
+  \lstinputlisting[
+    language=Rust,
+  ]{conteudo/codigo/rust-mensagens-tipadas.rs}
+  \caption{Exemplo de mensagens tipadas.\label{prog:rust-mensagens-tipadas}}
+\end{program}
 
 A maior vantagem de tipar mensagens com \emph{enums} é que o envio e o tratamento são verificados em tempo de compilação. Isso cria uma garantia forte sobre quais mensagens que podem estar envolvidas em uma dada comunicação e o compilador Rust garantirá que:
 
@@ -375,53 +263,31 @@ Toda a lógica de processamento de mensagens para um ator ficará dentro de uma 
 
 No contexto do exemplo dado, a \emph{struct} a ser criada no arquivo \texttt{app/core.rs} seria:
 
-\begin{lstlisting}[language=Rust, caption=Exemplo de struct Core para lógica do ator]
-pub struct Core {
-    thing: i32,
-}
-\end{lstlisting}
+\begin{program}
+  \lstinputlisting[
+    language=Rust,
+  ]{conteudo/codigo/rust-core-struct.rs}
+  \caption{Exemplo de struct Core para lógica do ator.\label{prog:rust-core-struct}}
+\end{program}
 
 
 O \texttt{Core} deve ser instanciado com a invocação do seu construtor, nesse momento as dependências do ator deverão ser injetadas como argumentos do construtor. O construtor será chamado \texttt{new} caso não possa falhar, caso contrário será chamado de \texttt{build}. Por exemplo, a inicialização de um ator pode depender do valor de uma variável de ambiente que talvez não exista, e isso leva a uma falha.
 
-\begin{lstlisting}[language=Rust, caption=Exemplo de construtor]
-impl Core {
-    pub fn new(thing: i32) -> Self {
-        Self {
-            thing
-        }
-    }
-}
-\end{lstlisting}
+\begin{program}
+  \lstinputlisting[
+    language=Rust,
+  ]{conteudo/codigo/rust-core-constructor.rs}
+  \caption{Exemplo de construtor.\label{prog:rust-core-constructor}}
+\end{program}
 
 Deverá ser fornecido um método de instância \texttt{init} responsável por conter a lógica de processamento das mensagens recebidas, delegando elas para os métodos responsáveis.
 
-\begin{lstlisting}[language=Rust, caption=Exemplo de construtor]
-    impl Core {
-        // ...
-        pub async fn init(mut self, mut rx: mpsc::Receiver<Message>) {
-            while let Some(message) = rx.recv().await {
-                match message {
-                    Message::SetThing { value } => {
-                        self.handle_set_thing(value);
-                    }
-                    Message::GetThing { tx } => {
-                        let result = self.handle_get_thing();
-                        let _ = tx.send(result);
-                    }
-                }
-            }
-        }
-        
-        fn handle_set_thing(&mut self, value: i32) {
-            self.thing = value;
-        }
-        
-        fn handle_get_thing(&self) -> i32 {
-            self.thing
-        }
-    }
-\end{lstlisting}
+\begin{program}
+  \lstinputlisting[
+    language=Rust,
+  ]{conteudo/codigo/rust-core-init.rs}
+  \caption{Exemplo de método init para processamento de mensagens.\label{prog:rust-core-init}}
+\end{program}
 
 Note que o método \texttt{init} recebe \texttt{mut self} como primeiro argumento (sem uso de \texttt{\&}), isso significa que ele consome a instância. Em outras palavras, aquele que tiver posse de uma instância do \texttt{Core} do App a perderá assim que \texttt{init} for invocada, impedindo que um mesmo objeto seja instanciado como 2 atores compartilhando o mesmo espaço de memória. O segundo parâmetro é a ponta de recebimento de mensagens do canal para se comunicar com o ator.
 
@@ -431,71 +297,12 @@ O bloco \texttt{while let Some(message) = rx.recv().await} é um loop que contin
 
 Para se aproveitar ao máximo dos recursos que a linguagem Rust oferece, é ideal a criação de um tipo que abstraia a lógica de uso dos canais, tanto para facilitar a leitura do código, quanto para diminuir duplicação de código. Ao contrário do que é feito em Elixir, onde se atribui o nome do ator ao módulo onde se encontra a lógica de processamento, aqui o nome será atribuído a essa abstração sobre o endereço.
 
-\begin{lstlisting}[language=Rust, caption=Exemplo de struct para endereço do ator]
-use tokio::sync::{mpsc, oneshot};
-use crate::error::{AppError, FatalActorError};
-
-pub struct App {
-    tx: mpsc::Sender<Message>,
-}
-
-impl App {
-    pub fn spawn(value: i32) -> Self {
-        let (tx, rx) = mpsc::channel(crate::BUFFER_SIZE);
-        let core = Core::new(value);
-        let _ = tokio::spawn(async move {
-            core.init(rx).await;
-        });
-
-        Self { tx }
-    }
-
-    pub async fn thing(&self) -> Result<i32, AppError> {
-        let (tx, rx) = oneshot::channel();
-        let message = Message::GetThing { tx };
-        
-        self.tx.send(message).await.map_err(|_| {
-            AppError::Fatal(FatalActorError::ActorSendFailed {
-                actor_name: "App",
-                operation: "get thing".to_string(),
-            })
-        })?;
-
-        rx.await.map_err(|e| {
-            AppError::Fatal(FatalActorError::ActorRecvFailed {
-                actor_name: "App",
-                operation: "get thing".to_string(),
-                source: e,
-            })
-        })?
-    }
-    
-    pub async fn thing_alt(&self) -> Result<oneshot::Receiver<Result<i32, AppError>>, AppError> {
-        let (tx, rx) = oneshot::channel();
-        let message = Message::GetThing { tx };
-        
-        self.tx.send(message).await.map_err(|_| {
-            AppError::Fatal(FatalActorError::ActorSendFailed {
-                actor_name: "App",
-                operation: "get thing".to_string(),
-            })
-        })?;
-
-        Ok(rx)
-    }
-    
-    pub async fn set_thing(&self, value: i32) -> Result<(), AppError> {
-        let message = Message::SetThing { value };
-        
-        self.tx.send(message).await.map_err(|_| {
-            AppError::Fatal(FatalActorError::ActorSendFailed {
-                actor_name: "App",
-                operation: "set thing".to_string(),
-            })
-        })
-    }
-}
-\end{lstlisting}
+\begin{program}
+  \lstinputlisting[
+    language=Rust,
+  ]{conteudo/codigo/rust-actor-address.rs}
+  \caption{Exemplo de struct para endereço do ator.\label{prog:rust-actor-address}}
+\end{program}
 
 No exemplo acima, a struct \texttt{App} encapsula o \texttt{Sender} do canal \texttt{mpsc} e fornece métodos públicos que abstraem completamente a lógica de envio de mensagens. O método \texttt{thing()} cria um canal \texttt{oneshot} para receber a resposta, envia a mensagem \texttt{GetThing} e aguarda a resposta. O método \texttt{thing\_alt()} oferece uma alternativa onde retorna o \texttt{Receiver} diretamente, permitindo que o invocador decida quando aguardar pela resposta. O método \texttt{set\_thing()} simplesmente envia a mensagem \texttt{SetThing} com o valor fornecido.
 
@@ -522,38 +329,12 @@ O sistema de erros é organizado hierarquicamente, com três níveis principais:
 
 Erros fatais representam falhas de comunicação que não podem ser recuperadas sem reiniciar o componente afetado. Esses erros são comuns a todos os atores e indicam problemas com o sistema de passagem de mensagens:
 
-\begin{lstlisting}[language=Rust, caption=Definição de erros fatais]
-use miette::Diagnostic;
-use thiserror::Error;
-
-#[derive(Debug, Error, Diagnostic)]
-#[error("Fatal actor error")]
-pub enum FatalActorError {
-    /// Falha ao enviar mensagem para o ator
-    #[error("Failed to send message to actor '{actor_name}' for operation '{operation}'")]
-    #[diagnostic(
-        code(fatal::actor_send_failed),
-        help("The message could not be sent to the actor. The actor may have died or the channel may be closed.")
-    )]
-    ActorSendFailed {
-        actor_name: &'static str,
-        operation: String,
-    },
-    
-    /// Falha ao receber resposta do ator
-    #[error("Failed to receive response from actor '{actor_name}' for operation '{operation}'")]
-    #[diagnostic(
-        code(fatal::actor_recv_failed),
-        help("The response could not be received from the actor. The actor may have died or the channel may be closed.")
-    )]
-    ActorRecvFailed {
-        actor_name: &'static str,
-        operation: String,
-        #[source]
-        source: tokio::sync::oneshot::error::RecvError,
-    },
-}
-\end{lstlisting}
+\begin{program}
+  \lstinputlisting[
+    language=Rust,
+  ]{conteudo/codigo/rust-fatal-errors.rs}
+  \caption{Definição de erros fatais.\label{prog:rust-fatal-errors}}
+\end{program}
 
 Erros fatais ocorrem quando o canal de comunicação é fechado, o que acontece quando não há mais extremidades \texttt{Sender} ativas para o ator. Isso pode indicar que o ator terminou inesperadamente ou que todas as referências a ele foram liberadas.
 
@@ -561,20 +342,12 @@ Erros fatais ocorrem quando o canal de comunicação é fechado, o que acontece 
 
 Cada ator define seu próprio tipo de erro, que encapsula tanto os erros específicos do domínio quanto os erros fatais de comunicação. Por exemplo, o ator (\texttt{Env}) define:
 
-\begin{lstlisting}[language=Rust, caption=Exemplo de erro específico de ator]
-#[derive(Debug, Error, Diagnostic)]
-pub enum EnvError {
-    /// Variável de ambiente não encontrada
-    NotFound {
-        name: String,
-    },
-    
-    /// Erro fatal ocorrido durante operações do ator
-    #[error(transparent)]
-    #[diagnostic(transparent)]
-    Fatal(#[from] FatalActorError),
-}
-\end{lstlisting}
+\begin{program}
+  \lstinputlisting[
+    language=Rust,
+  ]{conteudo/codigo/rust-actor-error.rs}
+  \caption{Exemplo de erro específico de ator.\label{prog:rust-actor-error}}
+\end{program}
 
 A variante \texttt{Fatal} permite que erros fatais sejam propagados automaticamente através do operador \texttt{?}, mantendo a hierarquia de erros enquanto permite tratamento específico quando necessário.
 
@@ -582,30 +355,12 @@ A variante \texttt{Fatal} permite que erros fatais sejam propagados automaticame
 
 Quando um ator precisa retornar um resultado que pode falhar, o tipo de retorno deve ser \texttt{Result<T, E>}, onde \texttt{E} é o tipo de erro específico do ator. O resultado é enviado através do canal \texttt{oneshot} como parte da resposta:
 
-\begin{lstlisting}[language=Rust, caption=Processamento de mensagens com tratamento de erros]
-impl Core {
-    pub async fn init(self, mut rx: mpsc::Receiver<Message>) {
-        while let Some(msg) = rx.recv().await {
-            match msg {
-                Message::Get { tx, key } => {
-                    // Processa a operação e pode retornar um erro
-                    let result = self.handle_get_env(key);
-                    let _ = tx.send(result);
-                }
-                // ...
-            }
-        }
-    }
-    
-    fn handle_get_env(&self, key: ArcOsStr) -> Result<ArcStr, EnvError> {
-        std::env::var(key.as_ref())
-            .map(|s| ArcStr::from(&s))
-            .map_err(|_| EnvError::NotFound {
-                name: key.to_string_lossy().to_string(),
-            })
-    }
-}
-\end{lstlisting}
+\begin{program}
+  \lstinputlisting[
+    language=Rust,
+  ]{conteudo/codigo/rust-error-handling.rs}
+  \caption{Processamento de mensagens com tratamento de erros.\label{prog:rust-error-handling}}
+\end{program}
 
 \subsection{Tratamento de Erros na Interface Pública}
 
@@ -618,34 +373,12 @@ Na interface pública do ator, erros podem ocorrer em dois pontos:
 
 Ambos os casos devem ser tratados e convertidos em erros fatais quando apropriado:
 
-\begin{lstlisting}[language=Rust, caption=Tratamento de erros na interface pública do ator]
-impl Env {
-    pub async fn env(&self, key: ArcOsStr) -> Result<ArcStr, EnvError> {
-        let (tx, rx) = tokio::sync::oneshot::channel();
-        
-        // Erro ao enviar mensagem -> Erro fatal
-        self.tx
-            .send(Message::Get { tx, key })
-            .await
-            .map_err(|_e| {
-                EnvError::Fatal(FatalActorError::ActorSendFailed {
-                    actor_name: "Env",
-                    operation: "get environment variable".to_string(),
-                })
-            })?;
-        
-        // Erro ao receber resposta -> Erro fatal ou erro de domínio
-        rx.await
-            .map_err(|e| {
-                EnvError::Fatal(FatalActorError::ActorRecvFailed {
-                    actor_name: "Env",
-                    operation: "get environment variable".to_string(),
-                    source: e,
-                })
-            })?
-    }
-}
-\end{lstlisting}
+\begin{program}
+  \lstinputlisting[
+    language=Rust,
+  ]{conteudo/codigo/rust-error-interface.rs}
+  \caption{Tratamento de erros na interface pública do ator.\label{prog:rust-error-interface}}
+\end{program}
 
 Note que o operador \texttt{?} é usado para propagar erros automaticamente. Se o envio da mensagem falhar (por exemplo, porque o canal foi fechado), o erro é convertido em um \texttt{FatalActorError}. Se a recepção falhar, também é convertido em um erro fatal. Caso contrário, o resultado (que pode conter um erro de domínio como \texttt{NotFound}) é retornado.
 
@@ -661,25 +394,21 @@ Uma das principais vantagens da arquitetura baseada em atores é a facilidade de
 
 Para simplificar a criação de mocks, este trabalho faz uso da biblioteca \texttt{mockall}, que gera automaticamente implementações \textit{mock} a partir de traits ou structs. Isso elimina a necessidade de escrever manualmente código \textit{boilerplate} para \textit{mocks} e garante que os \textit{mocks} permaneçam sincronizados com as interfaces reais. O código para \textit{mock} de um ator deve ser colocado no arquivo \texttt{mock.rs} do módulo do ator e o módulo deve ser declarado como:
 
-\begin{lstlisting}[language=Rust, caption=Exemplo de declaração de módulo para mock]
-#[cfg(test)]
-pub mod mock;
-\end{lstlisting}
+\begin{program}
+  \lstinputlisting[
+    language=Rust,
+  ]{conteudo/codigo/rust-mock-module.rs}
+  \caption{Exemplo de declaração de módulo para mock.\label{prog:rust-mock-module}}
+\end{program}
 
 Desse modo, o código do mock não será incluso no binário de produção.
 
-\begin{lstlisting}[language=Rust, caption=Exemplo de mock usando mockall]
-mock!{
-    #[derive(Debug)]
-    pub App {
-        pub async fn operation(&self, params: Params) -> Result<Value>;
-    }
-
-    impl Clone for Actor {
-        fn clone(&self) -> Self;
-    }
-}
-\end{lstlisting}
+\begin{program}
+  \lstinputlisting[
+    language=Rust,
+  ]{conteudo/codigo/rust-mockall.rs}
+  \caption{Exemplo de mock usando mockall.\label{prog:rust-mockall}}
+\end{program}
 
 A macro \texttt{mock!} do mockall gera automaticamente uma estrutura com nome \texttt{MockApp} que implementa todos os métodos especificados e permite configurar comportamentos esperados para cada invocação. Além disso, a macro gera implementações de traits como \texttt{Debug} e \texttt{Clone}, mantendo a compatibilidade com a interface original.
 
@@ -687,23 +416,12 @@ A macro \texttt{mock!} do mockall gera automaticamente uma estrutura com nome \t
 
 Para permitir a substituição fácil entre implementações reais e mockadas, deve-se usar atributos de compilação condicional (\texttt{\#[cfg(test)]} e \texttt{\#[cfg(not(test))]}) para alternar entre as implementações:
 
-\begin{lstlisting}[language=Rust, caption=Alternância entre implementações reais e mockadas]
-#[cfg(not(test))]
-use crate::other_actor::OtherActor;
-
-#[cfg(test)]
-use crate::other_actor::mock::MockOtherActor as OtherActor;
-
-pub struct App {
-    dependency: OtherActor,
-}
-
-impl App {
-    pub fn new(dependency: OtherActor) -> Self {
-        Self { dependency }
-    }
-}
-\end{lstlisting}
+\begin{program}
+  \lstinputlisting[
+    language=Rust,
+  ]{conteudo/codigo/rust-mock-integration.rs}
+  \caption{Alternância entre implementações reais e mockadas.\label{prog:rust-mock-integration}}
+\end{program}
 
 Durante a compilação normal, a implementação real \texttt{OtherActor} é usada. Durante a compilação de testes, automaticamente substitui por \texttt{MockOtherActor}. Com o uso de compilação condicional, é possível implementar uma infraestrutura de testes bastante robusta que terá nenhum impacto no código de produção.
 
@@ -711,23 +429,11 @@ Durante a compilação normal, a implementação real \texttt{OtherActor} é usa
 
 Com \textit{mocks} em vigor, escrever testes unitários torna-se direto. Cada teste pode configurar o comportamento esperado de suas dependências \textit{mockadas} e verificar que o ator sob teste se comporta corretamente:
 
-\begin{lstlisting}[language=Rust, caption=Exemplo de teste unitário com mocks]
-#[tokio::test]
-async fn test_my_actor_operation() {
-    let mut mock_dep = MockOtherActor::new();
-    
-    // Configura o comportamento esperado do mock
-    mock_dep 
-        .expect_get_value()
-        .times(1)
-        .returning(|| Ok(42));
-    
-    let actor = App::spawn(mock_dep);
-
-    let result = actor.operation().await;
-    
-    assert_eq!(result, Ok(42));
-}
-\end{lstlisting}
+\begin{program}
+  \lstinputlisting[
+    language=Rust,
+  ]{conteudo/codigo/rust-unit-test.rs}
+  \caption{Exemplo de teste unitário com mocks.\label{prog:rust-unit-test}}
+\end{program}
 
 Os \textit{mocks} permitem testar tanto cenários de sucesso quanto de falha, validando o tratamento de erros e garantindo que as interações entre atores funcionam corretamente em isolamento.
