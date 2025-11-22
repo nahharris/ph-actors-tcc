@@ -161,12 +161,10 @@
 
 %%%%%%%% Contexto: Modelo de Atores %%%%%%%%
 
-\posterbox[adjusted title = Modelo de Atores, smallmargins, equal height group = toprow, colback=white]
+\posterbox[adjusted title = Modelo de Atores, smallmargins, equal height group = toprow, colback=white, before upper=\justifying]
           {name=contexto, below=titlebox, column=1, span=6}{
 
-    Teoria matemática originalmente concebida para sistemas distribuídos.
-    
-    Enxerga sistemas computacionais em termos de \textbf{atores} autônomos que se comunicam através de \textbf{mensagens}.
+    \noindent Teoria matemática originalmente concebida para sistemas distribuídos. Enxerga sistemas computacionais em termos de \textbf{atores} autônomos que se comunicam através de \textbf{mensagens}.
 
     \begin{center}
         \includegraphics[width=0.6\textwidth]{figuras/actor-model.png}
@@ -179,12 +177,10 @@
 
 %%%%%%%% Objetivo %%%%%%%%
 
-\posterbox[adjusted title = Objetivo, smallmargins, equal height group = toprow, colback=white]
+\posterbox[adjusted title = Objetivo, smallmargins, equal height group = toprow, colback=white, before upper=\justifying]
           {name=objetivo, below=titlebox, column=7, span=6}{
 
-    Este trabalho realiza uma experimentação aplicando o Modelo de Atores em um contexto distante do seu domínio natural: \textbf{aplicações centralizadas em Rust}.
-
-    O objetivo é entender o esforço necessário para aplicar um padrão arquitetural fora do seu contexto natural e quais consequências isso traz para o projeto.
+    \noindent Este trabalho realiza uma experimentação aplicando o Modelo de Atores em um contexto distante do seu domínio natural: \textbf{aplicações centralizadas em Rust}. O objetivo é entender o esforço necessário para aplicar um padrão arquitetural fora do seu contexto natural e quais consequências isso traz para o projeto.
 
     \begin{center}
         \includegraphics[width=0.6\textwidth]{figuras/actor-design.png}
@@ -196,16 +192,16 @@
 
 %%%%%%%% Estudo de Caso: Patch-Hub %%%%%%%%
 
-\posterbox[adjusted title = Estudo de Caso: \texttt{patch-hub}, smallmargins, colback=white]
+\posterbox[adjusted title = Estudo de Caso: \texttt{patch-hub}, smallmargins, colback=white, before upper=\justifying]
           {name=estudocaso, below=contexto, column=1, span=12}{
 
-    \texttt{patch-hub} é uma ferramenta de terminal desenvolvida como parte do ecossistema \texttt{kworkflow} para interagir com a API do Lore Kernel Archive. Para validação, foi realizada uma reescrita do projeto aplicando o Modelo de Atores com as adaptações propostas.
+    \noindent\texttt{patch-hub} é uma ferramenta de terminal desenvolvida como parte do ecossistema \texttt{kworkflow} para interagir com a API do Lore Kernel Archive. Para validação, foi realizada uma reescrita do projeto aplicando o Modelo de Atores com as adaptações propostas.
 }
 
 
 %%%%%%%% Espaço para Imagem %%%%%%%%
 
-\posterbox[adjusted title = Original, smallmargins, equal height group = patchhub, colback=white]
+\posterbox[adjusted title = Original, smallmargins, equal height group = patchhub, colback=white, before upper=\justifying]
           {name=original, below=estudocaso, column=1, span=6}{
 
     \begin{center}
@@ -218,7 +214,7 @@
 
 %%%%%%%% Espaço para Imagem %%%%%%%%
 
-\posterbox[adjusted title = Reescrito, smallmargins, equal height group = patchhub, colback=white]
+\posterbox[adjusted title = Reescrito, smallmargins, equal height group = patchhub, colback=white, before upper=\justifying]
           {name=reescrito, below=estudocaso, column=7, span=6}{
     \begin{center}
         \includegraphics[width=0.9\textwidth]{figuras/patch-hub-new.png}
@@ -230,7 +226,7 @@
 
 %%%%%%%% Espaço para Imagem %%%%%%%%
 
-\posterbox[adjusted title = Arquitetura, smallmargins, colback=white]
+\posterbox[adjusted title = Arquitetura, smallmargins, colback=white, before upper=\justifying]
           {name=arquitetura, below=original, column=1, span=5}{
     \begin{center}
         \includegraphics[width=1\textwidth]{figuras/patch-hub-actors.png}
@@ -240,7 +236,7 @@
 }
 %%%%%%%% Resultados %%%%%%%%
 
-\posterbox[adjusted title = Resultados, smallmargins, colback=white]
+\posterbox[adjusted title = Resultados, smallmargins, colback=white, before upper=\justifying]
           {name=resultados, below=original, column=6, span=7}{
     \begin{itemize}
         \item \textbf{Testabilidade:} A cobertura de testes aumentou cerca de \(3x\).
@@ -252,10 +248,10 @@
 
 %%%%%%%% Conclusão %%%%%%%%
 
-\posterbox[adjusted title = Conclusão, smallmargins, colback=white]
+\posterbox[adjusted title = Conclusão, smallmargins, colback=white, before upper=\justifying]
           {name=conclusao, below=resultados, column=6, span=7}{
 
-    O principal resultado demonstra que a adequação de padrões arquiteturais pode ser \textbf{surpreendentemente flexível}. Sendo possível extrair valor ao se reimaginar tanto o problema quanto o padrão.
+    \noindent O principal resultado demonstra que a adequação de padrões arquiteturais pode ser \textbf{surpreendentemente flexível}. Sendo possível extrair valor ao se reimaginar tanto o problema quanto o padrão.
 }
 
 \end{tcbposter}
