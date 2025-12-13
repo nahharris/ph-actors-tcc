@@ -1,34 +1,34 @@
-\chapter{Estudo de Caso: Patch-Hub}
+\chapter{Estudo de Caso: patch-hub}
 
 Uma vez apresentadas as propostas de adaptação do Modelo de Atores para experimentação fora do domínio dos sistemas distribuídos, chega o momento de realizar um estudo de caso para aplicar a proposta em um projeto real para posterior análise de resultados. 
 
-O projeto escolhido foi uma ferramenta de código aberto desenvolvida sob a organização KWorkflow (kw) chamada de Patch-Hub. Neste capítulo, será apresentado o contexto do projeto, a arquitetura original e suas limitações, os objetivos do estudo de caso e a proposta de refatoração do projeto com o uso do Modelo de Atores, cuja implementação estará disponível na íntegra no repositório do projeto no GitHub (incluir link).
+O projeto escolhido foi uma ferramenta de software livre desenvolvida sob a organização Kworkflow (kw) chamada de patch-hub. Neste capítulo, será apresentado o contexto do projeto, a arquitetura original e suas limitações, os objetivos do estudo de caso e a proposta de refatoração do projeto com o uso do Modelo de Atores, cuja implementação estará disponível na íntegra no repositório do projeto no GitHub (incluir link).
 
 \section{Contexto}
 
-Para compreender adequadamente o projeto Patch-Hub e sua proposta, é necessário entender o ecossistema de desenvolvimento do kernel Linux e os desafios enfrentados pelos desenvolvedores. O Linux é um sistema operacional de código aberto baseado no kernel Unix-like desenvolvido por Linus Torvalds em 1991~\cite{linux_wikipedia}. O kernel Linux é o núcleo do sistema operacional, responsável por gerenciar recursos de hardware, processos e comunicação entre componentes do sistema~\cite{kernel_wikipedia}.
+Para compreender adequadamente o projeto patch-hub e sua proposta, é necessário entender o ecossistema de desenvolvimento do kernel Linux e os desafios enfrentados pelos desenvolvedores. O Linux é um sistema operacional de software livre baseado no kernel Unix-like desenvolvido por Linus Torvalds em 1991~\citep{linux_wikipedia}. O kernel Linux é o núcleo do sistema operacional, responsável por gerenciar recursos de hardware, processos e comunicação entre componentes do sistema~\citep{kernel_wikipedia}.
 
 \subsection{O Processo de Contribuição para o Kernel Linux}
 
-O desenvolvimento do kernel Linux é um processo colaborativo que envolve milhares de desenvolvedores ao redor do mundo. Devido à sua complexidade e tamanho, o kernel é organizado em subsistemas especializados, cada um com responsabilidades específicas~\cite{kernel_subsystems}. Contribuições para o kernel, conhecidas como \textit{patches}, são tradicionalmente enviadas através de listas de discussão públicas por email e revisadas por mantenedores especializados~\cite{kernel_patches}. 
+O desenvolvimento do kernel Linux é um processo colaborativo que envolve milhares de desenvolvedores ao redor do mundo. Devido à sua complexidade e tamanho, o kernel é organizado em subsistemas especializados, cada um com responsabilidades específicas~\citep{kernel_subsystems}. Contribuições para o kernel, conhecidas como \textit{patches}, são tradicionalmente enviadas através de listas de discussão públicas por email e revisadas por mantenedores especializados~\citep{kernel_patches}. 
 
 Essa forma de contribuição é um processo tradicional e bem estabelecido, mas que traz diversos desafios para os desenvolvedores. Os desenvolvedores precisam se inscrever em múltiplas listas de email e gerenciar um volume considerável de mensagens. Isso dificulta muito acompanhar o status de suas contribuições.
 
 \subsection{O Projeto lore.kernel.org}
 
-Para mitigar essas dificuldades, foi criado o projeto lore.kernel.org, um arquivo público que fornece uma interface web para visualizar e pesquisar mensagens das listas de discussão do kernel~\cite{lore_api}. O lore.kernel.org oferece uma \emph{API} que permite acesso programático aos \emph{patches} arquivados, incluindo funcionalidades de busca, paginação e filtros avançados.
+Para mitigar essas dificuldades, foi criado o projeto lore.kernel.org, um arquivo público que fornece uma interface web para visualizar e pesquisar mensagens das listas de discussão do kernel~\citep{lore_api}. O lore.kernel.org oferece uma \emph{API} que permite acesso programático aos \emph{patches} arquivados, incluindo funcionalidades de busca, paginação e filtros avançados.
 
 A \emph{API} do lore suporta consultas complexas através de parâmetros de \emph{query string}, permitindo filtrar \emph{patches} por critérios como assunto, autor, data e conteúdo. Esta funcionalidade é fundamental para ferramentas que buscam automatizar ou simplificar a interação com o ecossistema de \emph{patches} do kernel.
 
-\subsection{O Projeto KWorkflow}
+\subsection{O Projeto Kworkflow}
 
-O projeto KWorkflow (kw) surgiu como uma resposta a complexidade e desafios de configuração do ambiente de desenvolvimento para o kernel Linux~\cite{kworkflow_org}. O kw é descrito como uma ``ferramenta de fluxo de trabalho de desenvolvedor de kernel'' que visa reduzir a sobrecarga de configuração e fornecer ferramentas para tarefas comuns do desenvolvimento de kernel.
+O projeto Kworkflow (kw) surgiu como uma resposta a complexidade e desafios de configuração do ambiente de desenvolvimento para o kernel Linux~\citep{kworkflow_org}. O kw é descrito como uma ``ferramenta de fluxo de trabalho de desenvolvedor de kernel'' que visa reduzir a sobrecarga de configuração e fornecer ferramentas para tarefas comuns do desenvolvimento de kernel.
 
 O projeto oferece um utilitário de terminal unificado para diversas operações como compilação, deploy, debug e gerenciamento de configurações, consolidando ferramentas anteriormente dispersas.
 
-\subsection{O Patch-Hub}
+\subsection{O patch-hub}
 
-O Patch-Hub é uma ferramenta desenvolvida como parte do ecossistema KWorkflow, especificamente projetada para interagir com a \emph{API} do lore.kernel.org~\cite{patch_hub_github}. Sua missão é agilizar a navegação e revisão de contribuições para o kernel Linux, fornecendo uma interface de usuário baseada em terminal (\emph{TUI}) que simplifica o processo de descoberta, análise e acompanhamento de \emph{patches}.
+O patch-hub é uma ferramenta desenvolvida como parte do ecossistema Kworkflow, especificamente projetada para interagir com a \emph{API} do lore.kernel.org~\citep{patch_hub_github}. Sua missão é agilizar a navegação e revisão de contribuições para o kernel Linux, fornecendo uma interface de usuário baseada em terminal (\emph{TUI}) que simplifica o processo de descoberta, análise e acompanhamento de \emph{patches}.
 
 (screenshot do patch-hub)
 
@@ -36,7 +36,7 @@ A ferramenta permite aos desenvolvedores navegar por listas de patches, aplicar 
 
 \section{Arquitetura Original}
 
-A implementação original do Patch-Hub seguia uma arquitetura majoritariamente \emph{single-threaded} e monolítica com inspirações no padrão arquitetural MVC. A organização do código era dada em termos dos seguintes módulos:
+A implementação original do patch-hub seguia uma arquitetura majoritariamente \emph{single-threaded} e monolítica com inspirações no padrão arquitetural MVC. A organização do código era dada em termos dos seguintes módulos:
 
 \begin{itemize}
     \item \textbf{\texttt{lore}}: Interação com a \emph{API} do lore.kernel.org
@@ -53,12 +53,12 @@ A implementação original do Patch-Hub seguia uma arquitetura majoritariamente 
 
 \subsection{Funcionalidades Principais}
 
-A implementação do Patch-Hub (tanto a original quanto a refatorada) fornece um conjunto de funcionalidades para interagir com o arquivo de \emph{patches} do kernel Linux. O sistema permite a seleção e navegação de listas de discussão arquivadas no \textit{lore.kernel.org}, apresentando os conjuntos de \emph{patches} associados. Ao examinar uma série específica, a interface disponibiliza o conteúdo individual dos \emph{patches} juntamente com metadados relevantes, incluindo título, autor, versão, quantidade de \emph{patches} e \emph{timestamp} da última atualização.
+A implementação do patch-hub (tanto a original quanto a refatorada) fornece um conjunto de funcionalidades para interagir com o arquivo de \emph{patches} do kernel Linux. O sistema permite a seleção e navegação de listas de discussão arquivadas no \textit{lore.kernel.org}, apresentando os conjuntos de \emph{patches} associados. Ao examinar uma série específica, a interface disponibiliza o conteúdo individual dos \emph{patches} juntamente com metadados relevantes, incluindo título, autor, versão, quantidade de \emph{patches} e \emph{timestamp} da última atualização.
 
 \begin{figure}[H]
     \centering
     \includegraphics[width=\textwidth]{figuras/patch-hub-original.png}
-    \caption{Interface do Patch-Hub.\label{fig:patch-hub-original}}
+    \caption{Interface do patch-hub.\label{fig:patch-hub-original}}
 \end{figure}
 
 O sistema implementa operações fundamentais para o \emph{workflow} de revisão de \emph{patches}: aplicação de \emph{patches} em repositórios locais do kernel, organização de séries em um sistema de favoritos, e composição de respostas com tags de revisão padrão, como \texttt{Reviewed-by}.
@@ -67,7 +67,7 @@ A renderização do conteúdo dos patches é implementada com suporte a múltipl
 
 \section{Limitações da Arquitetura Original}
 
-Apesar de sua funcionalidade, a implementação original do Patch-Hub apresentava limitações arquiteturais fundamentais que comprometiam sua extensibilidade, manutenibilidade e capacidade de evolução. Essas limitações vinham de decisões de design que, embora funcionais para o escopo inicial, criavam gargalos estruturais que dificultavam a adição de novas funcionalidades e a manutenção do código no longo prazo.
+Apesar de sua funcionalidade, a implementação original do patch-hub apresentava limitações arquiteturais fundamentais que comprometiam sua extensibilidade, manutenibilidade e capacidade de evolução. Essas limitações vinham de decisões de design que, embora funcionais para o escopo inicial, criavam gargalos estruturais que dificultavam a adição de novas funcionalidades e a manutenção do código no longo prazo.
 
 \subsection{Gargalo de Mutação Centralizada}
 
@@ -125,9 +125,9 @@ Esta limitação compromete significativamente a capacidade de garantir qualidad
 
 \section{Objetivos}
 
-Fica evidente que o Patch-Hub necessita de refatorações para tentar resolver os problemas supracitados. Em especial, fica notável uma grande necessidade de melhorias do ponto de vista da flexibilidade do sistema. Tendo em vista que o Modelo de Atores proporciona alta modularidade e baixo acoplamento aos sistemas, isso torna o Patch-Hub um candidato interessante para experimentação e avaliação de valor da proposta. Além disso, o Patch-Hub toca em domínios suficientemente diversos para que o experimento seja bastante completo.
+Fica evidente que o patch-hub necessita de refatorações para tentar resolver os problemas supracitados. Em especial, fica notável uma grande necessidade de melhorias do ponto de vista da flexibilidade do sistema. Tendo em vista que o Modelo de Atores proporciona alta modularidade e baixo acoplamento aos sistemas, isso torna o patch-hub um candidato interessante para experimentação e avaliação de valor da proposta. Além disso, o patch-hub toca em domínios suficientemente diversos para que o experimento seja bastante completo.
 
-Este trabalho não criará uma reescrita completa com 100\% de compatibilidade de funcionalidades. Ao invés disso, um subconjunto das funcionalidades foi escolhido para implementação, suficiente para ter as funcionalidades principais do Patch-Hub, que são:
+Este trabalho não criará uma reescrita completa com 100\% de compatibilidade de funcionalidades. Ao invés disso, um subconjunto das funcionalidades foi escolhido para implementação, suficiente para ter as funcionalidades principais do patch-hub, que são:
 
 \begin{itemize}
     \item Uma interface de usuário de texto interativa
@@ -141,7 +141,7 @@ Este trabalho não criará uma reescrita completa com 100\% de compatibilidade d
 
 \section{Modelagem com Atores}
 
-Com objetivos estabelecidos, foi feita uma modelagem da arquitetura do Patch-Hub com o uso de atores. A modelagem adota os princípios SOLID como guias. Os atores serão categorizados em 2 grupos considerando o tipo de interação que eles são responsáveis: externas ou internas.
+Com objetivos estabelecidos, foi feita uma modelagem da arquitetura do patch-hub com o uso de atores. A modelagem adota os princípios SOLID como guias. Os atores serão categorizados em 2 grupos considerando o tipo de interação que eles são responsáveis: externas ou internas.
 
 O primeiro grupo é formado pelos atores responsáveis por interações com componentes externos ao sistema, como, por exemplo, o sistema de arquivos, a internet ou o terminal. Este grupo será chamado de atores de integração pois permitem a integração do programa com outros sistemas, gerando, assim, efeitos colaterais no mundo real.
 
@@ -152,14 +152,14 @@ Por dependerem apenas de outros atores, testes unitários se tornam triviais uma
 \begin{figure}[H]
     \centering
     \includegraphics[width=\textwidth]{figuras/patch-hub-actors.png}
-    \caption{Diagrama de atores do Patch-Hub}
+    \caption{Diagrama de atores do patch-hub}
     \label{fig:patch-hub-actors}
 \end{figure}
 
 
 \subsection{Atores de Integração}
 
-Primeiramente, foi catalogado quais capacidades do Patch-Hub dependem unicamente de interação com sistemas externos ao programa que serão inclusas na versão reescrita do projeto. As capacidades escolhidas foram:
+Primeiramente, foi catalogado quais capacidades do patch-hub dependem unicamente de interação com sistemas externos ao programa que serão inclusas na versão reescrita do projeto. As capacidades escolhidas foram:
 
 \begin{itemize}
     \item Operações do sistema de arquivos
@@ -169,7 +169,7 @@ Primeiramente, foi catalogado quais capacidades do Patch-Hub dependem unicamente
     \item Execução de comandos externos
 \end{itemize}
 
-Essas capacidades não fazem parte da lógica de negócio do Patch-Hub, mas servem de bases para permitir a sua implementação. Cada uma delas pode ser traduzida para um ator em nossa aplicação seguindo os princípios SOLID, especialmente os princípios de responsabilidade única e de segregação de interfaces.
+Essas capacidades não fazem parte da lógica de negócio do patch-hub, mas servem de bases para permitir a sua implementação. Cada uma delas pode ser traduzida para um ator em nossa aplicação seguindo os princípios SOLID, especialmente os princípios de responsabilidade única e de segregação de interfaces.
 
 \subsubsection{Sistema de Arquivos}
 
@@ -251,7 +251,7 @@ O método \texttt{spawn()} do ator Terminal retorna uma tupla contendo a interfa
 
 \subsubsection{Shell}
 
-O ator Shell é responsável por executar comandos integrando o Patch-Hub ao shell do sistema hospedeiro. Através dele é possível expandir as funcionalidades do Patch-Hub com o uso de ferramentas externas.
+O ator Shell é responsável por executar comandos integrando o patch-hub ao shell do sistema hospedeiro. Através dele é possível expandir as funcionalidades do patch-hub com o uso de ferramentas externas.
 
 \textit{Implementação:} \href{https://github.com/nahharris/ph-actors-tcc/blob/master/src/shell.rs}{\texttt{src/shell.rs}}
 
