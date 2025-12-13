@@ -19,6 +19,143 @@
 
 \refsection{0}
   \datalist[entry]{nyt/global//global/global/global}
+    \entry{hewitt2010actor}{online}{}{}
+      \name{author}{1}{}{%
+        {{un=0,uniquepart=base,hash=1c0e112479c525f05924aba5fa22ac9d}{%
+           family={Hewitt},
+           familyi={H\bibinitperiod},
+           given={Carl},
+           giveni={C\bibinitperiod},
+           givenun=0}}%
+      }
+      \strng{namehash}{1c0e112479c525f05924aba5fa22ac9d}
+      \strng{fullhash}{1c0e112479c525f05924aba5fa22ac9d}
+      \strng{fullhashraw}{1c0e112479c525f05924aba5fa22ac9d}
+      \strng{bibnamehash}{1c0e112479c525f05924aba5fa22ac9d}
+      \strng{authorbibnamehash}{1c0e112479c525f05924aba5fa22ac9d}
+      \strng{authornamehash}{1c0e112479c525f05924aba5fa22ac9d}
+      \strng{authorfullhash}{1c0e112479c525f05924aba5fa22ac9d}
+      \strng{authorfullhashraw}{1c0e112479c525f05924aba5fa22ac9d}
+      \field{labelalpha}{Hew10}
+      \field{sortinit}{H}
+      \field{sortinithash}{23a3aa7c24e56cfa16945d55545109b5}
+      \field{extradatescope}{labelyear}
+      \field{labeldatesource}{}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{eprinttype}{arxiv}
+      \field{month}{8}
+      \field{title}{Actor Model of Computation: Scalable Robust Information Systems}
+      \field{urlday}{20}
+      \field{urlmonth}{11}
+      \field{urlyear}{2025}
+      \field{year}{2010}
+      \field{urldateera}{ce}
+      \verb{eprint}
+      \verb 1008.1459
+      \endverb
+      \verb{urlraw}
+      \verb https://arxiv.org/abs/1008.1459
+      \endverb
+      \verb{url}
+      \verb https://arxiv.org/abs/1008.1459
+      \endverb
+    \endentry
+    \entry{kassab2018architectural}{article}{}{}
+      \name{author}{4}{}{%
+        {{un=0,uniquepart=base,hash=95718aa6f0208fd9c51a11b73eefdabb}{%
+           family={Kassab},
+           familyi={K\bibinitperiod},
+           given={Mohamad},
+           giveni={M\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=147f187ab39b8aa10377370e35dd100c}{%
+           family={Mazzara},
+           familyi={M\bibinitperiod},
+           given={Manuel},
+           giveni={M\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=f091b188d267e7fb017c40849a08be06}{%
+           family={Lee},
+           familyi={L\bibinitperiod},
+           given={JooYoung},
+           giveni={J\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=ba7122735918fedd33253326a25c2e66}{%
+           family={Succi},
+           familyi={S\bibinitperiod},
+           given={Giancarlo},
+           giveni={G\bibinitperiod},
+           givenun=0}}%
+      }
+      \strng{namehash}{f8ab9f03747daf5f3eac86ac42dd557c}
+      \strng{fullhash}{3542f3f5debaf25e953c78627c023448}
+      \strng{fullhashraw}{3542f3f5debaf25e953c78627c023448}
+      \strng{bibnamehash}{3542f3f5debaf25e953c78627c023448}
+      \strng{authorbibnamehash}{3542f3f5debaf25e953c78627c023448}
+      \strng{authornamehash}{f8ab9f03747daf5f3eac86ac42dd557c}
+      \strng{authorfullhash}{3542f3f5debaf25e953c78627c023448}
+      \strng{authorfullhashraw}{3542f3f5debaf25e953c78627c023448}
+      \field{labelalpha}{Kas+18}
+      \field{sortinit}{K}
+      \field{sortinithash}{c02bf6bff1c488450c352b40f5d853ab}
+      \field{extradatescope}{labelyear}
+      \field{labeldatesource}{}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{journaltitle}{Innovations in Systems and Software Engineering}
+      \field{month}{12}
+      \field{title}{Software architectural patterns in practice: an empirical study}
+      \field{urlday}{20}
+      \field{urlmonth}{11}
+      \field{urlyear}{2025}
+      \field{volume}{14}
+      \field{year}{2018}
+      \field{urldateera}{ce}
+      \field{pages}{263\bibrangedash 271}
+      \range{pages}{9}
+      \verb{doi}
+      \verb 10.1007/s11334-018-0319-4
+      \endverb
+      \verb{urlraw}
+      \verb https://link.springer.com/article/10.1007/s11334-018-0319-4
+      \endverb
+      \verb{url}
+      \verb https://link.springer.com/article/10.1007/s11334-018-0319-4
+      \endverb
+    \endentry
+    \entry{kouraklis2016mvvm}{inbook}{}{}
+      \name{author}{1}{}{%
+        {{un=0,uniquepart=base,hash=0230ddd35f3557ac84e2be7903505700}{%
+           family={Kouraklis},
+           familyi={K\bibinitperiod},
+           given={John},
+           giveni={J\bibinitperiod},
+           givenun=0}}%
+      }
+      \strng{namehash}{0230ddd35f3557ac84e2be7903505700}
+      \strng{fullhash}{0230ddd35f3557ac84e2be7903505700}
+      \strng{fullhashraw}{0230ddd35f3557ac84e2be7903505700}
+      \strng{bibnamehash}{0230ddd35f3557ac84e2be7903505700}
+      \strng{authorbibnamehash}{0230ddd35f3557ac84e2be7903505700}
+      \strng{authornamehash}{0230ddd35f3557ac84e2be7903505700}
+      \strng{authorfullhash}{0230ddd35f3557ac84e2be7903505700}
+      \strng{authorfullhashraw}{0230ddd35f3557ac84e2be7903505700}
+      \field{labelalpha}{Kou16}
+      \field{sortinit}{K}
+      \field{sortinithash}{c02bf6bff1c488450c352b40f5d853ab}
+      \field{extradatescope}{labelyear}
+      \field{labeldatesource}{}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{isbn}{978-1-4842-2213-3}
+      \field{month}{10}
+      \field{title}{MVVM as Design Pattern}
+      \field{year}{2016}
+      \verb{doi}
+      \verb 10.1007/978-1-4842-2214-0_1
+      \endverb
+    \endentry
     \entry{kworkflow_org}{online}{}{}
       \name{author}{1}{}{%
         {{un=0,uniquepart=base,hash=393d67ed7e7d828c0ed43da8e3811c0e}{%
@@ -34,7 +171,7 @@
       \strng{authorfullhash}{393d67ed7e7d828c0ed43da8e3811c0e}
       \strng{authorfullhashraw}{393d67ed7e7d828c0ed43da8e3811c0e}
       \field{extraname}{1}
-      \field{labelalpha}{KWo24}
+      \field{labelalpha}{KWo25}
       \field{sortinit}{K}
       \field{sortinithash}{c02bf6bff1c488450c352b40f5d853ab}
       \field{extradate}{1}
@@ -44,10 +181,10 @@
       \field{labelnamesource}{author}
       \field{labeltitlesource}{title}
       \field{title}{KWorkflow}
-      \field{urlday}{19}
-      \field{urlmonth}{12}
-      \field{urlyear}{2024}
-      \field{year}{2024}
+      \field{urlday}{16}
+      \field{urlmonth}{10}
+      \field{urlyear}{2025}
+      \field{year}{2025}
       \field{urldateera}{ce}
       \verb{urlraw}
       \verb https://kworkflow.org/
@@ -71,7 +208,7 @@
       \strng{authorfullhash}{393d67ed7e7d828c0ed43da8e3811c0e}
       \strng{authorfullhashraw}{393d67ed7e7d828c0ed43da8e3811c0e}
       \field{extraname}{2}
-      \field{labelalpha}{KWo24}
+      \field{labelalpha}{KWo25}
       \field{sortinit}{K}
       \field{sortinithash}{c02bf6bff1c488450c352b40f5d853ab}
       \field{extradate}{2}
@@ -81,10 +218,10 @@
       \field{labelnamesource}{author}
       \field{labeltitlesource}{title}
       \field{title}{patch-hub}
-      \field{urlday}{19}
-      \field{urlmonth}{12}
-      \field{urlyear}{2024}
-      \field{year}{2024}
+      \field{urlday}{16}
+      \field{urlmonth}{10}
+      \field{urlyear}{2025}
+      \field{year}{2025}
       \field{urldateera}{ce}
       \verb{urlraw}
       \verb https://github.com/kworkflow/patch-hub
@@ -108,7 +245,7 @@
       \strng{authorfullhash}{c592044712dfa04c732e3bd9377c8a2b}
       \strng{authorfullhashraw}{c592044712dfa04c732e3bd9377c8a2b}
       \field{extraname}{1}
-      \field{labelalpha}{Lin24}
+      \field{labelalpha}{Lin25}
       \field{sortinit}{L}
       \field{sortinithash}{7c47d417cecb1f4bd38d1825c427a61a}
       \field{extradate}{1}
@@ -118,10 +255,10 @@
       \field{labelnamesource}{author}
       \field{labeltitlesource}{title}
       \field{title}{Submitting patches}
-      \field{urlday}{19}
-      \field{urlmonth}{12}
-      \field{urlyear}{2024}
-      \field{year}{2024}
+      \field{urlday}{16}
+      \field{urlmonth}{10}
+      \field{urlyear}{2025}
+      \field{year}{2025}
       \field{urldateera}{ce}
       \verb{urlraw}
       \verb https://docs.kernel.org/process/submitting-patches.html
@@ -145,7 +282,7 @@
       \strng{authorfullhash}{c592044712dfa04c732e3bd9377c8a2b}
       \strng{authorfullhashraw}{c592044712dfa04c732e3bd9377c8a2b}
       \field{extraname}{2}
-      \field{labelalpha}{Lin24}
+      \field{labelalpha}{Lin25}
       \field{sortinit}{L}
       \field{sortinithash}{7c47d417cecb1f4bd38d1825c427a61a}
       \field{extradate}{2}
@@ -155,16 +292,164 @@
       \field{labelnamesource}{author}
       \field{labeltitlesource}{title}
       \field{title}{Subsystem APIs}
-      \field{urlday}{19}
-      \field{urlmonth}{12}
-      \field{urlyear}{2024}
-      \field{year}{2024}
+      \field{urlday}{16}
+      \field{urlmonth}{10}
+      \field{urlyear}{2025}
+      \field{year}{2025}
       \field{urldateera}{ce}
       \verb{urlraw}
       \verb https://docs.kernel.org/subsystem-apis.html
       \endverb
       \verb{url}
       \verb https://docs.kernel.org/subsystem-apis.html
+      \endverb
+    \endentry
+    \entry{martin2000design}{report}{}{}
+      \name{author}{1}{}{%
+        {{un=0,uniquepart=base,hash=6f41df64eb0dc4855be70172368604c2}{%
+           family={Martin},
+           familyi={M\bibinitperiod},
+           given={Robert\bibnamedelima C.},
+           giveni={R\bibinitperiod\bibinitdelim C\bibinitperiod},
+           givenun=0}}%
+      }
+      \list{institution}{1}{%
+        {Object Mentor}%
+      }
+      \strng{namehash}{6f41df64eb0dc4855be70172368604c2}
+      \strng{fullhash}{6f41df64eb0dc4855be70172368604c2}
+      \strng{fullhashraw}{6f41df64eb0dc4855be70172368604c2}
+      \strng{bibnamehash}{6f41df64eb0dc4855be70172368604c2}
+      \strng{authorbibnamehash}{6f41df64eb0dc4855be70172368604c2}
+      \strng{authornamehash}{6f41df64eb0dc4855be70172368604c2}
+      \strng{authorfullhash}{6f41df64eb0dc4855be70172368604c2}
+      \strng{authorfullhashraw}{6f41df64eb0dc4855be70172368604c2}
+      \field{labelalpha}{Mar00}
+      \field{sortinit}{M}
+      \field{sortinithash}{4625c616857f13d17ce56f7d4f97d451}
+      \field{extradatescope}{labelyear}
+      \field{labeldatesource}{}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{note}{Accessed: 2025-12-13}
+      \field{title}{Design Principles and Design Patterns}
+      \field{type}{techreport}
+      \field{year}{2000}
+      \verb{urlraw}
+      \verb https://staff.cs.utu.fi/~jounsmed/doos_06/material/DesignPrinciplesAndPatterns.pdf
+      \endverb
+      \verb{url}
+      \verb https://staff.cs.utu.fi/~jounsmed/doos_06/material/DesignPrinciplesAndPatterns.pdf
+      \endverb
+    \endentry
+    \entry{reenskaug1979mvc}{report}{}{}
+      \name{author}{1}{}{%
+        {{un=0,uniquepart=base,hash=33ca417841a637736d0590046389b9b3}{%
+           family={Reenskaug},
+           familyi={R\bibinitperiod},
+           given={Trygve},
+           giveni={T\bibinitperiod},
+           givenun=0}}%
+      }
+      \list{institution}{1}{%
+        {Xerox PARC}%
+      }
+      \strng{namehash}{33ca417841a637736d0590046389b9b3}
+      \strng{fullhash}{33ca417841a637736d0590046389b9b3}
+      \strng{fullhashraw}{33ca417841a637736d0590046389b9b3}
+      \strng{bibnamehash}{33ca417841a637736d0590046389b9b3}
+      \strng{authorbibnamehash}{33ca417841a637736d0590046389b9b3}
+      \strng{authornamehash}{33ca417841a637736d0590046389b9b3}
+      \strng{authorfullhash}{33ca417841a637736d0590046389b9b3}
+      \strng{authorfullhashraw}{33ca417841a637736d0590046389b9b3}
+      \field{labelalpha}{Ree79}
+      \field{sortinit}{R}
+      \field{sortinithash}{5e1c39a9d46ffb6bebd8f801023a9486}
+      \field{extradatescope}{labelyear}
+      \field{labeldatesource}{}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{month}{12}
+      \field{note}{Accessed: 2025-12-13}
+      \field{title}{MODELS - VIEWS - CONTROLLERS}
+      \field{type}{Technical Note}
+      \field{year}{1979}
+      \verb{urlraw}
+      \verb https://jpaulgibson.synology.me/~jpaulgibson/TSP/Teaching/Teaching-ReadingMaterial/Reenskaug79b.pdf
+      \endverb
+      \verb{url}
+      \verb https://jpaulgibson.synology.me/~jpaulgibson/TSP/Teaching/Teaching-ReadingMaterial/Reenskaug79b.pdf
+      \endverb
+    \endentry
+    \entry{rust_lang}{online}{}{}
+      \name{author}{1}{}{%
+        {{un=0,uniquepart=base,hash=ac08dc4a122934c9df0cd28b6a263956}{%
+           family={{Rust Project Developers}},
+           familyi={R\bibinitperiod}}}%
+      }
+      \strng{namehash}{ac08dc4a122934c9df0cd28b6a263956}
+      \strng{fullhash}{ac08dc4a122934c9df0cd28b6a263956}
+      \strng{fullhashraw}{ac08dc4a122934c9df0cd28b6a263956}
+      \strng{bibnamehash}{ac08dc4a122934c9df0cd28b6a263956}
+      \strng{authorbibnamehash}{ac08dc4a122934c9df0cd28b6a263956}
+      \strng{authornamehash}{ac08dc4a122934c9df0cd28b6a263956}
+      \strng{authorfullhash}{ac08dc4a122934c9df0cd28b6a263956}
+      \strng{authorfullhashraw}{ac08dc4a122934c9df0cd28b6a263956}
+      \field{labelalpha}{Rus25}
+      \field{sortinit}{R}
+      \field{sortinithash}{5e1c39a9d46ffb6bebd8f801023a9486}
+      \field{extradatescope}{labelyear}
+      \field{labeldatesource}{}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{title}{Rust: Uma linguagem empoderando todos a construir softwares confiáveis e eficientes}
+      \field{urlday}{20}
+      \field{urlmonth}{11}
+      \field{urlyear}{2025}
+      \field{year}{2025}
+      \field{urldateera}{ce}
+      \verb{urlraw}
+      \verb https://rust-lang.org/pt-BR/
+      \endverb
+      \verb{url}
+      \verb https://rust-lang.org/pt-BR/
+      \endverb
+    \endentry
+    \entry{mockall}{online}{}{}
+      \name{author}{1}{}{%
+        {{un=0,uniquepart=base,hash=f8416e5caeb95dc784316362619bf900}{%
+           family={Somers},
+           familyi={S\bibinitperiod},
+           given={Andrew},
+           giveni={A\bibinitperiod},
+           givenun=0}}%
+      }
+      \strng{namehash}{f8416e5caeb95dc784316362619bf900}
+      \strng{fullhash}{f8416e5caeb95dc784316362619bf900}
+      \strng{fullhashraw}{f8416e5caeb95dc784316362619bf900}
+      \strng{bibnamehash}{f8416e5caeb95dc784316362619bf900}
+      \strng{authorbibnamehash}{f8416e5caeb95dc784316362619bf900}
+      \strng{authornamehash}{f8416e5caeb95dc784316362619bf900}
+      \strng{authorfullhash}{f8416e5caeb95dc784316362619bf900}
+      \strng{authorfullhashraw}{f8416e5caeb95dc784316362619bf900}
+      \field{labelalpha}{Som25}
+      \field{sortinit}{S}
+      \field{sortinithash}{b164b07b29984b41daf1e85279fbc5ab}
+      \field{extradatescope}{labelyear}
+      \field{labeldatesource}{}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{title}{Mockall: A powerful mock object library for Rust}
+      \field{urlday}{20}
+      \field{urlmonth}{11}
+      \field{urlyear}{2025}
+      \field{year}{2025}
+      \field{urldateera}{ce}
+      \verb{urlraw}
+      \verb https://github.com/asomers/mockall
+      \endverb
+      \verb{url}
+      \verb https://github.com/asomers/mockall
       \endverb
     \endentry
     \entry{lore_api}{online}{}{}
@@ -184,7 +469,7 @@
       \strng{authornamehash}{dc4ae26123589516180d86ad05ed41a7}
       \strng{authorfullhash}{dc4ae26123589516180d86ad05ed41a7}
       \strng{authorfullhashraw}{dc4ae26123589516180d86ad05ed41a7}
-      \field{labelalpha}{Tad23}
+      \field{labelalpha}{Tad25}
       \field{sortinit}{T}
       \field{sortinithash}{9af77f0292593c26bde9a56e688eaee9}
       \field{extradatescope}{labelyear}
@@ -193,16 +478,50 @@
       \field{labeltitlesource}{title}
       \field{month}{9}
       \field{title}{The lore.kernel.org API}
-      \field{urlday}{19}
-      \field{urlmonth}{12}
-      \field{urlyear}{2024}
-      \field{year}{2023}
+      \field{urlday}{16}
+      \field{urlmonth}{10}
+      \field{urlyear}{2025}
+      \field{year}{2025}
       \field{urldateera}{ce}
       \verb{urlraw}
       \verb https://blog.kworkflow.org/the-lore.kernel.org-api/
       \endverb
       \verb{url}
       \verb https://blog.kworkflow.org/the-lore.kernel.org-api/
+      \endverb
+    \endentry
+    \entry{tokio}{online}{}{}
+      \name{author}{1}{}{%
+        {{un=0,uniquepart=base,hash=f386182c95bd1f3c679a3493d7e45617}{%
+           family={{Tokio Contributors}},
+           familyi={T\bibinitperiod}}}%
+      }
+      \strng{namehash}{f386182c95bd1f3c679a3493d7e45617}
+      \strng{fullhash}{f386182c95bd1f3c679a3493d7e45617}
+      \strng{fullhashraw}{f386182c95bd1f3c679a3493d7e45617}
+      \strng{bibnamehash}{f386182c95bd1f3c679a3493d7e45617}
+      \strng{authorbibnamehash}{f386182c95bd1f3c679a3493d7e45617}
+      \strng{authornamehash}{f386182c95bd1f3c679a3493d7e45617}
+      \strng{authorfullhash}{f386182c95bd1f3c679a3493d7e45617}
+      \strng{authorfullhashraw}{f386182c95bd1f3c679a3493d7e45617}
+      \field{labelalpha}{Tok25}
+      \field{sortinit}{T}
+      \field{sortinithash}{9af77f0292593c26bde9a56e688eaee9}
+      \field{extradatescope}{labelyear}
+      \field{labeldatesource}{}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{title}{Tokio: Build reliable network applications without compromising speed}
+      \field{urlday}{20}
+      \field{urlmonth}{11}
+      \field{urlyear}{2025}
+      \field{year}{2025}
+      \field{urldateera}{ce}
+      \verb{urlraw}
+      \verb https://tokio.rs/
+      \endverb
+      \verb{url}
+      \verb https://tokio.rs/
       \endverb
     \endentry
     \entry{linux_wikipedia}{online}{}{}
@@ -220,7 +539,7 @@
       \strng{authorfullhash}{9c677286866aad38f8e9b660f5411814}
       \strng{authorfullhashraw}{9c677286866aad38f8e9b660f5411814}
       \field{extraname}{1}
-      \field{labelalpha}{Wik24}
+      \field{labelalpha}{Wik25}
       \field{sortinit}{W}
       \field{sortinithash}{4315d78024d0cea9b57a0c6f0e35ed0d}
       \field{extradate}{1}
@@ -230,10 +549,10 @@
       \field{labelnamesource}{author}
       \field{labeltitlesource}{title}
       \field{title}{Linux}
-      \field{urlday}{19}
-      \field{urlmonth}{12}
-      \field{urlyear}{2024}
-      \field{year}{2024}
+      \field{urlday}{16}
+      \field{urlmonth}{10}
+      \field{urlyear}{2025}
+      \field{year}{2025}
       \field{urldateera}{ce}
       \verb{urlraw}
       \verb https://pt.wikipedia.org/wiki/Linux
@@ -257,7 +576,7 @@
       \strng{authorfullhash}{9c677286866aad38f8e9b660f5411814}
       \strng{authorfullhashraw}{9c677286866aad38f8e9b660f5411814}
       \field{extraname}{2}
-      \field{labelalpha}{Wik24}
+      \field{labelalpha}{Wik25}
       \field{sortinit}{W}
       \field{sortinithash}{4315d78024d0cea9b57a0c6f0e35ed0d}
       \field{extradate}{2}
@@ -267,10 +586,10 @@
       \field{labelnamesource}{author}
       \field{labeltitlesource}{title}
       \field{title}{Linux (núcleo)}
-      \field{urlday}{19}
-      \field{urlmonth}{12}
-      \field{urlyear}{2024}
-      \field{year}{2024}
+      \field{urlday}{16}
+      \field{urlmonth}{10}
+      \field{urlyear}{2025}
+      \field{year}{2025}
       \field{urldateera}{ce}
       \verb{urlraw}
       \verb https://pt.wikipedia.org/wiki/Linux_(n%C3%BAcleo)

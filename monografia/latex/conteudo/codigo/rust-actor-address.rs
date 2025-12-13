@@ -20,45 +20,30 @@ impl App {
         let (tx, rx) = oneshot::channel();
         let message = Message::GetThing { tx };
         
-        self.tx.send(message).await.map_err(|_| {
-            AppError::Fatal(FatalActorError::ActorSendFailed {
+        self.tx.send(message).await.map_err(|_| AppError::Fatal(
+            FatalActorError::ActorSendFailed {
                 actor_name: "App",
                 operation: "get thing".to_string(),
-            })
-        })?;
+            }
+        ))?;
 
-        rx.await.map_err(|e| {
-            AppError::Fatal(FatalActorError::ActorRecvFailed {
+        rx.await.map_err(|e| AppError::Fatal(
+            FatalActorError::ActorRecvFailed {
                 actor_name: "App",
                 operation: "get thing".to_string(),
                 source: e,
-            })
-        })?
-    }
-    
-    pub async fn thing_alt(&self) -> Result<oneshot::Receiver<Result<i32, AppError>>, AppError> {
-        let (tx, rx) = oneshot::channel();
-        let message = Message::GetThing { tx };
-        
-        self.tx.send(message).await.map_err(|_| {
-            AppError::Fatal(FatalActorError::ActorSendFailed {
-                actor_name: "App",
-                operation: "get thing".to_string(),
-            })
-        })?;
-
-        Ok(rx)
+            }
+        ))?
     }
     
     pub async fn set_thing(&self, value: i32) -> Result<(), AppError> {
         let message = Message::SetThing { value };
         
-        self.tx.send(message).await.map_err(|_| {
-            AppError::Fatal(FatalActorError::ActorSendFailed {
+        self.tx.send(message).await.map_err(|_| AppError::Fatal(
+            FatalActorError::ActorSendFailed {
                 actor_name: "App",
                 operation: "set thing".to_string(),
-            })
-        })
+            }
+        ))
     }
 }
-

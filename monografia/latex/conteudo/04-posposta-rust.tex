@@ -1,18 +1,16 @@
 \chapter{Proposta de Modelos de Atores em Rust}
 
-Uma das principais contribuições deste trabalho é a proposta de um \emph{framework} para aplicações centralizadas escritas em Rust usando o Modelo de Atores. Uma vez que a teoria sobre o Modelo de Atores e as implementações conhecidas foram discutidas, é hora de adaptar suas abstrações para as necessidades e características específicas de aplicações centralizadas em Rust.
+Uma das principais contribuições deste trabalho é a proposta de uma estratégia para aplicações centralizadas escritas em Rust usando o Modelo de Atores. Uma vez que a teoria sobre o Modelo de Atores e as implementações conhecidas foram discutidas, é hora de adaptar suas abstrações para as necessidades e características específicas de aplicações centralizadas em Rust.
 
 \section{Rust}
 
-O Modelo de Atores é amplamente conhecido por sua dinamicidade e flexibilidade, com a maioria de suas implementações famosas sendo em \emph{runtimes} flexíveis como BEAM ou JVM. Rust \cite{rust_lang} é bem o oposto disso, uma linguagem moderna com um sistema de tipos forte e um compilador poderoso o suficiente para validar quase tudo em tempo de compilação.
+O Modelo de Atores é amplamente conhecido por sua dinamicidade e flexibilidade, com a maioria de suas implementações famosas sendo em \emph{runtimes} flexíveis como BEAM ou JVM. Rust \citep{rust_lang} é bem o oposto disso, uma linguagem moderna com um sistema de tipos forte e um compilador poderoso o suficiente para validar quase tudo em tempo de compilação.
 
 Pode soar contraditório usar uma linguagem rígida com um padrão flexível, mas é exatamente o propósito deste trabalho: experimentar com o Modelo de Atores fora do seu domínio específico. Assim, além de testar no contexto centralizado, iremos implementá-lo numa tecnologia que não foi pensada pra isso.
 
 Apesar desta distância, Rust ainda possui diversos recursos de linguagem análogos a mecanismos fornecidos por Elixir, tornando essa adaptação possível. Além disso, se Elixir foi eleita a segunda linguagem mais amada nos últimos 3 anos, a mesma pesquisa aponta Rust como sendo a linguagem mais amada desde 2016. Vale ressaltar que Rust 1.0 foi lançado em 2015.
 
-Rust é conhecido por seus mecanismos de segurança que forçam verificação em tempo de compilação, tornando diversos estados inválidos impossíveis de serem representados como código.
-
-Os conceitos mais importantes aqui são:
+Rust é conhecido por seus mecanismos de segurança que forçam verificação em tempo de compilação, tornando diversos estados inválidos impossíveis de serem representados como código. A seguir veremos alguns dos conceitos mais importantes aqui.
 
 \subsection{Segurança de Memória}
 
@@ -111,7 +109,7 @@ Diferente da maioria das linguagens, enums em Rust podem ter payloads já que ca
 
 \subsubsection{Traits}
 
-Traits são o equivalente Rust de uma interface, define métodos que devem ser implementados por um tipo para que ele tenha uma dada característica. São úteis para limitar tipos genéricos ou sobrecarregar operadores:
+Traits são o equivalente Rust de uma interface, define métodos que devem ser implementados por um tipo para que ele tenha uma dada característica. São úteis para limitar tipos genéricos ou sobrecarregar operadores. Veja um exemplo no programa \ref{prog:rust-traits}.
 
 \begin{program}
   \lstinputlisting[
@@ -124,7 +122,7 @@ Com conhecimento básico da linguagem, é momento de começar a introduzir os el
 
 \section{Concorrência e Paralelismo}
 
-Esta proposta contempla o uso de \emph{green-threads} que não têm suporte nativo em Rust. Isso é porque a linguagem, ao contrário de Elixir, Golang, ou Java, tem um \emph{runtime} muito mínimo, similar ao \emph{runtime} do C. O suporte para \emph{green-threads} é fornecido pela biblioteca Tokio \cite{tokio} e eles são chamados de \emph{tasks} e serão usados de forma equivalente aos processos Erlang.
+Esta proposta contempla o uso de \emph{green-threads} que não têm suporte nativo em Rust. Isso é porque a linguagem, ao contrário de Elixir, Golang, ou Java, tem um \emph{runtime} muito mínimo, similar ao \emph{runtime} do C. O suporte para \emph{green-threads} é fornecido pela biblioteca Tokio \citep{tokio} e eles são chamados de \emph{tasks} e serão usados de forma equivalente aos processos Erlang.
 
 As tasks são criadas e executadas com isolamento, seja de forma concorrente ou paralela, dependendo da quantidade de threads do sistema operacional que estão sendo utilizadas pelo ambiente de execução Tokio. Isso permite que múltiplas tasks sejam executadas simultaneamente sem a necessidade de gerenciar manualmente threads do sistema operacional.
 
@@ -135,7 +133,7 @@ As tasks são criadas e executadas com isolamento, seja de forma concorrente ou 
   \caption{Exemplo de tasks concorrentes com Tokio.\label{prog:rust-tasks-tokio}}
 \end{program}
 
-No exemplo acima, duas tasks são criadas usando \texttt{tokio::spawn}, cada uma executando de forma independente e concorrente (sem garantia de ordenação). A função \texttt{tokio::join!} aguarda que ambas as tasks sejam concluídas antes de prosseguir.
+No programa \ref{prog:rust-tasks-tokio}, duas tasks são criadas usando \texttt{tokio::spawn}, cada uma executando de forma independente e concorrente (sem garantia de ordenação). A função \texttt{tokio::join!} aguarda que ambas as tasks sejam concluídas antes de prosseguir.
 
 Similarmente ao que foi apresentado nos exemplos com Elixir, onde um ator teria um processo dedicado para lidar com a lógica de processamento de mensagens, aqui será feito uso de \emph{tasks} para isso.
 
@@ -153,7 +151,7 @@ O tipo \texttt{Arc<T>} será o principal utilizado para dados complexos, já que
 
 Tanto Rust quanto Tokio têm uma abstração nativa de passagem de mensagens chamada de canal. Ao contrário da função \texttt{send} do Elixir que recebe como parâmetros um endereço e um dado qualquer como mensagem, o método \texttt{send} dos canais é fortemente tipado quanto à mensagem e usa um endereço bem definido.
 
-Existem alguns tipos diferentes de canais. Os 2 principais tipos para o escopo deste trabalho são:
+Existem alguns tipos diferentes de canais. Os 2 principais tipos para o escopo deste trabalho são: \emph{mpsc} e \emph{oneshot}.
 
 \subsection{\texttt{mpsc} - \emph{Multiple producer, single consumer}}
 
@@ -168,9 +166,7 @@ Note que o princípio de localidade e segurança do Modelo de Atores nos garante
   \caption{Exemplo de loop de recebimento de mensagens.\label{prog:rust-loop-mensagens}}
 \end{program}
 
-No exemplo acima, o \emph{loop} \texttt{while let Some(message) = rx.recv().await} continuará processando mensagens enquanto houver extremidades \texttt{Sender} ativas. Quando todas as extremidades \texttt{Sender} são descartadas (saem de escopo ou são explicitamente liberadas com o uso de \texttt{drop}), o método \texttt{recv()} retorna \texttt{None}, fazendo com que o \emph{loop} se encerre naturalmente e a \emph{task} do ator seja finalizada.
-
-Em Elixir, o equivalente seria:
+No programa \ref{prog:rust-loop-mensagens}, o \emph{loop} \texttt{while let Some(message) = rx.recv().await} continuará processando mensagens enquanto houver extremidades \texttt{Sender} ativas. Quando todas as extremidades \texttt{Sender} são descartadas (saem de escopo ou são explicitamente liberadas com o uso de \texttt{drop}), o método \texttt{recv()} retorna \texttt{None}, fazendo com que o \emph{loop} se encerre naturalmente e a \emph{task} do ator seja finalizada.
 
 \begin{program}
   \lstinputlisting[
@@ -179,7 +175,7 @@ Em Elixir, o equivalente seria:
   \caption{Exemplo equivalente em Elixir.\label{prog:elixir-loop-equivalente}}
 \end{program}
 
-O exemplo acima, em Elixir, é um ator que pode se tornar um ator zumbi, ou seja, que está consumindo recursos ainda que não seja mais usado. Para resolver isso é necessário o uso de um \emph{timeout} ou de uma mensagem que indique ao ator que ele pode terminar.
+O programa \ref{prog:elixir-loop-equivalente} em Elixir é um ator que pode se tornar um ator zumbi, ou seja, que está consumindo recursos ainda que não seja mais usado. Para resolver isso é necessário o uso de um \emph{timeout} ou de uma mensagem que indique ao ator que ele pode terminar.
 
 É importante notar que o Rust garante, em tempo de compilação, que o receptor de um canal é único. Assim, é garantido que as mensagens chegam ao destino correto. Além disso, o canal tem uma fila com tamanho configurável, e é garantido que a mensagem chegará se a fila não estiver cheia.
 
@@ -239,7 +235,7 @@ A seguir está destrinchado em mais detalhes o que estará em cada uma das 3 par
 
 Assim como tudo em Rust, as mensagens enviadas através de canais devem ser tipadas. Caso um ator só execute um tipo de ação, ou seja, só receba um tipo de mensagem, então qualquer tipo pode ser usado para representar as mensagens. Caso ele lide com diferentes tipos de mensagens (o que acontece na maioria dos casos), um \emph{enum} será usado.
 
-No contexto do exemplo dado, o \emph{enum} a ser criado no arquivo \texttt{app/message.rs} seria:
+No contexto do exemplo dado, o \emph{enum} a ser criado no arquivo \texttt{app/message.rs} seria o demonstrado no programa \ref{prog:rust-mensagens-tipadas}.
 
 \begin{program}
   \lstinputlisting[
@@ -261,7 +257,7 @@ As garantias acima não se aplicam à implementação do Modelo de Atores em Eli
 
 Toda a lógica de processamento de mensagens para um ator ficará dentro de uma \emph{struct} chamada de \texttt{Core}. Ela será também onde será feito o gerenciamento de estado do ator e pelos detalhes específicos para criação da \emph{task} e do canal \texttt{mpsc} dedicado para a comunicação.
 
-No contexto do exemplo dado, a \emph{struct} a ser criada no arquivo \texttt{app/core.rs} seria:
+No contexto do exemplo dado, a \emph{struct} a ser criada no arquivo \texttt{app/core.rs} seria o exibido no programa \ref{prog:rust-core-struct}.
 
 \begin{program}
   \lstinputlisting[
@@ -280,7 +276,7 @@ O \texttt{Core} deve ser instanciado com a invocação do seu construtor, nesse 
   \caption{Exemplo de construtor.\label{prog:rust-core-constructor}}
 \end{program}
 
-Deverá ser fornecido um método de instância \texttt{init} responsável por conter a lógica de processamento das mensagens recebidas, delegando elas para os métodos responsáveis.
+Deverá ser fornecido um método de instância \texttt{init} (veja o programa \ref{prog:rust-core-init}) responsável por conter a lógica de processamento das mensagens recebidas, delegando elas para os métodos responsáveis.
 
 \begin{program}
   \lstinputlisting[
@@ -304,10 +300,9 @@ Para se aproveitar ao máximo dos recursos que a linguagem Rust oferece, é idea
   \caption{Exemplo de struct para endereço do ator.\label{prog:rust-actor-address}}
 \end{program}
 
-No exemplo acima, a struct \texttt{App} encapsula o \texttt{Sender} do canal \texttt{mpsc} e fornece métodos públicos que abstraem completamente a lógica de envio de mensagens. O método \texttt{thing()} cria um canal \texttt{oneshot} para receber a resposta, envia a mensagem \texttt{GetThing} e aguarda a resposta. O método \texttt{thing\_alt()} oferece uma alternativa onde retorna o \texttt{Receiver} diretamente, permitindo que o invocador decida quando aguardar pela resposta. O método \texttt{set\_thing()} simplesmente envia a mensagem \texttt{SetThing} com o valor fornecido.
+No programa \ref{prog:rust-actor-address}, a struct \texttt{App} encapsula o \texttt{Sender} do canal \texttt{mpsc} e fornece métodos públicos que abstraem completamente a lógica de envio de mensagens. O método \texttt{thing()} cria um canal \texttt{oneshot} para receber a resposta, envia a mensagem \texttt{GetThing} e aguarda a resposta. O método \texttt{set\_thing()} simplesmente envia a mensagem \texttt{SetThing} com o valor fornecido.
 
 Essa abstração permite que outros atores interajam com o ator sem precisar se preocupar com detalhes de comunicação por canais, mantendo a interface limpa e tipada.
-(diagrama ator)
 
 \section{Testabilidade}
 
@@ -315,7 +310,7 @@ Uma das principais vantagens da arquitetura baseada em atores é a facilidade de
 
 \subsection{Mockall}
 
-Para simplificar a criação de mocks, este trabalho faz uso da biblioteca \texttt{mockall} \cite{mockall}, que gera automaticamente implementações \textit{mock} a partir de traits ou structs. Isso elimina a necessidade de escrever manualmente código \textit{boilerplate} para \textit{mocks} e garante que os \textit{mocks} permaneçam sincronizados com as interfaces reais. O código para \textit{mock} de um ator deve ser colocado no arquivo \texttt{mock.rs} do módulo do ator e o módulo deve ser declarado como:
+Para simplificar a criação de mocks, este trabalho faz uso da biblioteca \texttt{mockall} \citep{mockall}, que gera automaticamente implementações \textit{mock} a partir de traits ou structs. Isso elimina a necessidade de escrever manualmente código \textit{boilerplate} para \textit{mocks} e garante que os \textit{mocks} permaneçam sincronizados com as interfaces reais. O código para \textit{mock} de um ator deve ser colocado no arquivo \texttt{mock.rs} do módulo do ator e o módulo deve ser declarado como no programa \ref{prog:rust-mock-module}.
 
 \begin{program}
   \lstinputlisting[
@@ -324,7 +319,7 @@ Para simplificar a criação de mocks, este trabalho faz uso da biblioteca \text
   \caption{Exemplo de declaração de módulo para mock.\label{prog:rust-mock-module}}
 \end{program}
 
-Desse modo, o código do mock não será incluso no binário de produção.
+Desse modo, o código do mock não será incluso no binário de produção. Veja um exemplo no programa \ref{prog:rust-mockall}.
 
 \begin{program}
   \lstinputlisting[
@@ -337,7 +332,7 @@ A macro \texttt{mock!} do mockall gera automaticamente uma estrutura com nome \t
 
 \subsection{Integração de Mocks}
 
-Para permitir a substituição fácil entre implementações reais e mockadas, deve-se usar atributos de compilação condicional (\texttt{\#[cfg(test)]} e \texttt{\#[cfg(not(test))]}) para alternar entre as implementações:
+Para permitir a substituição fácil entre implementações reais e mockadas, deve-se usar atributos de compilação condicional (\texttt{\#[cfg(test)]} e \texttt{\#[cfg(not(test))]}) para alternar entre as implementações. Veja um exemplo no programa \ref{prog:rust-mock-integration}.
 
 \begin{program}
   \lstinputlisting[
@@ -350,7 +345,7 @@ Durante a compilação normal, a implementação real \texttt{OtherActor} é usa
 
 \subsection{Testes Unitários}
 
-Com \textit{mocks} em vigor, escrever testes unitários torna-se direto. Cada teste pode configurar o comportamento esperado de suas dependências \textit{mockadas} e verificar que o ator sob teste se comporta corretamente:
+Com \textit{mocks} em vigor, escrever testes unitários torna-se direto. Cada teste pode configurar o comportamento esperado de suas dependências \textit{mockadas} e verificar que o ator sob teste se comporta corretamente. Veja um exemplo no programa \ref{prog:rust-unit-test}.
 
 \begin{program}
   \lstinputlisting[

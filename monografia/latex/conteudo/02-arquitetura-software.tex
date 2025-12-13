@@ -22,7 +22,7 @@ A seguir, apresentam-se alguns princípios e padrões fundamentais relacionados 
 
 \subsection{Princípios SOLID}
 
-Os princípios SOLID são um conjunto de diretrizes para o design de software introduzidos por Robert Martin no ano 2000. Originalmente, os princípios tinham como alvo principal sistemas orientados a objetos, todavia suas lições podem se extender muito além e ser aplicados a diversos domínios. Seus principais objetivos são criar sistemas mais flexíveis, manuteníveis e extensíveis. Seu nome, é uma sigla com as iniciais de cada um dos 5 princípios, que são:
+Os princípios SOLID são um conjunto de diretrizes para o design de software introduzidos por Robert Martin \citep{martin2000design}. Originalmente, os princípios tinham como alvo principal sistemas orientados a objetos, todavia suas lições podem se extender muito além e ser aplicados a diversos domínios. Seus principais objetivos são criar sistemas mais flexíveis, manuteníveis e extensíveis. Seu nome, é uma sigla com as iniciais de cada um dos 5 princípios, que são:
 
 \begin{itemize}
     \item \textit{\textbf{Single Responsibility}} (SRP): Uma classe deve ter apenas uma razão para mudar, ou seja, deve ter apenas uma responsabilidade.
@@ -45,7 +45,7 @@ Além disso, as mensagens permitem a criação de uma abstração para encapsula
 
 \subsection{Padrão MVC}
 
-O padrão Model-View-Controller (MVC) é um padrão arquitetural que divide uma aplicação em três componentes interconectados, cada um com responsabilidades bem definidas. Esse padrão surgiu para resolver problemas de acoplamento entre a lógica de negócio e a apresentação, permitindo que essas camadas evoluam de forma independente.
+O padrão Model-View-Controller (MVC) \citep{reenskaug1979mvc} é um padrão arquitetural que divide uma aplicação em três componentes interconectados, cada um com responsabilidades bem definidas. Esse padrão surgiu para resolver problemas de acoplamento entre a lógica de negócio e a apresentação, permitindo que essas camadas evoluam de forma independente.
 
 Os três componentes do padrão MVC são:
 
@@ -59,7 +59,7 @@ Os três componentes do padrão MVC são:
 
 O MVC oferece benefícios significativos para a manutenibilidade e testabilidade de sistemas. A separação de responsabilidades permite que a lógica de negócio seja testada independentemente das interfaces humano-computador, facilitando testes unitários. Além disso, múltiplas Views e múltiplos Controllers podem ser criados para interagir com o mesmo Model, permitindo reutilização de código e adaptação a diferentes contextos.
 
-No entanto, o padrão MVC tradicional apresenta algumas limitações quando aplicado na prática. Em muitas de suas implementações, a View e o Controller acabam sendo implementados de forma muito acoplada, o que acabou por dar origem a novas derivações do padrão, como o Model-View-ViewModel (MVVM).
+No entanto, o padrão MVC tradicional apresenta algumas limitações quando aplicado na prática. Em muitas de suas implementações, a View e o Controller acabam sendo implementados de forma muito acoplada, o que acabou por dar origem a novas derivações do padrão, como o Model-View-ViewModel (MVVM) \citep{kouraklis2016mvvm}.
 
 
 \section{Avaliação de Adequação de Padrões}
