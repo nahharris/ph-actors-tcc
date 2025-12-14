@@ -2,7 +2,7 @@
 
 Uma vez apresentadas as propostas de adaptação do Modelo de Atores para experimentação fora do domínio dos sistemas distribuídos, chega o momento de realizar um estudo de caso para aplicar a proposta em um projeto real para posterior análise de resultados. 
 
-O projeto escolhido foi uma ferramenta de software livre desenvolvida sob a organização Kworkflow (kw) chamada de patch-hub. Neste capítulo, será apresentado o contexto do projeto, a arquitetura original e suas limitações, os objetivos do estudo de caso e a proposta de refatoração do projeto com o uso do Modelo de Atores, cuja implementação estará disponível na íntegra no repositório do projeto no GitHub (incluir link).
+O projeto escolhido foi uma ferramenta de software livre desenvolvida sob a organização Kworkflow (kw) chamada de patch-hub. Neste capítulo, será apresentado o contexto do projeto, a arquitetura original e suas limitações, os objetivos do estudo de caso e a proposta de refatoração do projeto com o uso do Modelo de Atores, cuja implementação estará disponível na íntegra no \href{https://github.com/nahharris/ph-actors-tcc}{repositório do projeto no GitHub}.
 
 \section{Contexto}
 
@@ -29,8 +29,6 @@ O projeto oferece um utilitário de terminal unificado para diversas operações
 \subsection{O patch-hub}
 
 O patch-hub é uma ferramenta desenvolvida como parte do ecossistema Kworkflow, especificamente projetada para interagir com a \emph{API} do lore.kernel.org~\citep{patch_hub_github}. Sua missão é agilizar a navegação e revisão de contribuições para o kernel Linux, fornecendo uma interface de usuário baseada em terminal (\emph{TUI}) que simplifica o processo de descoberta, análise e acompanhamento de \emph{patches}.
-
-(screenshot do patch-hub)
 
 A ferramenta permite aos desenvolvedores navegar por listas de patches, aplicar filtros de busca, visualizar conteúdo de patches e gerenciar seu fluxo de trabalho de revisão diretamente do terminal, eliminando a necessidade de alternar entre interfaces web e ferramentas de linha de comando.
 
@@ -108,8 +106,6 @@ A natureza \emph{single-threaded} da aplicação cria gargalos significativos du
 
 Para contornar esse problema, foi feito uso de mecanismos para paralelizar certas regiões do código. A complicação aqui é que referências em Rust não podem ser compartilhadas entre \emph{threads} pois não há garantias de que uma \emph{thread} vá ser encerrada antes do dono do valor referido, o que poderia causar vazamentos de memória ou condições de corrida indesejáveis.
 
-(exemplo de como foi feito o paralelismo no patch-hub original)
-
 \subsection{Dificuldades de Testabilidade}
 
 A arquitetura monolítica torna extremamente difícil a criação de testes unitários eficazes. Testes de \emph{handlers} individuais requerem a construção de toda a estrutura \texttt{App}, incluindo dependências que podem não ser relevantes para o teste específico. Isso resulta em:
@@ -123,7 +119,7 @@ A arquitetura monolítica torna extremamente difícil a criação de testes unit
 
 Esta limitação compromete significativamente a capacidade de garantir qualidade através de testes automatizados, aumentando o risco de regressões em mudanças futuras.
 
-\section{Objetivos}
+\section{Objetivos da Reimplementação}
 
 Fica evidente que o patch-hub necessita de refatorações para tentar resolver os problemas supracitados. Em especial, fica notável uma grande necessidade de melhorias do ponto de vista da flexibilidade do sistema. Tendo em vista que o Modelo de Atores proporciona alta modularidade e baixo acoplamento aos sistemas, isso torna o patch-hub um candidato interessante para experimentação e avaliação de valor da proposta. Além disso, o patch-hub toca em domínios suficientemente diversos para que o experimento seja bastante completo.
 
