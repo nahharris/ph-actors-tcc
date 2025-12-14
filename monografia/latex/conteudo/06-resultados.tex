@@ -58,7 +58,7 @@ Existe uma dificuldade de encontrar o código que será executado ao se enviar e
 
 Para poder encontrar o código que será executado, é necessário navegar manualmente pelo código fonte encontrando o módulo \texttt{net/core.rs} e encontrar o método \texttt{handle\_get}. Essa indireção torna o código opaco para o usuário, além de evidentemente criar uma sobrecarga em tempo de execução.
 
-\section{Complexidade do Código}
+\section{Características da Base de Código}
 
 Uma diferença a ser considerada é o tamanho da base de código. A versão reescrita possui aproximadamente o dobro do tamanho da versão original, apesar de não ser uma implementação completa. Isso é um forte indicativo de que a abordagem do Modelo de Atores tende a produzir uma base de código maior. Apesar disso não necessariamente ser um problema, uma base de código maior carece de cuidados especiais para manter a qualidade e a legibilidade a longo prazo.
 
