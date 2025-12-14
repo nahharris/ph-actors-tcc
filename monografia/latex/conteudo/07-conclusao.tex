@@ -10,21 +10,21 @@ Por fim, ficam sugestões para trabalhos futuros considerando pontos da proposta
 
 \subsection{Completar a implementação}
 
-Como já foi mencionado, a reescrita do Patch-Hub não é uma implementação completa. Portanto, um trabalho futuro óbvio a ser desenvolvido seria concluir a implementação do sistema.
+Como já foi mencionado, a reescrita do patch-hub não é uma implementação completa. Portanto, um trabalho futuro a ser desenvolvido seria concluir a implementação do sistema.
 
 As principais funcionalidades que faltam são:
 
 \begin{itemize}
     \item \textbf{Gerenciamento de favoritos:} Não foi implementado uma lista de favoritos para navegação rápida.
     \item \textbf{Agrupamento de séries de \emph{patches}:} A fim de simplificar a implementação, os \emph{patches} são exibidos de forma individual. Na versão original, os \emph{patches} são agrupados em séries (similar a como \emph{commits} são agrupados em uma \emph{branch})
-    \item \textbf{Operações com \emph{patches}:} A tela de conteúdo de um \emph{patch} no Patch-Hub original conta com \emph{features} como: marcar como revisado, aplicar série de \emph{patches} em um repositório local, entre outras.
+    \item \textbf{Operações com \emph{patches}:} A tela de conteúdo de um \emph{patch} no patch-hub original conta com \emph{features} como, por exemplo, marcar como revisado e aplicar série de \emph{patches} em um repositório local.
     \item \textbf{Configurações:} A tela de edição de configurações não foi implementada.
     \item \textbf{Popups:} O sistema de \emph{popups} como um todo não foi trabalhado.
 \end{itemize}
 
 \subsection{Explorar mais combinações}
 
-Um segundo trabalho futuro óbvio seria seguir o mesmo espírito explorador deste trabalho. A ideia seria procurar um padrão arquitetural de propósito específico e aplicar a um domínio diferente.
+Um segundo trabalho futuro seria seguir o mesmo espírito explorador deste trabalho. A ideia seria procurar um padrão arquitetural de propósito específico e aplicar a um domínio diferente.
 
 Evidentemente que a chance do trabalho ser bem sucedido depende de uma análise prévia tentando procurar algum tipo de benefício do padrão escolhido que poderia ser aproveitado de forma criativa no novo contexto.
 
@@ -51,6 +51,6 @@ A segunda solução não garantidamente é satisfatória universalmente. Portant
 
 Nas implementações conhecidas do Modelo de Atores, em geral existe um tipo de ator especial chamado de supervisor. Esse ator é responsável por cuidar do ciclo de vida dos atores e suas dependências. O principal papel do supervisor é recriar atores que morreram inesperadamente. Em seguida, ele deve ser capaz de reinjetar os atores ressuscitados nos atores que dependem deles.
 
-Usando a reescrita do Patch-Hub como exemplo, o ator App poderia ser elevado à categoria de supervisor. Caso um ator como o Net viesse a sofrer uma falha fatal, o supervisor poderia recriá-lo e reinjetá-lo no ator LoreApi, assim permitindo que o LoreApi e todo resto da aplicação continuem funcionando normalmente.
+Usando a reescrita do patch-hub como exemplo, o ator App poderia ser elevado à categoria de supervisor. Caso um ator como o Net viesse a sofrer uma falha fatal, o supervisor poderia recriá-lo e reinjetá-lo no ator LoreApi, assim permitindo que o LoreApi e todo resto da aplicação continuem funcionando normalmente.
 
 Portanto, a proposta apresentada poderia ser enriquecida com a adição de um ator supervisor, além de mecanismos para permitir a injeção de dependências após a inicialização.

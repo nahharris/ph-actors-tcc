@@ -5,7 +5,7 @@ Por fim, foi feita uma análise qualitativa e quantitativa da aplicação produz
 \begin{figure}[H]
     \centering
     \includegraphics[width=\textwidth]{figuras/patch-hub-new.png}
-    \caption{Interface do Patch-Hub reescrito com o Modelo de Atores.\label{fig:patch-hub-new}}
+    \caption{Interface do patch-hub reescrito com o Modelo de Atores.\label{fig:patch-hub-new}}
 \end{figure}
 
 \section{Desempenho}
@@ -30,7 +30,7 @@ A abordagem do Modelo de Atores facilita imensamente a criação de testes unit�
 
 Um dos principais ganhos desse isolamento é a facilidade de se testar atores diferentes em paralelo, realizando testes com resultados determinísticos e rápidos.
 
-Um exemplo dessa melhoria pode ser notado comparando a abordagem anterior para testes do antigo Patch-Hub com foco nas variáveis de ambiente. Como a versão antiga não isolava o gerenciamento de variáveis de ambiente, os testes quando executados em paralelo podiam ser afetados por condições de corrida ao modificarem o ambiente de execução. A solução para isso no projeto original foi forçar a execução em série de alguns testes que eram dependentes de variáveis de ambiente.
+Um exemplo dessa melhoria pode ser notado comparando a abordagem anterior para testes do antigo patch-hub com foco nas variáveis de ambiente. Como a versão antiga não isolava o gerenciamento de variáveis de ambiente, os testes quando executados em paralelo podiam ser afetados por condições de corrida ao modificarem o ambiente de execução. A solução para isso no projeto original foi forçar a execução em série de alguns testes que eram dependentes de variáveis de ambiente.
 
 Na versão reescrita, os testes que vão interagir (direta ou indiretamente) com variáveis de ambiente recebem uma instância \emph{mock} do ator Variáveis de Ambiente que é completamente independente das demais instâncias. Com isso, todos os testes podem ser executados em paralelo sem risco de condições de corrida ou qualquer outro tipo de interferência.
 
