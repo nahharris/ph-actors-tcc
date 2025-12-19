@@ -14,19 +14,15 @@ Muitas decisões de design estudadas pela arquitetura de software podem ser agru
 
 Padrões têm por objetivo garantir a qualidade do software, oferecendo soluções para atender aos requisitos não funcionais de sistemas. Isso significa que podem ser aplicados a qualquer sistema, independentemente de suas funcionalidades, desde que tenham requisitos de qualidade similares.
 
-Todavia, como explorado pelo artigo de \cite{kassab2018architectural}, em geral, na indústria, na concepção dos projetos,
-\todo[inline]{Eu escrevo bem assim, mas às vezes muitas vírgulas deixam a frase truncada. Que tal ``[...] pelo artigo, em projetos no contexto da indústria de software, geralmente, as funcionalidades [...]''?}
-as funcionalidades são mais levadas em conta do que os requisitos de qualidade. O mesmo artigo ainda afirma que, se funcionalidades fossem a única parte importante, não haveria necessidade de se ter uma arquitetura de software.
+Todavia, como explorado pelo artigo de \cite{kassab2018architectural}, em projetos no contexto da indústria de software, geralmente, as funcionalidades são mais levadas em conta do que os requisitos de qualidade. O mesmo artigo ainda afirma que, se funcionalidades fossem a única parte importante, não haveria necessidade de se ter uma arquitetura de software.
 
-Por isso, é necessário estudar e entender os padrões existentes, pois eles trazem consequências de longo prazo para confiabilidade, manutenibilidade, testabilidade, entre outras complicações para um sistema.
-\todo[inline]{Ideia: ``[...] para um sistema ao reforçar seus requisitos não funcionais.''}
+Por isso, é necessário estudar e entender os padrões existentes, pois eles trazem consequências de longo prazo para confiabilidade, manutenibilidade, testabilidade, entre outras complicações para um sistema ao reforçar seus requisitos não funcionais.
 
 A seguir, apresentam-se alguns princípios e padrões fundamentais relacionados a arquitetura de software que servirão como base conceitual para as discussões subsequentes neste trabalho.
 
 \subsection{Princípios SOLID}
 
-Os \textbf{princípios SOLID} são um conjunto de diretrizes para o design de software introduzidas por Robert Martin \citep{martin2000design}. Originalmente, os princípios tinham como alvo principal sistemas orientados a objetos, todavia suas lições podem se estender muito além e ser aplicadas a diversos domínios. Seus principais objetivos são criar sistemas mais flexíveis, manuteníveis e extensíveis. Seu nome é uma sigla com as iniciais de cada um dos cinco princípios, que são:
-\todo[inline]{Na listagem dos princípios abaixo, entendo que você quis se ater o máximo ao original. Porém, como você mesmo traz que eles vão além de POO, será que não vale generalizar os princípios para além desse contexto (sem usar os termos \textit{classe}, \textit{objetos}, etc.). Se não fizer sentido esta sugestão, pense se não vale colocar ``cada um dos cinco princípios, que, em sua forma original, são enunciados como:''}
+Os \textbf{princípios SOLID} são um conjunto de diretrizes para o design de software introduzidas por Robert Martin \citep{martin2000design}. Originalmente, os princípios tinham como alvo principal sistemas orientados a objetos, todavia suas lições podem se estender muito além e ser aplicadas a diversos domínios. Seus principais objetivos são criar sistemas mais flexíveis, manuteníveis e extensíveis. Seu nome é uma sigla com as iniciais de cada um dos cinco princípios, que, em sua forma original, são enunciados como:
 
 \begin{itemize}
     \item \textit{\textbf{Single Responsibility}} (SRP): Uma classe deve ter apenas uma razão para mudar, ou seja, deve ter apenas uma responsabilidade.
@@ -52,21 +48,19 @@ Além disso, as mensagens permitem a criação de uma abstração para encapsula
 O padrão Model-View-Controller (MVC) \citep{reenskaug1979mvc} é um padrão arquitetural que divide uma aplicação em três componentes interconectados, cada um com responsabilidades bem definidas. Esse padrão surgiu para resolver problemas de acoplamento entre a lógica de negócio e a apresentação, permitindo que essas camadas evoluam de forma independente.
 
 Os três componentes do padrão MVC são:
-\todo[inline]{Detalhe: na listagem anterior, pra dar destaque ao itens, você fez negrito e itálico e agora só negrito; não sei se tem um motivo que diferencia ambas as listagens (além das siglas dos itens), mas vale a pena padronizar (ao menos dentro de uma mesma seção).}
-
 \begin{itemize}
-    \item \textbf{Model}: Representa os dados e a lógica de negócio da aplicação. É responsável por manter o estado do sistema e realizar operações sobre os dados. O Model não possui conhecimento sobre como os dados são exibidos nem como são coletados.
+    \item \textit{\textbf{Model}}: Representa os dados e a lógica de negócio da aplicação. É responsável por manter o estado do sistema e realizar operações sobre os dados. O Model não possui conhecimento sobre como os dados são exibidos nem como são coletados.
     
-    \item \textbf{View}: É responsável pela apresentação dos dados ao usuário. A View consome dados do Model e os exibe de forma adequada à interface (web, desktop, terminal, etc.). A View não deve conter lógica complexa, apenas a lógica de apresentação.
+    \item \textit{\textbf{View}}: É responsável pela apresentação dos dados ao usuário. A View consome dados do Model e os exibe de forma adequada à interface (web, desktop, terminal, etc.). A View não deve conter lógica complexa, apenas a lógica de apresentação.
     
-    \item \textbf{Controller}: Funciona como intermediário entre o usuário e o Model. Recebe entradas do usuário, processa essas entradas e atualiza o estado da aplicação no Model.
+    \item \textit{\textbf{Controller}}: Funciona como intermediário entre o usuário e o Model. Recebe entradas do usuário, processa essas entradas e atualiza o estado da aplicação no Model.
 \end{itemize}
 
 O MVC oferece benefícios significativos para a manutenibilidade e testabilidade de sistemas. A separação de responsabilidades permite que a lógica de negócio seja testada independentemente das interfaces humano-computador, facilitando testes unitários. Além disso, múltiplas Views e múltiplos Controllers podem ser criados para interagir com o mesmo Model, permitindo reutilização de código e adaptação a diferentes contextos.
 
 No entanto, o padrão MVC tradicional apresenta algumas limitações quando aplicado na prática. Em muitas de suas implementações, a View e o Controller acabam sendo implementados de forma muito acoplada, o que acabou por dar origem a novas derivações do padrão, como o Model-View-ViewModel (MVVM) \citep{kouraklis2016mvvm}.
 
-\todo[inline]{Avalie se vale um parágrafo pra encerrar ou começar a subseção que, minimamente, indique porque você está falando de MVC, que nem você fez na subseção acima com o SOLID e o Actor Model.}
+Compreender minimamente o MVC é importante pois esse foi o padrão escolhido para a implementação original do patch-hub. Portanto, será necessário, durante o estudo de caso, fazer a adaptação dos componentes do padrão MVC para o novo padrão arquitetural baseado no Modelo de Atores.
 
 
 \section{Avaliação de Adequação de Padrões}
@@ -85,18 +79,14 @@ Primeiramente, pelo fato de que o Modelo de Atores foi originalmente concebido p
 
 Ademais, a linguagem de programação Rust, escolhida para a implementação do projeto, não possui o Modelo de Atores como paradigma central, diferentemente de outras linguagens de programação, como é o caso do Elixir. Apesar de isso não ser um impeditivo para a aplicação do padrão, é uma característica que deve ser considerada. Rust é uma linguagem que prioriza a segurança de memória e a concorrência confiável através de checagens em tempo de compilação, enquanto o Modelo de Atores é tradicionalmente implementado em tecnologias mais flexíveis e dinâmicas.
 
-Desse modo, com os critérios de adequação utilizados
-\todo[inline]{Talvez ``[...] de adequação citados anteriormente''}
-, é possível concluir que o Modelo de Atores não é adequado para a criação de aplicações centralizadas em Rust e que aplicar ele neste contexto sem nenhum cuidado especial irá trazer consequências negativas para o projeto.
+Desse modo, com os critérios de adequação citados anteriormente, é possível concluir que o Modelo de Atores não é adequado para a criação de aplicações centralizadas em Rust e que aplicar ele neste contexto sem nenhum cuidado especial irá trazer consequências negativas para o projeto.
 
 O objetivo deste trabalho é então realizar um esforço para adaptar o Modelo de Atores para o contexto de aplicações centralizadas em Rust, buscando entender se é possível extrair valor dele mesmo fora do seu contexto natural. Esse experimento vai permitir:
 
-\todo[inline]{Como os itens abaixo são frases verbo e objeto, acho que o certo é colocar ponto final pra cada item.}
-
 \begin{itemize}
-    \item Explorar os limites do Modelo de Atores
-    \item Avaliar se os benefícios do padrão se mantêm em aplicações centralizadas
-    \item Identificar possíveis adaptações do padrão
-    \item Contribuir para o conhecimento sobre a aplicabilidade de padrões arquiteturais
+    \item Explorar os limites do Modelo de Atores.
+    \item Avaliar se os benefícios do padrão se mantêm em aplicações centralizadas.
+    \item Identificar possíveis adaptações do padrão.
+    \item Contribuir para o conhecimento sobre a aplicabilidade de padrões arquiteturais.
 \end{itemize}
 
