@@ -81,6 +81,14 @@
     \textbf{[#1]} \itshape}{\end{tcolorbox}}
 %% DRY Highlight Box %%
 
+%% Pra ativar/desativar TODOS usando a variavel do LaTeX `enabletodonotes` %%
+\ifdefined\enabletodonotes
+  % Já está ativado por padrão
+\else
+  \presetkeys{todonotes}{disable}{}
+\fi
+%% Pra ativar/desativar TODOS usando a variavel do LaTeX `enabletodonotes` %%
+
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% METADADOS %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
