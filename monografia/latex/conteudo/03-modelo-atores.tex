@@ -1,18 +1,29 @@
 \chapter{Modelo de Atores}
 
-O Modelo de Atores de computação foi estabelecido por Carl Hewitt em 1973, baseado em trabalhos anteriores de Peter Bishop e Richard Steiger \citep{hewitt2010actor}. Seus objetivos eram abordar os novos desafios impostos pelos sistemas massivamente concorrentes e paralelos que emergiram com a computação em nuvem e arquiteturas many-core.
+O Modelo de Atores de computação
+\todo[inline]{Não sei se este ``de computação'' faz parte do nome, mas me pareceu meio estranho. Será que ``em computação'' ou só ``O Modelo de Atores foi estabelecido [...]''?}
+foi estabelecido por Carl Hewitt em 1973, baseado em trabalhos anteriores de Peter Bishop e Richard Steiger \citep{hewitt2010actor}. Seus objetivos eram abordar os novos desafios impostos pelos sistemas massivamente concorrentes e paralelos que emergiram com a computação em nuvem e processadores com arquitetura \textit{manycore}.
+\todo[inline]{Detalhe: pequeno footnote ou até parênteses falando o que é \textit{manycore}, já que é um tipo de \textit{multi-core}, mas é diferente o suficiente do ``entendimento clássico de multi-core'' para merecer uma rápida palinha.}
 
-Seus objetivos foram alcançados criando um modelo computacional que é inerentemente concorrente. Uma grande mudança dos modelos anteriores é que ele é baseado em leis físicas, ao invés de álgebra pura. A hipótese mais importante defendida pelo trabalho de Hewitt é:
+Seus objetivos
+\todo[inline]{Para não fazer duas frases seguidas começando com ``Seus objetivos'', que tal algo na linha de ``Hewitt alcançou estes objetivos criando [...]''}
+foram alcançados criando um modelo computacional que é inerentemente concorrente. Uma grande mudança dos modelos anteriores
+\todo[inline]{Acho que ``Uma grande mudança em relação aos modelos anteriores'' fica mais claro e flúido.}
+é que ele é baseado em leis físicas, ao invés de álgebra pura. A hipótese mais importante defendida pelo trabalho de Hewitt é:
 
 \begin{highlight-box}{Hipótese}
-Toda computação fisicamente possível pode ser diretamente implementada com Atores
+Toda computação fisicamente possível pode ser diretamente implementada com Atores.
 \end{highlight-box}
 
 O Modelo de Atores representa uma reformulação completa da computação concorrente, passando de máquinas de estado globais para sistemas distribuídos, assíncronos e baseados em passagem de mensagens que melhor refletem a realidade física dos sistemas de computação modernos.
 
 \section{O que é um Ator?}
 
-Hewitt propõe este primitivo chamado Ator que é identificado por um endereço. Atores são entidades que se comunicarão entre si através de mensagens. Uma vez que uma mensagem é recebida, um Ator pode:
+Hewitt propõe este primitivo chamado \textbf{Ator} que é identificado por um \textbf{endereço}. Atores são entidades que se comunicarão entre si através de \textbf{mensagens}.
+\todo[inline]{Coloquei em negrito pra seguir o que você fez no cápitulo 2 sobre requisitos e tals pra pontuar estes três conceitos que eu entendo que sejam os fundamentais no Actor Model. Fique a vontade pra reverter, claro.}
+Uma vez que uma mensagem é recebida, um Ator pode:
+
+\todo[inline]{Acho que aqui vale a mesma coisa dos itens terem que terminar com o ponto final.}
 
 \begin{itemize}
     \item Enviar mensagens para Atores cujos endereços conhece
@@ -21,6 +32,8 @@ Hewitt propõe este primitivo chamado Ator que é identificado por um endereço.
 \end{itemize}
 
 Mensagens são a unidade de comunicação e são passadas de forma assíncrona entre atores. De acordo com o princípio de segurança e localidade, ao processar uma mensagem recebida, um Ator pode apenas enviar mensagens para Atores cujos endereços foram:
+
+\todo[inline]{Acho que aqui vale a mesma coisa dos itens terem que terminar com o ponto final.}
 
 \begin{itemize}
     \item Conhecidos anteriormente
@@ -32,29 +45,39 @@ Mensagens são a unidade de comunicação e são passadas de forma assíncrona e
 
 Aqui vem um dos princípios fundamentais do Modelo de Atores e o que o diferencia de outros padrões. A ordem de chegada das mensagens não é garantida e o Modelo de Atores não tentará resolver isso, mas sim tratar isso como uma propriedade natural do domínio. O Modelo de Atores é projetado para sistemas distribuídos, o que significa que dois atores podem estar se comunicando através de longas distâncias físicas.
 
-Isso significa que as mensagens enviadas podem levar tempo ilimitado para chegar na máquina destino, e mesmo que cheguem exatamente ao mesmo tempo, os árbitros de hardware que as ordenarão não garantirão nenhum tipo de ordenação. Considerar os fatores físicos é o que diferencia o Modelo de Atores de padrões de sistemas concorrentes puramente algébricos.
+Isso significa que as mensagens enviadas podem levar tempo ilimitado
+\todo[inline]{Talvez ficou meio confuso este ``ilimitado'', já que não traz o significado de \textit{indeterminado} que (eu entendi que) é o que você está querendo dizer. Será que o próprio \textit{inderteminado} ou \textit{imprevisível} não encaixam melhor?}
+para chegar na máquina destino, e mesmo que cheguem exatamente ao mesmo tempo, os árbitros de hardware que as ordenarão não garantirão nenhum tipo de ordenação. Considerar os fatores físicos é o que diferencia o Modelo de Atores de padrões de sistemas concorrentes puramente algébricos.
 
-A ordenação indeterminada de mensagens, somada ao fato de que as mensagens podem alterar o comportamento de um Ator, tem por consequência que as mesmas condições iniciais podem resultar em resultados diferentes. Além disso, o próprio sistema é dito não ter um estado global definido. Como a comunicação é assíncrona, a qualquer momento é possível ter mensagens transito ou Atores em estado transitório não sendo possível garantir que em algum momento todos os atores estarão em estados bem definidos.
+A ordenação indeterminada de mensagens, somada ao fato de que as mensagens podem alterar o comportamento de um Ator, tem por consequência que as mesmas condições iniciais podem resultar em resultados diferentes. Além disso, o próprio sistema é dito não ter um estado global definido. Como a comunicação é assíncrona, a qualquer momento é possível haver mensagens em trânsito ou Atores em estado provisório, não sendo possível garantir que em algum momento todos os atores
+\todo[inline]{Reparei que, em alguns momentos, você varia entre ``ator(es)'' e ``Ator(es)'' quando menciona a entidade (não ``Modelo de Atores''); vale padronizar (acho que a entidade ser minúscula faz mais sentido).}
+estarão em estados bem definidos.
 
-Em resumo, a indeterminação é uma característica fundamental do Modelo de Atores que é essencial para a garantia de justiça e deve ser sempre considerada durante o desenvolvimento de um sistema para assegurar o seu correto funcionamento.
+Em resumo, a indeterminação é uma característica fundamental do Modelo de Atores que é essencial para a garantia de justiça
+\todo[inline]{Entendo que você está falando de \textit{fairness} no mesmo sentido usado em, por exemplo, algoritmos de escalonamento. Como é algo que você não explicou antes, mas que não é o foco, um parênteses ou um footnote simples (que nem eu sugeri no \textit{manycore}) cabe bem aqui.
+
+Além disso, eu conclui que você (ou o Hewitt) está argumentando que essa ``aleatoriedade'' diminui a chance de um ator no sistema sempre ser priorizado ou entrar em uma espécie de inanição (lógico, se o meio de comunicação que o ator usa pra se conectar ao sistema estiver com um problema, ele irá ``starvar'' de qualquer jeito, mas não é disso que você está falando). Se for isso mesmo, talvez uma frase no final do parágrafo anterior explicando mais ``for dummies'' isto é legal.}
+e deve ser sempre considerada durante o desenvolvimento de um sistema para assegurar o seu correto funcionamento.
 
 \section{Implementações Conhecidas}
 
 O Modelo de Atores recebeu a devida atenção e saiu do estado de um modelo/teoria computacional para se transformar em um padrão arquitetural com foco em abordar sistemas distribuídos. Bibliotecas e arcabouços como Akka (Java) e Orleans (C\#) fornecem suporte ao Modelo de Atores para linguagens de programação. No entanto, a implementação mais proeminente e bem-sucedida é a linguagem de programação Elixir.
 
-Na década de 1980, a empresa de telecomunicações sueca Ericsson experimentou com linguagens de programação funcional para abordar desafios de telecomunicações, desenvolvendo eventualmente Erlang. Erlang focou em concorrência, distribuição e tolerância a falhas implementando o Modelo de Atores no nível da linguagem. BEAM, a máquina abstrata que serviu como \emph{runtime} para programas Erlang, representou a maior conquista da Ericsson neste domínio. (Na época, o termo ``máquina virtual'' ainda não era aplicado a tais sistemas.) No entanto, a sintaxe do Erlang era considerada complexa, criando uma barreira para adoção mais ampla.
+Na década de 1980, a empresa de telecomunicações sueca Ericsson experimentou com linguagens de programação funcional para abordar desafios de telecomunicações, desenvolvendo eventualmente Erlang. Erlang focou em concorrência, distribuição e tolerância a falhas implementando o Modelo de Atores no nível da linguagem. \textit{Bogdan's Erlang Abstract Machine} (BEAM), a máquina abstrata que serviu como \emph{runtime} para programas Erlang, representou a maior conquista da Ericsson neste domínio. (Na época, o termo ``máquina virtual'' ainda não era aplicado a tais sistemas.)
+\todo[inline]{Não sei se fica legal essas frases inteiras entre parênteses nesse tipo de texto. Nesse caso, se entendi bem o que sua intenção, isso se encaixa como um footnote.}
+No entanto, a sintaxe do Erlang era considerada complexa, criando uma barreira para adoção mais ampla.
 
-No início dos anos 2010, José Valim estava desenvolvendo soluções para sistemas distribuídos, os mesmos desafios que a Ericsson havia abordado três décadas antes. Ao descobrir Erlang e BEAM, ele reconheceu sua eficácia, mas os achou difíceis de usar. Isso levou à criação de Elixir, que combinou o poder do BEAM e a flexibilidade do Modelo de Atores com uma sintaxe mais acessível inspirada em Ruby.
+No início dos anos 2010, José Valim estava desenvolvendo soluções para sistemas distribuídos, os mesmos desafios que a Ericsson havia abordado três décadas antes. Ao descobrir Erlang e BEAM, ele reconheceu sua eficácia, mas os achou difíceis de usar. Isto o levou à criação de Elixir, que combinou o poder do BEAM e a flexibilidade do Modelo de Atores com uma sintaxe mais acessível inspirada em Ruby.
 
-Ao contrário de implementações baseadas em bibliotecas que adicionam suporte ao Modelo de Atores a linguagens existentes, Elixir torna o Modelo de Atores o paradigma central da linguagem. Isso é alcançado através de suporte nativo para \emph{green threads}, tolerância a falhas e comunicação inter-processo remota. Esses são diferenciadores que estabeleceram Elixir como a principal plataforma do Modelo de Atores.
+Ao contrário de implementações baseadas em bibliotecas que adicionam suporte ao Modelo de Atores a linguagens existentes, Elixir torna o Modelo de Atores o paradigma central da linguagem. Isto é alcançado através de suporte nativo para \emph{green threads}, tolerância a falhas e comunicação inter-processo remota. Esses são diferenciadores que estabeleceram Elixir como a principal plataforma do Modelo de Atores.
 
 Esta linguagem dinâmica continua ganhando reconhecimento, sendo eleita como a segunda linguagem de programação mais admirada por três anos consecutivos (2022 a 2024) e sendo a terceira linguagem mais admirada em 2025 na Pesquisa de Desenvolvedores do Stack Overflow\footnote{Dados disponíveis em: \href{https://survey.stackoverflow.co/2025/technology\#2-programming-scripting-and-markup-languages}{StackOverflow Developer Survey 2025}, \href{https://survey.stackoverflow.co/2024/technology\#2-programming-scripting-and-markup-languages}{StackOverflow Developer Survey 2024}, \href{https://survey.stackoverflow.co/2023/\#section-admired-and-desired-programming-scripting-and-markup-languages}{StackOverflow Developer Survey 2023} e \href{https://survey.stackoverflow.co/2022/\#section-most-loved-dreaded-and-wanted-programming-scripting-and-markup-languages}{StackOverflow Developer Survey 2022}. }. Portanto, este trabalho usará Elixir como a implementação de referência e exemplo de estado da arte do Modelo de Atores.
 
 \subsection{A Linguagem de Programação Elixir}
 
-A filosofia de design do Elixir difere fundamentalmente das linguagens orientadas a objetos. Ao invés de classes instanciadas em objetos, Elixir usa módulos que geram atores por design. Esta abordagem torna o Modelo de Atores o paradigma central da linguagem.
+A filosofia de design do Elixir difere fundamentalmente das linguagens de programação orientadas a objetos. Ao invés de classes instanciadas em objetos, Elixir usa módulos que geram atores por design. Esta abordagem torna o Modelo de Atores o paradigma central da linguagem.
 
-Os atores no Elixir são representados por processos Erlang (daqui em diante referidos simplesmente como processos). Estes processos leves são criados usando a função \texttt{spawn}, que recebe três parâmetros: um módulo, um nome de função daquele módulo e uma lista de argumentos. Quando chamada, \texttt{spawn} executa a função especificada em um processo dedicado a ele e retorna um \emph{Process Identifier} (PID) que serve como o endereço do ator.
+Os atores no Elixir são representados por \textbf{processos Erlang} (daqui em diante referidos simplesmente como processos). Estes processos leves são criados usando a função \texttt{spawn}, que recebe três parâmetros: um módulo, um nome de função daquele módulo e uma lista de argumentos. Quando chamada, \texttt{spawn} executa a função especificada em um processo dedicado a ele e retorna um \emph{Process Identifier} (PID) que serve como o endereço do ator.
 
 A comunicação entre atores acontece através de passagem de mensagens usando duas funções: \texttt{send} para despachar mensagens para um processo usando seu PID como referência, e \texttt{receive} para lidar com mensagens recebidas dentro de um processo. Este mecanismo de passagem de mensagens assíncrono forma a base das capacidades concorrentes e distribuídas do Elixir.
 
@@ -62,7 +85,7 @@ Como Elixir é construída extensivamente sobre o ecossistema do Erlang e execut
 
 \subsubsection{O Modelo de Atores em Elixir}
 
-A implementação do Modelo de Atores em Elixir é simples, requerendo esforço mínimo para criar sistemas de atores concorrentes e distribuídos. O design da linguagem torna a programação baseada em atores natural ao invés de um padrão adicional a aprender.
+A implementação do Modelo de Atores em Elixir é simples, requerendo esforço mínimo para criar sistemas de atores concorrentes e distribuídos. O design da linguagem torna a programação baseada em atores natural, ao invés de um padrão adicional a aprender.
 
 \textbf{Mensagens} em Elixir são representadas por qualquer estrutura de dados válida: átomos, strings, números, tuplas, listas, ou mesmo estruturas aninhadas complexas. Esta flexibilidade permite que desenvolvedores projetem protocolos de mensagem que melhor se adequem às necessidades de sua aplicação sem serem restringidos por formatos de mensagem rígidos.
 
@@ -83,7 +106,9 @@ Existem muitos tipos de dados nativos diferentes no Elixir que podem ser vistos 
   \caption{Tipos de Dados em Elixir.\label{prog:elixir-tipos-dados}}
 \end{program}
 
-A sintaxe especial \texttt{:identificador} mostrada no exemplo \ref{prog:elixir-atomos} é usada para declarar átomos, um conceito do Erlang. Eles são constantes nomeadas por si mesmas e usadas em muitos cenários. Eles são usados para representar códigos de status, nomes de funções, tags ou mesmo representar valores de dados primitivos.
+A sintaxe especial \texttt{:identificador} mostrada no exemplo \ref{prog:elixir-atomos}
+\todo[inline]{Que nem você fez acima, tente usar ``programa'' antes do \textbackslash ref\{\}}
+é usada para declarar átomos, um conceito do Erlang. Eles são constantes nomeadas por si mesmas e usadas em muitos cenários. Eles são usados para representar códigos de status, nomes de funções, tags ou mesmo representar valores de dados primitivos.
 
 \begin{program}
   \lstinputlisting[
@@ -92,7 +117,10 @@ A sintaxe especial \texttt{:identificador} mostrada no exemplo \ref{prog:elixir-
   \caption{Átomos em Elixir.\label{prog:elixir-atomos}}
 \end{program}
 
-Quando se trata de dados compostos, Elixir tem 2 tipos principais (para o escopo deste trabalho): tuplas e listas. As primeiras têm tamanho fixo e são rapidamente indexáveis. As últimas são listas encadeadas simples com comprimento dinâmico. Tuplas são muito usadas para representar dados estruturados simples. Os dados como um todo no Elixir são imutáveis, o que significa que você não pode alterar dados, mas apenas usá-los para produzir novos dados. Veja o exemplo \ref{prog:elixir-estruturas-dados}.
+Quando se trata de dados compostos, Elixir tem 2 tipos principais (para o escopo deste trabalho): tuplas e listas. As primeiras têm tamanho fixo e são rapidamente indexáveis. As últimas são listas encadeadas simples com comprimento dinâmico. Tuplas são muito usadas para representar dados estruturados simples. Os dados, como um todo, no Elixir são imutáveis, o que significa que você não pode alterar dados, mas apenas usá-los para produzir novos dados. Veja o exemplo \ref{prog:elixir-estruturas-dados}.
+\todo[inline]{Veja se consegue incorporar, de forma corrido no texto, a referência ao programa.
+
+Além disso, use ``programa'' antes do \textbackslash ref\{\}.}
 
 \begin{program}
   \lstinputlisting[
@@ -101,7 +129,12 @@ Quando se trata de dados compostos, Elixir tem 2 tipos principais (para o escopo
   \caption{Estruturas de Dados em Elixir.\label{prog:elixir-estruturas-dados}}
 \end{program}
 
-O \texttt{=} é chamado de operador de \emph{binding}, isso porque não simplesmente faz atribuição, mas pode ser usado para casamento de padrões. Veja o exemplo \ref{prog:elixir-casamento-padroes}.
+O \texttt{=}
+\todo[inline]{Está correto, mas, ao invés de ir direto para ``O ='' (que nesse caso fica meio estranhinho), talvez colocar algo como ``Em Elixir, o caractere \texttt{=} é chamado de [...]''}
+é chamado de operador de \emph{binding}, isso porque não simplesmente faz atribuição, mas pode ser usado para casamento de padrões. Veja o exemplo \ref{prog:elixir-casamento-padroes}.
+\todo[inline]{Veja se consegue incorporar, de forma corrido no texto, a referência ao programa.
+
+Além disso, use ``programa'' antes do \textbackslash ref\{\}.}
 
 \begin{program}
   \lstinputlisting[
@@ -110,7 +143,9 @@ O \texttt{=} é chamado de operador de \emph{binding}, isso porque não simplesm
   \caption{Casamento de Padrões em Elixir.\label{prog:elixir-casamento-padroes}}
 \end{program}
 
-Mais amplamente, correspondência de padrões é demonstrada no exemplo \ref{prog:elixir-estruturas-controle} e pode ser feita com a sintaxe \texttt{->}.
+Mais amplamente, correspondência de padrões é demonstrada no exemplo \ref{prog:elixir-estruturas-controle}
+\todo[inline]{Tente usar ``programa'' antes do \textbackslash ref\{\}}
+e pode ser feita com a sintaxe \texttt{->}.
 
 \begin{program}
   \lstinputlisting[
@@ -120,6 +155,7 @@ Mais amplamente, correspondência de padrões é demonstrada no exemplo \ref{pro
 \end{program}
 
 Em Elixir, existem algumas formas diferentes de declarar funções, e elas podem ser agrupadas com o uso de módulos. Veja o exemplo \ref{prog:elixir-modulos-funcoes} de um módulo com funções.
+\todo[inline]{Tente usar ``programa'' antes do \textbackslash ref\{\}}
 
 \begin{program}
   \lstinputlisting[
@@ -129,6 +165,7 @@ Em Elixir, existem algumas formas diferentes de declarar funções, e elas podem
 \end{program}
 
 \subsection{Exemplo em Elixir}
+\todo[inline]{Acho que só ``Exemplo em Elixir'' fica muito amplo e não indica exatamente que a subseção fala de um exemplo de implementação de ator. Eu mesmo só fui lembrar que era isso depois de chegar aqui, então avalie se faz sentido especificar mais o título dessa subseção.}
 
 \begin{program}
   \lstinputlisting[
@@ -137,12 +174,16 @@ Em Elixir, existem algumas formas diferentes de declarar funções, e elas podem
   \caption{Exemplo de Ator Echo em Elixir.\label{prog:elixir-ator-echo}}
 \end{program}
 
-No exemplo \ref{prog:elixir-ator-echo}, é definido um ator echo simples. Ele recebe uma mensagem que deve conter o endereço do remetente e alguma mensagem. Ele então envia de volta ao remetente uma mensagem com conteúdo \texttt{:ok} e a mensagem recebida prefixada com \texttt{Echoing: }. Finalmente, há uma chamada recursiva para \texttt{init} para que o ator possa lidar com mais mensagens, já que Elixir não tem loops.
+No exemplo \ref{prog:elixir-ator-echo},
+\todo[inline]{Tente usar ``programa'' antes do \textbackslash ref\{\}}
+é definido um ator echo simples. Ele recebe uma mensagem que deve conter o endereço do remetente e alguma mensagem. Ele então envia de volta ao remetente uma mensagem com conteúdo \texttt{:ok} e a mensagem recebida prefixada com \texttt{Echoing: }. Finalmente, há uma chamada recursiva para \texttt{init} para que o ator possa lidar com mais mensagens, já que Elixir não tem loops.
 
-No módulo \texttt{Example}, a chamada para \texttt{spawn} iniciará o ator através da função \texttt{init} do módulo \texttt{Echo} sem parâmetros. Esta função retornará o PID do processo criado que serve como o endereço do ator. A função \texttt{send} envia ao ator recém-criado uma tupla onde o primeiro elemento é o PID do processo atual e o segundo é a string \texttt{"Hello world"}.
+No módulo \texttt{Example}
+\todo[inline]{Detalhe: Chamar o módulo de \texttt{ActorExample} faria sentido?}
+, a chamada para \texttt{spawn} iniciará o ator através da função \texttt{init} do módulo \texttt{Echo} sem parâmetros. Esta função retornará o PID do processo criado, que serve como o endereço do ator. A função \texttt{send} envia ao ator recém-criado uma tupla onde o primeiro elemento é o PID do processo atual e o segundo é a string \texttt{"Hello world"}.
 
 Neste momento, a chamada para \texttt{receive} na função \texttt{init} entra em ação. Ela receberá a mensagem e retornará ao remetente uma nova tupla onde o primeiro elemento é \texttt{:ok} e o segundo é a string \texttt{"Echoing: Hello world"}. Por causa da chamada recursiva, este ator está pronto para receber mais mensagens.
 
 A chamada para \texttt{receive} na função \texttt{main} agora lidará com a resposta do ator. Ela aguardou pacientemente por uma resposta e pode agora verificar com casamento de padrões que a resposta realmente contém um \texttt{:ok} e exibir a string \texttt{Echoing: Hello world} no terminal.
 
-Note que esse código não é executado sequencialmente. A chamada de \texttt{send} do lado do módulo \texttt{Example} não vai aguardar o ator de echo processar a mensagem e gerar uma resposta. Assim que a mensagem é enviada o módulo \texttt{Example} fica parado na chamada \texttt{receive} aguardando uma resposta.
+Note que esse código não é executado sequencialmente. A chamada de \texttt{send} do lado do módulo \texttt{Example} não vai aguardar o ator de echo processar a mensagem e gerar uma resposta. Assim que a mensagem é enviada, o módulo \texttt{Example} fica parado na chamada \texttt{receive}, aguardando uma resposta.

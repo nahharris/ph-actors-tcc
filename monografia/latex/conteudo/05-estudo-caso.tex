@@ -2,9 +2,10 @@
 
 Uma vez apresentadas as propostas de adaptação do Modelo de Atores para experimentação fora do domínio dos sistemas distribuídos, chega o momento de realizar um estudo de caso para aplicar a proposta em um projeto real para posterior análise de resultados. 
 
-O projeto escolhido foi uma ferramenta de software livre desenvolvida sob a organização Kworkflow (kw) chamada de patch-hub. Neste capítulo, será apresentado o contexto do projeto, a arquitetura original e suas limitações, os objetivos do estudo de caso e a proposta de refatoração do projeto com o uso do Modelo de Atores, cuja implementação estará disponível na íntegra no \href{https://github.com/nahharris/ph-actors-tcc}{repositório do projeto no GitHub}.
+O projeto escolhido foi uma ferramenta de software livre desenvolvida sob a organização \textit{Kworkflow} (kw) chamada de patch-hub. Neste capítulo, será apresentado o contexto do projeto, a arquitetura original e suas limitações, os objetivos do estudo de caso e a proposta de refatoração do projeto com o uso do Modelo de Atores, cuja implementação estará disponível na íntegra no \href{https://github.com/nahharris/ph-actors-tcc}{repositório do projeto no GitHub}.
 
 \section{Contexto}
+\todo[inline]{``Contexto'' realmente é o que você quer passar aqui, mas não sei se é a melhor palavra. ``Fundamentação'' é o que vem a mente, mas não acho que é muito melhor. Enfim, só um pensamento caso você ache algo mais interessante...}
 
 Para compreender adequadamente o projeto patch-hub e sua proposta, é necessário entender o ecossistema de desenvolvimento do kernel Linux e os desafios enfrentados pelos desenvolvedores. O Linux é um sistema operacional de software livre baseado no kernel Unix-like desenvolvido por Linus Torvalds em 1991~\citep{linux_wikipedia}. O kernel Linux é o núcleo do sistema operacional, responsável por gerenciar recursos de hardware, processos e comunicação entre componentes do sistema~\citep{kernel_wikipedia}.
 
@@ -12,9 +13,11 @@ Para compreender adequadamente o projeto patch-hub e sua proposta, é necessári
 
 O desenvolvimento do kernel Linux é um processo colaborativo que envolve milhares de desenvolvedores ao redor do mundo. Devido à sua complexidade e tamanho, o kernel é organizado em subsistemas especializados, cada um com responsabilidades específicas~\citep{kernel_subsystems}. Contribuições para o kernel, conhecidas como \textit{patches}, são tradicionalmente enviadas através de listas de discussão públicas por email e revisadas por mantenedores especializados~\citep{kernel_patches}. 
 
-Essa forma de contribuição é um processo tradicional e bem estabelecido, mas que traz diversos desafios para os desenvolvedores. Os desenvolvedores precisam se inscrever em múltiplas listas de email e gerenciar um volume considerável de mensagens. Isso dificulta muito acompanhar o status de suas contribuições.
+Essa forma de contribuição é um processo tradicional e bem estabelecido, mas que traz diversos desafios para os desenvolvedores. Os desenvolvedores do kernel precisam se inscrever em múltiplas listas de email e gerenciar um volume considerável de mensagens. Isso dificulta muito acompanhar o status de suas contribuições.
+\todo[inline]{Se quiser motivar mais a importância do Lore, traga aquela ideia de como essa ``abordagem clássica'' requer proatividade (se o cara não se inscreveu antes do patch X ser enviado, ele não vai recebê-lo) e que depende da entrega de emails fora toda um setup local que o dev tem que fazer para integrar o ambiente dele com clientes de email em texto puro, mailboxes, etc.}
 
 \subsection{O Projeto lore.kernel.org}
+\todo[inline]{De fato o Lore pode ser entendido como um projeto. Ainda assim, apesar de, provavelmente, ter uma comunidade de SL em torno, é quase como um ``problema resolvido'' e que a questão é mais como espalhar os mirrors e usá-lo como um componente em outras tools/serviços (como o patch-hub faz). Nesse sentido, talvez só chamá-lo de ``Lore'', ou de ``O Arquivo lore.kernel.org''.}
 
 Para mitigar essas dificuldades, foi criado o projeto lore.kernel.org, um arquivo público que fornece uma interface web para visualizar e pesquisar mensagens das listas de discussão do kernel~\citep{lore_api}. O lore.kernel.org oferece uma \emph{API} que permite acesso programático aos \emph{patches} arquivados, incluindo funcionalidades de busca, paginação e filtros avançados.
 
@@ -22,13 +25,18 @@ A \emph{API} do lore suporta consultas complexas através de parâmetros de \emp
 
 \subsection{O Projeto Kworkflow}
 
-O projeto Kworkflow (kw) surgiu como uma resposta a complexidade e desafios de configuração do ambiente de desenvolvimento para o kernel Linux~\citep{kworkflow_org}. O kw é descrito como uma ``ferramenta de fluxo de trabalho de desenvolvedor de kernel'' que visa reduzir a sobrecarga de configuração e fornecer ferramentas para tarefas comuns do desenvolvimento de kernel.
+O projeto Kworkflow (kw)
+\todo[inline]{Temos o artigo do kw no SBES 2025 que você pode usar como referência (url{https://sol.sbc.org.br/index.php/sbes/article/view/37083})}
+surgiu como uma resposta a complexidade e desafios de configuração do ambiente de desenvolvimento para o kernel Linux~\citep{kworkflow_org}. O kw é descrito como uma ``ferramenta de fluxo de trabalho de desenvolvedor de kernel''
+\todo[inline]{Acho que aqui você não precisa traduzir e pode colocar direto \textit{Developer Automation Workflow System} (DAWS). Caso opte por isso, não se esqueça de adicionar a sigla na tabela de siglas.}
+que visa reduzir a sobrecarga de configuração e fornecer ferramentas para tarefas comuns do desenvolvimento de kernel.
 
-O projeto oferece um utilitário de terminal unificado para diversas operações como compilação, deploy, debug e gerenciamento de configurações, consolidando ferramentas anteriormente dispersas.
+O projeto é um utilitário de terminal que oferece um conjunto de funcionalidades em uma interface unificada para diversas operações como compilação, deploy, debug e gerenciamento de configurações, consolidando ferramentas anteriormente dispersas.
+\todo[inline]{No artigo do kw do SBES 2025, tem uma tabelinha com todas as features. Não sei se encaixa, mas caso ache que sim, te adicionei no repo que tem o fonte da tabela (e tudo do artigo) em \url{https://github.com/davidbtadokoro/IME-USP-PhD/blob/5951b91c9347fd9414ffbde94c05ad68ec8ab8f2/latex/sbes25-tools/sections/kw.tex\#L50}.}
 
 \subsection{O patch-hub}
 
-O patch-hub é uma ferramenta desenvolvida como parte do ecossistema Kworkflow, especificamente projetada para interagir com a \emph{API} do lore.kernel.org~\citep{patch_hub_github}. Sua missão é agilizar a navegação e revisão de contribuições para o kernel Linux, fornecendo uma interface de usuário baseada em terminal (\emph{TUI}) que simplifica o processo de descoberta, análise e acompanhamento de \emph{patches}.
+O patch-hub é uma ferramenta desenvolvida como parte do ecossistema do kw, especificamente projetada para interagir com a \emph{API} do lore.kernel.org~\citep{patch_hub_github}. Sua missão é agilizar a navegação e revisão de contribuições para o kernel Linux, fornecendo uma interface de usuário baseada em terminal (\emph{TUI}) que simplifica o processo de descoberta, análise e acompanhamento de \emph{patches}.
 
 A ferramenta permite aos desenvolvedores navegar por listas de patches, aplicar filtros de busca, visualizar conteúdo de patches e gerenciar seu fluxo de trabalho de revisão diretamente do terminal, eliminando a necessidade de alternar entre interfaces web e ferramentas de linha de comando.
 
@@ -50,6 +58,9 @@ A implementação original do patch-hub seguia uma arquitetura majoritariamente 
 \end{itemize}
 
 \subsection{Funcionalidades Principais}
+\todo[inline]{Não sei se as funcionalidades se encaixam dentro de arquitetura, inclusive se considerarmos as definições que você fez no início do capítulo 2. Nesta linha, será que não cabe dentro da 5.1.4?
+
+Além disso, talvez aproveitar para mostrar mais o patch-hub com os prints de outras funcionalidades. No artigo pro JOSS (que você também é autora hehe), tem já uns prints prontos e anonimizados: \url{https://github.com/kworkflow/patch-hub/tree/lorenzo/joss-paper/paper/figures}.}
 
 A implementação do patch-hub (tanto a original quanto a refatorada) fornece um conjunto de funcionalidades para interagir com o arquivo de \emph{patches} do kernel Linux. O sistema permite a seleção e navegação de listas de discussão arquivadas no \textit{lore.kernel.org}, apresentando os conjuntos de \emph{patches} associados. Ao examinar uma série específica, a interface disponibiliza o conteúdo individual dos \emph{patches} juntamente com metadados relevantes, incluindo título, autor, versão, quantidade de \emph{patches} e \emph{timestamp} da última atualização.
 
@@ -58,14 +69,17 @@ A implementação do patch-hub (tanto a original quanto a refatorada) fornece um
     \includegraphics[width=\textwidth]{figuras/patch-hub-original.png}
     \caption{Interface do patch-hub.\label{fig:patch-hub-original}}
 \end{figure}
+\todo[inline]{Tente referenciar a figura de forma corrida no texto.}
 
 O sistema implementa operações fundamentais para o \emph{workflow} de revisão de \emph{patches}: aplicação de \emph{patches} em repositórios locais do kernel, organização de séries em um sistema de favoritos, e composição de respostas com tags de revisão padrão, como \texttt{Reviewed-by}.
 
 A renderização do conteúdo dos patches é implementada com suporte a múltiplos backends, incluindo ferramentas externas, além de um renderizador padrão. Esta abordagem permite variação na apresentação visual dos patches ao gosto do usuário sem comprometer a portabilidade da aplicação.
 
 \section{Limitações da Arquitetura Original}
+\todo[inline]{Acho que a única sugestão que tenho pra toda esta seção (fora a que está a seguir) é ver se cabem trechos de código do patch-hub original pra ilustrar as limitações que você está apontando. Imagino que você optou por não fazer isto, pois iria ficar muito poluído, mas talvez pequenos trechos trimmados ajudem (não se esqueça de referenciar no texto corrido caso concorde com esta ideia).}
 
-Apesar de sua funcionalidade, a implementação original do patch-hub apresentava limitações arquiteturais fundamentais que comprometiam sua extensibilidade, manutenibilidade e capacidade de evolução. Essas limitações vinham de decisões de design que, embora funcionais para o escopo inicial, criavam gargalos estruturais que dificultavam a adição de novas funcionalidades e a manutenção do código no longo prazo.
+Apesar de suas funcionalidades, a implementação original do patch-hub apresentava limitações arquiteturais fundamentais que comprometiam sua extensibilidade, manutenibilidade e capacidade de evolução. Essas limitações vinham de decisões de design que, embora funcionais para o escopo inicial, criavam gargalos estruturais que dificultavam a adição de novas funcionalidades e a manutenção do código no longo prazo.
+\todo[inline]{O patch-hub é literalmente o caso que você pontuou no capítulo 2 do artigo do Kassab (mesmo não sendo no contexto da indústria), de que o foco foi quase que total nos requisitos funcionais e que, agora, temos uma dívida técnica brutal. Acho que vale o callback aqui e acredito que temos como fundamentar essa ideia, pois lembro de escrever isto nas notas das releases (ou seja, está registrado).}
 
 \subsection{Gargalo de Mutação Centralizada}
 
@@ -151,6 +165,7 @@ Por dependerem apenas de outros atores, testes unitários se tornam triviais uma
     \caption{Diagrama de atores do patch-hub}
     \label{fig:patch-hub-actors}
 \end{figure}
+\todo[inline]{Tente referenciar a figura de forma corrida no texto.}
 
 
 \subsection{Atores de Integração}
@@ -192,6 +207,7 @@ O ator Rede é responsável por gerenciar as operações de requisição HTTP. E
 \textit{Implementação:} \href{https://github.com/nahharris/ph-actors-tcc/blob/master/src/net.rs}{\texttt{src/net.rs}}
 
 \textbf{Depende:}
+\todo[inline]{Não quero ser preciosista, mas quem estiver lendo talvez não faça a conexão que este ``Depende'' está indicando a dependeência de atores. Como essa é a primeira vez que o leitor vai ver esse padrão ``Depende'', como os atores que Rede depende são dois que você ainda não falou (mesmo que já tenha mostrado na figura), essa confusão pode acontecer. Penso que você pode ou explicar este padrão no fim da 5.5 (antes de começar a 5.5.1) ou mudar o ``Depende'' por ``Depende dos atores'' (acho que pode ser a melhor opção).}
 
 \begin{itemize}
     \item \textbf{Configurações}: Para obter configurações de timeout e outras configurações de rede

@@ -4,17 +4,21 @@ Uma das principais contribuições deste trabalho é a proposta de uma estratég
 
 \section{Rust}
 
-O Modelo de Atores é amplamente conhecido por sua dinamicidade e flexibilidade, com a maioria de suas implementações famosas sendo em \emph{runtimes} flexíveis como BEAM ou JVM. Rust \citep{rust_lang} é bem o oposto disso, uma linguagem moderna com um sistema de tipos forte e um compilador poderoso o suficiente para validar quase tudo em tempo de compilação.
+O Modelo de Atores é amplamente conhecido por sua dinamicidade e flexibilidade, com a maioria de suas implementações famosas sendo em \emph{runtimes} flexíveis como BEAM ou JVM. Rust \citep{rust_lang} é bem o oposto disso: uma linguagem moderna fortemente tipada e um compilador poderoso o suficiente para validar quase tudo em tempo de compilação.
 
 Pode soar contraditório usar uma linguagem rígida com um padrão flexível, mas é exatamente o propósito deste trabalho: experimentar com o Modelo de Atores fora do seu domínio específico. Assim, além de testar no contexto centralizado, iremos implementá-lo numa tecnologia que não foi pensada pra isso.
 
 Apesar desta distância, Rust ainda possui diversos recursos de linguagem análogos a mecanismos fornecidos por Elixir, tornando essa adaptação possível. Além disso, se Elixir foi eleita a segunda linguagem mais amada nos últimos 3 anos, a mesma pesquisa aponta Rust como sendo a linguagem mais amada desde 2016. Vale ressaltar que Rust 1.0 foi lançado em 2015.
 
-Rust é conhecido por seus mecanismos de segurança que forçam verificação em tempo de compilação, tornando diversos estados inválidos impossíveis de serem representados como código. A seguir veremos alguns dos conceitos mais importantes aqui.
+Rust é conhecido por seus mecanismos de segurança que forçam verificação em tempo de compilação, tornando diversos estados inválidos impossíveis de serem representados como código. A seguir, veremos alguns dos conceitos mais importantes aqui.
+\todo[inline]{Não está errado, mas o ``aqui'' talvez soe meio informal. Que tal ``mais importantes do Rust.''?}
 
 \subsection{Segurança de Memória}
 
 Um espaço de memória tem um, e apenas um, proprietário (uma variável), este proprietário determina o ciclo de vida do espaço de memória. Uma vez que o proprietário é destruído, o espaço de memória é liberado. O proprietário também determina se a região é mutável ou não.
+\todo[inline]{Nos programas abaixo, você, de fato, explica estes conceitos. Porém, sempre que adicionar uma figura, tabela, código, etc., é importante referencia no texto corrido. Mais que isso, nesse caso como memory safety e o sistema de ownership do Rust é algo meio alienígena (lembre que a própria Nina falou que não manjava nada sobre no dia do pôster), vale expandir legal este parágrafo (talvez até dividí-lo em mais de um e espalhá-los entre os programas).
+
+Também, não se esqueça de referenciar os programas com a palavra ``programa'' antes.}
 
 \begin{program}
   \lstinputlisting[
@@ -22,6 +26,7 @@ Um espaço de memória tem um, e apenas um, proprietário (uma variável), este 
   ]{conteudo/codigo/rust-var-mutabilidade.rs}
   \caption{Declaração de variáveis e mutabilidade.\label{prog:rust-var-mutabilidade}}
 \end{program}
+\todo[inline]{No programa acima, aparece ``émutável'' tudo junto, apesar de você ter colocado o espaço no programa usado como input. Eu tentei resolver do jeito óbvio adicionando um espaço a mais, porém, não foi. Veja se você consegue resolver isto, mas não perca muito tempo nisso, pois você pode só trocar para algo que não tenha esse acento seguido de espaço (parece ser a raiz do problema) como ``a imutável'' e ``b mutável''.}
 
 \begin{program}
   \lstinputlisting[
@@ -63,11 +68,13 @@ Um valor pode ser emprestado com o uso de referências, mas existem regras checa
 
 \subsection{Sistema de Tipos}
 
-O sistema de tipos forte e expressivo é uma característica-chave do Rust. Ele não tem herança, mas compensa isso com tuplas, structs, enums e traits.
+O sistema de tipos forte
+\todo[inline]{Acho que o ``correto'' é ``sistema de tipagem forte [...]'', porém, veja se procede.}
+e expressivo é uma característica-chave do Rust. Ele não tem herança, mas compensa isso com tuplas, structs, enums e traits.
 
 \subsubsection{Tuplas}
 
-Uma tupla é simplesmente um tipo produto, tem tamanho fixo e cada campo (nomeado por seu índice) pode ter um tipo diferente. Não é uma coleção!
+Uma tupla é simplesmente um tipo produto, tem tamanho fixo e cada campo (nomeado por seu índice) pode ter um tipo diferente. Vale ressaltar que uma tupla em Rust não é uma coleção.
 
 \begin{program}
   \lstinputlisting[
@@ -75,6 +82,7 @@ Uma tupla é simplesmente um tipo produto, tem tamanho fixo e cada campo (nomead
   ]{conteudo/codigo/rust-tuplas.rs}
   \caption{Declaração e uso de tuplas.\label{prog:rust-tuplas}}
 \end{program}
+\todo[inline]{Tente referenciar no texto corrido este programa.}
 
 \subsubsection{Structs}
 
@@ -86,6 +94,7 @@ Um struct é similar a uma tupla, mas tem campos nomeados e pode ter métodos co
   ]{conteudo/codigo/rust-structs.rs}
   \caption{Definição e uso de structs.\label{prog:rust-structs}}
 \end{program}
+\todo[inline]{Tente referenciar no texto corrido este programa.}
 
 Existe também um construto chamado tuple-struct que é um struct mas os campos são nomeados por seus índices, como uma tupla:
 
@@ -95,6 +104,7 @@ Existe também um construto chamado tuple-struct que é um struct mas os campos 
   ]{conteudo/codigo/rust-tuple-struct.rs}
   \caption{Tuple-struct.\label{prog:rust-tuple-struct}}
 \end{program}
+\todo[inline]{Tente referenciar no texto corrido este programa.}
 
 \subsubsection{Enums}
 
@@ -106,6 +116,7 @@ Diferente da maioria das linguagens, enums em Rust podem ter payloads já que ca
   ]{conteudo/codigo/rust-enums.rs}
   \caption{Enums com payloads.\label{prog:rust-enums}}
 \end{program}
+\todo[inline]{Tente referenciar no texto corrido este programa.}
 
 \subsubsection{Traits}
 
@@ -117,12 +128,15 @@ Traits são o equivalente Rust de uma interface, define métodos que devem ser i
   ]{conteudo/codigo/rust-traits.rs}
   \caption{Implementação de traits.\label{prog:rust-traits}}
 \end{program}
+\todo[inline]{Tente referenciar no texto corrido este programa.}
 
 Com conhecimento básico da linguagem, é momento de começar a introduzir os elementos da proposta em si. Para isso, os elementos da linguagem Elixir que foram discutidos previamente serão usados como referência fortemente.
 
 \section{Concorrência e Paralelismo}
 
-Esta proposta contempla o uso de \emph{green-threads} que não têm suporte nativo em Rust. Isso é porque a linguagem, ao contrário de Elixir, Golang, ou Java, tem um \emph{runtime} muito mínimo, similar ao \emph{runtime} do C. O suporte para \emph{green-threads} é fornecido pela biblioteca Tokio \citep{tokio} e eles são chamados de \emph{tasks} e serão usados de forma equivalente aos processos Erlang.
+Esta proposta contempla o uso de \emph{green-threads}
+\todo[inline]{Detalhe: até agora no texto, você não estava dando destaque para as palavras em inglês. Se não for muito trabalho, veja de padronizar isto.}
+que não têm suporte nativo em Rust. Isso é porque a linguagem, ao contrário de Elixir, Golang, ou Java, tem um \emph{runtime} muito mínimo, similar ao \emph{runtime} do C. O suporte para \emph{green-threads} é fornecido pela biblioteca Tokio \citep{tokio} e eles são chamados de \emph{tasks} e serão usados de forma equivalente aos processos Erlang.
 
 As tasks são criadas e executadas com isolamento, seja de forma concorrente ou paralela, dependendo da quantidade de threads do sistema operacional que estão sendo utilizadas pelo ambiente de execução Tokio. Isso permite que múltiplas tasks sejam executadas simultaneamente sem a necessidade de gerenciar manualmente threads do sistema operacional.
 
@@ -196,6 +210,7 @@ Uma vez definidas quais abstrações a serem usadas, é hora de definir como um 
     \caption{Representação da estrutura de um ator}
     \label{fig:actor-design}
 \end{figure}
+\todo[inline]{Referencia a figura de forma corrida no texto. Talvez falar no parágrafo anterior ``A figura ... mostra uma visão geral [...]'' e retornar a ela no resto da seção (antes de começar a primeira subseção) como ``[...] isto está representado na figura ... como a circunferência azul escrita \textit{Core}'' (não precisa fazer isto em todos os itens das listagens abaixo, claro).}
 
 Primeiramente, haverá um módulo para cada ator, e se um ator é subordinado à existência de outro ator pela lógica de negócio, ele pode ser criado como um submódulo.
 
@@ -224,6 +239,7 @@ Para o exemplo do ator App, haverá:
     \item Uma struct \texttt{Core} em \texttt{app/core.rs} que mantém a lógica do ator
     \item Uma struct \texttt{App} em \texttt{app.rs} para servir como a interface pública para dependentes deste ator
 \end{itemize}
+\todo[inline]{Pessoalmente, achei que ficou um tico truncado essas listagens encadeadas na leitura, mas sinto que pela forma que isto aparece formatado no PDF final. Coisa bem pessoal de estilo e não tenho sugestão pra melhorar.}
 
 Onde \texttt{App} deve ser público globalmente, enquanto \texttt{Message} e \texttt{Core} ficam restritos ao super-módulo \texttt{app}.
 

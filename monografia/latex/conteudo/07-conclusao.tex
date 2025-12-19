@@ -1,6 +1,12 @@
 \chapter{Conclusão}
 
-O principal resultado deste trabalho demonstra que a adequação de padrões arquiteturais pode ser surpreendentemente flexível. Mesmo utilizando um padrão aparentemente inapropriado para o contexto, foi possível extrair valor significativo da abordagem ao reimaginar tanto o problema quanto o padrão, permitindo que ambos se encaixassem de forma interessante. Naturalmente, esse processo de adaptação demandou planejamento cuidadoso e múltiplas iterações.
+O principal resultado deste trabalho demonstra que a adequação de padrões arquiteturais pode ser surpreendentemente flexível.
+\todo[inline]{Vale uma caixinha de highlight? Diria que não seria algo ruim, pois é, de fato, a coisa inegável que seu trabalho traz e que é muito interessante mesmo. Enfim, como todos os outros comentários, fique a vontade para ignorar.}
+Mesmo utilizando um padrão aparentemente inapropriado para o contexto, foi possível extrair valor significativo da abordagem ao reimaginar tanto o problema quanto o padrão, permitindo que ambos se encaixassem de forma interessante. Naturalmente, esse processo de adaptação demandou planejamento cuidadoso e múltiplas iterações.
+
+\todo[inline]{Meu último comentário seria o de considerar dar uma expandida aqui na conclusão (talvez só mais um parágrafo aqui) relembrando com mais detalhes: (1) o cenário do estudo de caso que você montou e a motivação/intuição por trás; (2) as bases do SOLID que você usou para análise e (3) a surpresa positiva de como o negócio todo se encaixou legal.
+
+No fundo, é expandir a última frase do parágrafo acima (mais a parte do SOLID), mas lembre que é bacana a conclusão ser quase que autocontida ou ser algo que a pessoa pode ler junto do abstract (e uma batida de olho no resto que é o mais importante) e ter uma visão geral do seu trabalo. Ou seja, é mais um caso em que ``repetir no TCC é bom'' que eu e o Paulo ficamos martelando.}
 
 Conclui-se que, embora os padrões arquiteturais possuam domínios naturais de aplicação, eles não estão rigidamente limitados a esses contextos. A exploração criativa de padrões em domínios distantes de sua origem pode resultar em soluções bem-sucedidas, desde que haja disposição para adaptar e reimaginar as abordagens estabelecidas.
 
@@ -54,3 +60,9 @@ Nas implementações conhecidas do Modelo de Atores, em geral existe um tipo de 
 Usando a reescrita do patch-hub como exemplo, o ator App poderia ser elevado à categoria de supervisor. Caso um ator como o Net viesse a sofrer uma falha fatal, o supervisor poderia recriá-lo e reinjetá-lo no ator LoreApi, assim permitindo que o LoreApi e todo resto da aplicação continuem funcionando normalmente.
 
 Portanto, a proposta apresentada poderia ser enriquecida com a adição de um ator supervisor, além de mecanismos para permitir a injeção de dependências após a inicialização.
+
+\todo[inline]{Te enganei, este é na verdade meu último comentário.
+
+Acho que você podia implementar um ator que fizesse já o build e o deploy (a integração com o kw toda, na verdade)...
+
+Brincadeira! Só um comentário para parabenizá-la pelo ótimo trabalho! Nessa passada com calma fiquei mais orgulhoso ainda do trabalho que você fez :)}

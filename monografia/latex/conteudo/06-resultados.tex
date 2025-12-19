@@ -1,12 +1,15 @@
 \chapter{Análise de Resultados}
 
-Por fim, foi feita uma análise qualitativa e quantitativa da aplicação produzida. O foco é em analisar o impacto da arquitetura proposta no sistema, buscando entender quais benefícios foram obtidos e quais custos foram incorridos.
+Por fim, foi feita uma análise qualitativa e quantitativa da aplicação produzida.
+\todo[inline]{Será que vale adicionar ``do ponto de vista de engenharia de software''?}
+O foco é em analisar o impacto da arquitetura proposta no sistema, buscando entender quais benefícios foram obtidos e quais custos foram incorridos.
 
 \begin{figure}[H]
     \centering
     \includegraphics[width=\textwidth]{figuras/patch-hub-new.png}
     \caption{Interface do patch-hub reescrito com o Modelo de Atores.\label{fig:patch-hub-new}}
 \end{figure}
+\todo[inline]{Tente referenciar a figura de forma corrida no texto.}
 
 \section{Desempenho}
 
@@ -30,7 +33,7 @@ A abordagem do Modelo de Atores facilita imensamente a criação de testes unit�
 
 Um dos principais ganhos desse isolamento é a facilidade de se testar atores diferentes em paralelo, realizando testes com resultados determinísticos e rápidos.
 
-Um exemplo dessa melhoria pode ser notado comparando a abordagem anterior para testes do antigo patch-hub com foco nas variáveis de ambiente. Como a versão antiga não isolava o gerenciamento de variáveis de ambiente, os testes quando executados em paralelo podiam ser afetados por condições de corrida ao modificarem o ambiente de execução. A solução para isso no projeto original foi forçar a execução em série de alguns testes que eram dependentes de variáveis de ambiente.
+Um exemplo dessa melhoria pode ser notado comparando a abordagem anterior para testes do antigo patch-hub com foco nas variáveis de ambiente. Como a versão antiga não isolava o gerenciamento de variáveis de ambiente, os testes, quando executados em paralelo, podiam ser afetados por condições de corrida ao modificarem o ambiente de execução. A solução para isso no projeto original foi forçar a execução em série de alguns testes que eram dependentes de variáveis de ambiente.
 
 Na versão reescrita, os testes que vão interagir (direta ou indiretamente) com variáveis de ambiente recebem uma instância \emph{mock} do ator Variáveis de Ambiente que é completamente independente das demais instâncias. Com isso, todos os testes podem ser executados em paralelo sem risco de condições de corrida ou qualquer outro tipo de interferência.
 
@@ -53,6 +56,7 @@ Por outro lado, existem alguns custos a serem pagos se tratando da transparênci
   ]{conteudo/codigo/rust-envio-mensagem.rs}
   \caption{Exemplo de envio de mensagem para um ator.\label{prog:rust-envio-mensagem}}
 \end{program}
+\todo[inline]{Tente referenciar o programa de forma corrida no texto.}
 
 Existe uma dificuldade de encontrar o código que será executado ao se enviar essa mensagem. Note que o método \texttt{get} do ator Rede é apenas um \emph{wrapper} para fazer o uso de um canal para enviar a mensagem e receber a resposta, logo, sua definição não informa ao usuário o que de fato será executado.
 
@@ -62,4 +66,8 @@ Para poder encontrar o código que será executado, é necessário navegar manua
 
 Uma diferença a ser considerada é o tamanho da base de código. A versão reescrita possui aproximadamente o dobro do tamanho da versão original, apesar de não ser uma implementação completa. Isso é um forte indicativo de que a abordagem do Modelo de Atores tende a produzir uma base de código maior. Apesar disso não necessariamente ser um problema, uma base de código maior carece de cuidados especiais para manter a qualidade e a legibilidade a longo prazo.
 
-Outra dificuldade crucial a ser considerada está no uso de código assíncrono. Rust é uma linguagem que foi projetada para ser segura em primeiro lugar, o que implica numa série de asserções de segurança que devem ser feitas para garantir que o código assíncrono seja usado corretamente. O suporte a programação assíncrona em Rust ainda está em desenvolvimento, onde várias ferramentas da linguagem ainda não estão perfeitamente maduras. Isso não foi um impeditivo para o desenvolvimento deste trabalho, mas poderia ser em um projeto diferente e mais complexo.
+Outra dificuldade crucial a ser considerada está no uso de código assíncrono. Rust é uma linguagem projetada para ser segura em primeiro lugar, o que implica numa série de asserções de segurança que devem ser feitas para garantir que o código assíncrono seja usado corretamente. O suporte à programação assíncrona em Rust ainda está em desenvolvimento, onde várias ferramentas da linguagem ainda não estão perfeitamente maduras. Isso não foi um impeditivo para o desenvolvimento deste trabalho, mas poderia ser em um projeto diferente e mais complexo.
+
+\todo[inline]{Aqui acho que é viagem minha, então fique a vontade pra dar um ``hardpass''. Você fez uma ótima discussão nesse capítulo e tocou em vários pontos bem bacanas! Pensei que uma seção final pra esse capítulo no estilo ``Balanço Geral'' em que você faz uma tabelinha (ou algo visual nesse software que você pros outros diagramas) com os prós e contras (ou pontos a favor e contra) que você levantou em relação a refatoração.
+
+Seria só a seção com um parágrafo curtinho referenciando a tabela. Ideia (não leve ipsis literis, pois acho já não estou raciocinando muito bem hehe): ``A tabela X elenca os pontos e contrapontos mencionados neste capítulo. É importante reiterar que a detecção de pontos negativos na refatoração feita torna a discussão e os achados deste trabalho mais ricos.''}
