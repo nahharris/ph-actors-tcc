@@ -1,6 +1,6 @@
 \chapter{Análise de Resultados}
 
-Por fim, foi feita uma análise qualitativa e quantitativa da aplicação produzida. O foco é em analisar o impacto da arquitetura proposta no sistema, buscando entender quais benefícios foram obtidos e quais custos foram incorridos.
+Por fim, foi feita uma análise qualitativa e quantitativa da aplicação produzida do ponto de vista de engenharia de software. O foco é em analisar o impacto da arquitetura proposta no sistema, buscando entender quais benefícios foram obtidos e quais custos foram incorridos.
 
 \begin{figure}[H]
     \centering
@@ -30,7 +30,7 @@ A abordagem do Modelo de Atores facilita imensamente a criação de testes unit�
 
 Um dos principais ganhos desse isolamento é a facilidade de se testar atores diferentes em paralelo, realizando testes com resultados determinísticos e rápidos.
 
-Um exemplo dessa melhoria pode ser notado comparando a abordagem anterior para testes do antigo patch-hub com foco nas variáveis de ambiente. Como a versão antiga não isolava o gerenciamento de variáveis de ambiente, os testes quando executados em paralelo podiam ser afetados por condições de corrida ao modificarem o ambiente de execução. A solução para isso no projeto original foi forçar a execução em série de alguns testes que eram dependentes de variáveis de ambiente.
+Um exemplo dessa melhoria pode ser notado comparando a abordagem anterior para testes do antigo patch-hub com foco nas variáveis de ambiente. Como a versão antiga não isolava o gerenciamento de variáveis de ambiente, os testes, quando executados em paralelo, podiam ser afetados por condições de corrida ao modificarem o ambiente de execução. A solução para isso no projeto original foi forçar a execução em série de alguns testes que eram dependentes de variáveis de ambiente.
 
 Na versão reescrita, os testes que vão interagir (direta ou indiretamente) com variáveis de ambiente recebem uma instância \emph{mock} do ator Variáveis de Ambiente que é completamente independente das demais instâncias. Com isso, todos os testes podem ser executados em paralelo sem risco de condições de corrida ou qualquer outro tipo de interferência.
 
@@ -44,8 +44,7 @@ Quantitativamente, a facilidade de testabilidade pode ser medida pela cobertura 
 
 O mais notável ganho no que toca a experiência do desenvolvedor é a facilidade de compreensão e modificação do código. Tendo-se isolado as responsabilidades em unidades menores e mais focadas, fica mais fácil entender o propósito de cada parte do código.
 
-Por outro lado, existem alguns custos a serem pagos se tratando da transparência do código em si. Observe a seguinte invocação de método realizada em um \emph{handler} do ator Lore API:
-
+Por outro lado, existem alguns custos a serem pagos se tratando da transparência do código em si. Observe no programa \ref{prog:rust-envio-mensagem} a invocação de método realizada em um \emph{handler} do ator Lore API.
 
 \begin{program}
   \lstinputlisting[
@@ -62,4 +61,26 @@ Para poder encontrar o código que será executado, é necessário navegar manua
 
 Uma diferença a ser considerada é o tamanho da base de código. A versão reescrita possui aproximadamente o dobro do tamanho da versão original, apesar de não ser uma implementação completa. Isso é um forte indicativo de que a abordagem do Modelo de Atores tende a produzir uma base de código maior. Apesar disso não necessariamente ser um problema, uma base de código maior carece de cuidados especiais para manter a qualidade e a legibilidade a longo prazo.
 
-Outra dificuldade crucial a ser considerada está no uso de código assíncrono. Rust é uma linguagem que foi projetada para ser segura em primeiro lugar, o que implica numa série de asserções de segurança que devem ser feitas para garantir que o código assíncrono seja usado corretamente. O suporte a programação assíncrona em Rust ainda está em desenvolvimento, onde várias ferramentas da linguagem ainda não estão perfeitamente maduras. Isso não foi um impeditivo para o desenvolvimento deste trabalho, mas poderia ser em um projeto diferente e mais complexo.
+Outra dificuldade crucial a ser considerada está no uso de código assíncrono. Rust é uma linguagem projetada para ser segura em primeiro lugar, o que implica numa série de asserções de segurança que devem ser feitas para garantir que o código assíncrono seja usado corretamente. O suporte à programação assíncrona em Rust ainda está em desenvolvimento, onde várias ferramentas da linguagem ainda não estão perfeitamente maduras. Isso não foi um impeditivo para o desenvolvimento deste trabalho, mas poderia ser em um projeto diferente e mais complexo.
+\section{Síntese dos Resultados}
+
+A Tabela~\ref{tab:sintese-resultados} apresenta uma síntese dos principais pontos favoráveis e desfavoráveis identificados na aplicação do Modelo de Atores para o desenvolvimento de aplicações centralizadas, conforme discutido ao longo deste capítulo. É importante reiterar que a identificação de pontos negativos na refatoração realizada enriquece a discussão e os achados deste trabalho, permitindo uma avaliação mais equilibrada e realista da abordagem proposta.
+
+\begin{table}[htbp]
+\centering
+\caption{Síntese dos resultados da aplicação do Modelo de Atores}
+\label{tab:sintese-resultados}
+\begin{tabular}{|p{0.45\textwidth}|p{0.45\textwidth}|}
+\hline
+\textbf{Pontos Favoráveis} & \textbf{Pontos Desfavoráveis} \\
+\hline
+Melhoria significativa na testabilidade & Aumento do tamanho da base de código \\
+\hline
+Potencial para paralelização e melhoria de desempenho & Sobrecarga em tempo de execução devido à comunicação entre atores \\
+\hline
+Isolamento de responsabilidades seguindo o SRP & Desafios com código assíncrono em Rust \\
+\hline
+Facilidade de extensão e manutenção & Opacidade do fluxo de execução devido à indireção do mecanismo de mensagens \\
+\hline
+\end{tabular}
+\end{table}

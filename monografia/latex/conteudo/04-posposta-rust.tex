@@ -4,17 +4,19 @@ Uma das principais contribuições deste trabalho é a proposta de uma estratég
 
 \section{Rust}
 
-O Modelo de Atores é amplamente conhecido por sua dinamicidade e flexibilidade, com a maioria de suas implementações famosas sendo em \emph{runtimes} flexíveis como BEAM ou JVM. Rust \citep{rust_lang} é bem o oposto disso, uma linguagem moderna com um sistema de tipos forte e um compilador poderoso o suficiente para validar quase tudo em tempo de compilação.
+O Modelo de Atores é amplamente conhecido por sua dinamicidade e flexibilidade, com a maioria de suas implementações famosas sendo em \emph{runtimes} flexíveis como BEAM ou JVM. Rust \citep{rust_lang} é bem o oposto disso: uma linguagem moderna fortemente tipada e um compilador poderoso o suficiente para validar quase tudo em tempo de compilação.
 
 Pode soar contraditório usar uma linguagem rígida com um padrão flexível, mas é exatamente o propósito deste trabalho: experimentar com o Modelo de Atores fora do seu domínio específico. Assim, além de testar no contexto centralizado, iremos implementá-lo numa tecnologia que não foi pensada pra isso.
 
 Apesar desta distância, Rust ainda possui diversos recursos de linguagem análogos a mecanismos fornecidos por Elixir, tornando essa adaptação possível. Além disso, se Elixir foi eleita a segunda linguagem mais amada nos últimos 3 anos, a mesma pesquisa aponta Rust como sendo a linguagem mais amada desde 2016. Vale ressaltar que Rust 1.0 foi lançado em 2015.
 
-Rust é conhecido por seus mecanismos de segurança que forçam verificação em tempo de compilação, tornando diversos estados inválidos impossíveis de serem representados como código. A seguir veremos alguns dos conceitos mais importantes aqui.
+Rust é conhecido por seus mecanismos de segurança que forçam verificação em tempo de compilação, tornando diversos estados inválidos impossíveis de serem representados como código. A seguir, veremos alguns dos conceitos mais importantes do Rust.
 
 \subsection{Segurança de Memória}
 
-Um espaço de memória tem um, e apenas um, proprietário (uma variável), este proprietário determina o ciclo de vida do espaço de memória. Uma vez que o proprietário é destruído, o espaço de memória é liberado. O proprietário também determina se a região é mutável ou não.
+Rust é conhecido por seu foco em \emph{segurança de memória}. Na prática, isso significa evitar, ainda em tempo de compilação, diversos tipos de erros de gerenciamento de memória como \emph{use-after-free}, \emph{double free} e condições de corrida de dados. O mecanismo central para isso é o sistema de \emph{ownership} (propriedade) e \emph{borrowing} (empréstimo), verificado pelo compilador.
+
+De forma simplificada, um espaço de memória tem um, e apenas um, proprietário (uma variável) em um dado momento. Esse proprietário define o ciclo de vida desse espaço. Quando o proprietário sai de escopo, o espaço de memória é liberado automaticamente. A mutabilidade é uma propriedade explícita. Por padrão, variáveis são imutáveis, e a palavra-chave \texttt{mut} habilita modificações. O programa \ref{prog:rust-var-mutabilidade} ilustra a declaração de variáveis e o efeito da mutabilidade em Rust.
 
 \begin{program}
   \lstinputlisting[
@@ -23,6 +25,8 @@ Um espaço de memória tem um, e apenas um, proprietário (uma variável), este 
   \caption{Declaração de variáveis e mutabilidade.\label{prog:rust-var-mutabilidade}}
 \end{program}
 
+Além do escopo, a propriedade também aparece quando valores são atribuídos ou passados como argumento: em muitos casos, isso \emph{transfere} o valor para o novo dono (um \emph{move}), impedindo usos posteriores do identificador anterior. O programa \ref{prog:rust-transferencia-propriedade} dá um exemplo de como funciona essa transferência de propriedade em Rust.
+
 \begin{program}
   \lstinputlisting[
     language=Rust,
@@ -30,7 +34,7 @@ Um espaço de memória tem um, e apenas um, proprietário (uma variável), este 
   \caption{Transferência de propriedade.\label{prog:rust-transferencia-propriedade}}
 \end{program}
 
-Um valor pode ser emprestado com o uso de referências, mas existem regras checadas pelo compilador:
+Quando não queremos transferir a propriedade (por exemplo, para permitir múltiplos usos do mesmo valor), usamos \emph{empréstimos} através de referências. Esse mecanismo é restringido por regras verificadas pelo compilador, garantindo que referências nunca apontem para memória inválida e que não existam acessos concorrentes mutáveis. Essas regras são:
 
 \begin{enumerate}
     \item Referências não podem ser nulas
@@ -39,6 +43,8 @@ Um valor pode ser emprestado com o uso de referências, mas existem regras checa
     \item Pode existir no máximo uma referência mutável (\texttt{\&mut}) a um valor (desde que ele seja mutável)
     \item Um valor não pode ter ambas referências ao mesmo tempo
 \end{enumerate}
+
+O programa \ref{prog:rust-refs-imutaveis} mostra o caso de referências imutáveis (leitura compartilhada), enquanto o programa \ref{prog:rust-refs-mutaveis} apresenta o caso de referência mutável (escrita exclusiva). Por fim, o programa \ref{prog:rust-ciclo-vida-refs} destaca como o tempo de vida das referências (os \emph{lifetimes}) impede que uma referência seja usada após o valor ao qual ela se refere ter saído de escopo.
 
 \begin{program}
   \lstinputlisting[
@@ -67,7 +73,7 @@ O sistema de tipos forte e expressivo é uma característica-chave do Rust. Ele 
 
 \subsubsection{Tuplas}
 
-Uma tupla é simplesmente um tipo produto, tem tamanho fixo e cada campo (nomeado por seu índice) pode ter um tipo diferente. Não é uma coleção!
+Uma tupla, como pode ser visto no programa \ref{prog:rust-tuplas}, é simplesmente um tipo produto, tem tamanho fixo e cada campo (nomeado por seu índice) pode ter um tipo diferente. Vale ressaltar que uma tupla em Rust não é uma coleção, mas sim um tipo composto.
 
 \begin{program}
   \lstinputlisting[
@@ -78,7 +84,7 @@ Uma tupla é simplesmente um tipo produto, tem tamanho fixo e cada campo (nomead
 
 \subsubsection{Structs}
 
-Um struct é similar a uma tupla, mas tem campos nomeados e pode ter métodos com o uso de um bloco \texttt{impl}:
+Um struct, como pode ser visto no programa \ref{prog:rust-structs}, é similar a uma tupla, mas tem campos nomeados e pode ter métodos com o uso de um bloco \texttt{impl}.
 
 \begin{program}
   \lstinputlisting[
@@ -87,7 +93,7 @@ Um struct é similar a uma tupla, mas tem campos nomeados e pode ter métodos co
   \caption{Definição e uso de structs.\label{prog:rust-structs}}
 \end{program}
 
-Existe também um construto chamado tuple-struct que é um struct mas os campos são nomeados por seus índices, como uma tupla:
+Existe também um construto chamado tuple-struct (veja o programa \ref{prog:rust-tuple-struct}), que é um struct mas os campos são nomeados por seus índices, como uma tupla.
 
 \begin{program}
   \lstinputlisting[
@@ -98,7 +104,7 @@ Existe também um construto chamado tuple-struct que é um struct mas os campos 
 
 \subsubsection{Enums}
 
-Diferente da maioria das linguagens, enums em Rust podem ter payloads já que cada variante pode ser tratada como um struct:
+Diferente da maioria das linguagens, enums em Rust, como pode ser visto no programa \ref{prog:rust-enums}, podem ter payloads já que cada variante pode ser tratada como um struct.
 
 \begin{program}
   \lstinputlisting[
@@ -188,7 +194,7 @@ Também vale ressaltar que o "uso após liberação" de um canal oneshot é veri
 
 \section{Representação do Ator}
 
-Uma vez definidas quais abstrações a serem usadas, é hora de definir como um ator será em termos de código Rust.
+Uma vez definidas quais abstrações a serem usadas, é hora de definir como um ator será em termos de código Rust. A figura \ref{fig:actor-design} mostra uma visão geral da representação de um ator.
 
 \begin{figure}[htbp]
     \centering

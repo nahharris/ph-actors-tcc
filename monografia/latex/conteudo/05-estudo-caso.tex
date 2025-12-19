@@ -2,7 +2,7 @@
 
 Uma vez apresentadas as propostas de adaptação do Modelo de Atores para experimentação fora do domínio dos sistemas distribuídos, chega o momento de realizar um estudo de caso para aplicar a proposta em um projeto real para posterior análise de resultados. 
 
-O projeto escolhido foi uma ferramenta de software livre desenvolvida sob a organização Kworkflow (kw) chamada de patch-hub. Neste capítulo, será apresentado o contexto do projeto, a arquitetura original e suas limitações, os objetivos do estudo de caso e a proposta de refatoração do projeto com o uso do Modelo de Atores, cuja implementação estará disponível na íntegra no \href{https://github.com/nahharris/ph-actors-tcc}{repositório do projeto no GitHub}.
+O projeto escolhido foi uma ferramenta de software livre desenvolvida sob a organização \textit{Kworkflow} (kw) chamada de patch-hub. Neste capítulo, será apresentado o contexto do projeto, a arquitetura original e suas limitações, os objetivos do estudo de caso e a proposta de refatoração do projeto com o uso do Modelo de Atores, cuja implementação estará disponível na íntegra no \href{https://github.com/nahharris/ph-actors-tcc}{repositório do projeto no GitHub}.
 
 \section{Contexto}
 
@@ -12,7 +12,7 @@ Para compreender adequadamente o projeto patch-hub e sua proposta, é necessári
 
 O desenvolvimento do kernel Linux é um processo colaborativo que envolve milhares de desenvolvedores ao redor do mundo. Devido à sua complexidade e tamanho, o kernel é organizado em subsistemas especializados, cada um com responsabilidades específicas~\citep{kernel_subsystems}. Contribuições para o kernel, conhecidas como \textit{patches}, são tradicionalmente enviadas através de listas de discussão públicas por email e revisadas por mantenedores especializados~\citep{kernel_patches}. 
 
-Essa forma de contribuição é um processo tradicional e bem estabelecido, mas que traz diversos desafios para os desenvolvedores. Os desenvolvedores precisam se inscrever em múltiplas listas de email e gerenciar um volume considerável de mensagens. Isso dificulta muito acompanhar o status de suas contribuições.
+Essa forma de contribuição é um processo tradicional e bem estabelecido, mas que traz diversos desafios para os desenvolvedores. Os desenvolvedores do kernel precisam se inscrever em múltiplas listas de email e gerenciar um volume considerável de mensagens. Isso dificulta muito acompanhar o status de suas e demais contribuições sendo feitas a um dado subsistema. Essa abordagem também dificulta o ingresso de novos contribuidores, pois é necessário um setup local complexo e dificulta o acesso aos patches enviados antes do novo contribuidor se inscrever nas listas de email.
 
 \subsection{O Projeto lore.kernel.org}
 
@@ -22,15 +22,63 @@ A \emph{API} do lore suporta consultas complexas através de parâmetros de \emp
 
 \subsection{O Projeto Kworkflow}
 
-O projeto Kworkflow (kw) surgiu como uma resposta a complexidade e desafios de configuração do ambiente de desenvolvimento para o kernel Linux~\citep{kworkflow_org}. O kw é descrito como uma ``ferramenta de fluxo de trabalho de desenvolvedor de kernel'' que visa reduzir a sobrecarga de configuração e fornecer ferramentas para tarefas comuns do desenvolvimento de kernel.
+O projeto Kworkflow (kw) surgiu como uma resposta a complexidade e desafios de configuração do ambiente de desenvolvimento para o kernel Linux~\citep{tadokoro2025kworkflow}. O kw é descrito como uma \textit{Developer Automation Workflow System} (DAWS) que visa reduzir a sobrecarga de configuração e fornecer ferramentas para tarefas comuns do desenvolvimento de kernel.
 
-O projeto oferece um utilitário de terminal unificado para diversas operações como compilação, deploy, debug e gerenciamento de configurações, consolidando ferramentas anteriormente dispersas.
+O projeto é um utilitário de terminal que oferece um conjunto de funcionalidades em uma interface unificada para diversas operações como compilação, deploy, debug e gerenciamento de configurações, consolidando ferramentas anteriormente dispersas como pode ser visto na tabela \ref{tab:kw-commands}.
+
+\begin{table}[ht]
+    \caption{Comandos do kw (adaptado de~\cite{tadokoro2025kworkflow})}
+    \label{tab:kw-commands}
+    \begin{center}
+    \begin{tabular}{|p{0.2\columnwidth}|p{0.30\columnwidth}|p{0.40\columnwidth}|}
+        \hline
+        \rowcolor{gray!20}
+        \textbf{Comando} & \textbf{Categoria} & \textbf{Descrição} \\\hline
+        \texttt{build}    & Compilação e Deploy    & Compila o kernel e os módulos \\\hline
+        \texttt{deploy}    & Compilação e Deploy    & Realiza o \emph{deploy} do kernel e dos módulos \\\hline
+        \texttt{kernel\-config\-manager}    & Compilação e Deploy    & Gerencia os arquivos \texttt{.config} do kernel \\\hline
+        \texttt{env}    & Compilação e Deploy    & Gerencia diferentes ambientes para o mesmo kernel \\\hline
+        \texttt{bd}    & Compilação e Deploy    & Compila e realiza o \emph{deploy} do kernel e dos módulos \\\hline
+        \texttt{send-patch}    & Envio de Patches    & Envia patches via email \\\hline
+        \texttt{maintainers}    & Envio de Patches    & Wrapper para \texttt{get\_maintai\-ners.pl} \\\hline
+        \texttt{codestyle}    & Envio de Patches    & Wrapper para \texttt{checkpatch.pl} \\\hline
+        \texttt{remote}    & Máquinas Remotas    & Gerencia máquinas na rede \\\hline
+        \texttt{vm}    & Máquinas Remotas    & Wrapper para QEMU \\\hline
+        \texttt{ssh}    & Máquinas Remotas    & Wrapper para \texttt{ssh} \\\hline
+        \texttt{device}    & Máquinas Remotas    & Mostra informações de hardware \\\hline
+        \texttt{debug}    & Inspeção de Código    & Linux debug utilities \\\hline
+        \texttt{explore}    & Inspeção de Código    & Explora padrões de strings \\\hline
+        \texttt{diff}    & Inspeção de Código    & Diferencia arquivos \\\hline
+        \texttt{init}    & Gerenciamento do kw    & Inicializa a árvore de kernel do kw \\\hline
+        \texttt{config}    & Gerenciamento do kw    & Define configurações do kw \\\hline
+        \texttt{self-update}    & Gerenciamento do kw    & Mecanismo de atualização automática \\\hline
+        \texttt{backup}    & Gerenciamento do kw    & Salva e restaura dados do kw \\\hline
+        \texttt{clear-cache}    & Gerenciamento do kw    & Limpa o cache do kw \\\hline
+        \texttt{patch-hub}    & Miscelânea    & TUI para patches do lore.kernel.org \\\hline
+        \texttt{drm}    & Miscelânea    & Utilidades específicas para DRM \\\hline
+        \texttt{pomodoro}    & Miscelânea    & Técnica Pomodoro \\\hline
+        \texttt{report}    & Miscelânea    & Mostra estatísticas de uso \\\hline
+    \end{tabular}
+    \end{center}
+\end{table}
 
 \subsection{O patch-hub}
 
-O patch-hub é uma ferramenta desenvolvida como parte do ecossistema Kworkflow, especificamente projetada para interagir com a \emph{API} do lore.kernel.org~\citep{patch_hub_github}. Sua missão é agilizar a navegação e revisão de contribuições para o kernel Linux, fornecendo uma interface de usuário baseada em terminal (\emph{TUI}) que simplifica o processo de descoberta, análise e acompanhamento de \emph{patches}.
+O patch-hub (veja a sua interface na figura \ref{fig:patch-hub-original}) é uma ferramenta desenvolvida como parte do ecossistema do kw, especificamente projetada para interagir com a \emph{API} do lore.kernel.org~\citep{patch_hub_github}. Sua missão é agilizar a navegação e revisão de contribuições para o kernel Linux, fornecendo uma interface de usuário baseada em terminal (\emph{TUI}) que simplifica o processo de descoberta, análise e acompanhamento de \emph{patches}.
 
 A ferramenta permite aos desenvolvedores navegar por listas de patches, aplicar filtros de busca, visualizar conteúdo de patches e gerenciar seu fluxo de trabalho de revisão diretamente do terminal, eliminando a necessidade de alternar entre interfaces web e ferramentas de linha de comando.
+
+A implementação do patch-hub (tanto a original quanto a refatorada) fornece um conjunto de funcionalidades para interagir com o arquivo de \emph{patches} do kernel Linux. O sistema permite a seleção e navegação de listas de discussão arquivadas no \textit{lore.kernel.org}, apresentando os conjuntos de \emph{patches} associados. Ao examinar uma série específica, a interface disponibiliza o conteúdo individual dos \emph{patches} juntamente com metadados relevantes, incluindo título, autor, versão, quantidade de \emph{patches} e \emph{timestamp} da última atualização.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\textwidth]{figuras/patch-hub-original.png}
+    \caption{Interface do patch-hub.\label{fig:patch-hub-original}}
+\end{figure}
+
+O sistema implementa operações fundamentais para o \emph{workflow} de revisão de \emph{patches}: aplicação de \emph{patches} em repositórios locais do kernel, organização de séries em um sistema de favoritos, e composição de respostas com tags de revisão padrão, como \texttt{Reviewed-by}.
+
+A renderização do conteúdo dos patches é implementada com suporte a múltiplos backends, incluindo ferramentas externas, além de um renderizador padrão. Esta abordagem permite variação na apresentação visual dos patches ao gosto do usuário sem comprometer a portabilidade da aplicação.
 
 \section{Arquitetura Original}
 
@@ -49,23 +97,11 @@ A implementação original do patch-hub seguia uma arquitetura majoritariamente 
     \item \textbf{\texttt{handler}}: Manipulação de entrada do usuário e processamento de eventos
 \end{itemize}
 
-\subsection{Funcionalidades Principais}
-
-A implementação do patch-hub (tanto a original quanto a refatorada) fornece um conjunto de funcionalidades para interagir com o arquivo de \emph{patches} do kernel Linux. O sistema permite a seleção e navegação de listas de discussão arquivadas no \textit{lore.kernel.org}, apresentando os conjuntos de \emph{patches} associados. Ao examinar uma série específica, a interface disponibiliza o conteúdo individual dos \emph{patches} juntamente com metadados relevantes, incluindo título, autor, versão, quantidade de \emph{patches} e \emph{timestamp} da última atualização.
-
-\begin{figure}[H]
-    \centering
-    \includegraphics[width=\textwidth]{figuras/patch-hub-original.png}
-    \caption{Interface do patch-hub.\label{fig:patch-hub-original}}
-\end{figure}
-
-O sistema implementa operações fundamentais para o \emph{workflow} de revisão de \emph{patches}: aplicação de \emph{patches} em repositórios locais do kernel, organização de séries em um sistema de favoritos, e composição de respostas com tags de revisão padrão, como \texttt{Reviewed-by}.
-
-A renderização do conteúdo dos patches é implementada com suporte a múltiplos backends, incluindo ferramentas externas, além de um renderizador padrão. Esta abordagem permite variação na apresentação visual dos patches ao gosto do usuário sem comprometer a portabilidade da aplicação.
-
 \section{Limitações da Arquitetura Original}
 
-Apesar de sua funcionalidade, a implementação original do patch-hub apresentava limitações arquiteturais fundamentais que comprometiam sua extensibilidade, manutenibilidade e capacidade de evolução. Essas limitações vinham de decisões de design que, embora funcionais para o escopo inicial, criavam gargalos estruturais que dificultavam a adição de novas funcionalidades e a manutenção do código no longo prazo.
+Apesar de suas funcionalidades, a implementação original do patch-hub apresentava limitações arquiteturais fundamentais que comprometiam sua extensibilidade, manutenibilidade e capacidade de evolução. Essas limitações vinham de decisões de design que, embora funcionais para o escopo inicial, criavam gargalos estruturais que dificultavam a adição de novas funcionalidades e a manutenção do código no longo prazo.
+
+Este cenário reflete o problema discutido no capítulo~\ref{chap:arquitetura-software} com base no estudo de~\cite{kassab2018architectural}: em projetos reais, o foco excessivo no atendimento rápido de requisitos funcionais muitas vezes relega os requisitos de qualidade a um segundo plano. No caso do patch-hub, essa priorização resultou em uma dívida técnica considerável, explicitamente reconhecida em registros de desenvolvimento do projeto, como nas notas de lançamento da versão 0.1.7~\citep{patch_hub_v017}, que destacavam a necessidade urgente de uma rearquitetura para viabilizar a evolução contínua da ferramenta.
 
 \subsection{Gargalo de Mutação Centralizada}
 
@@ -137,7 +173,7 @@ Este trabalho não criará uma reescrita completa com 100\% de compatibilidade d
 
 \section{Modelagem com Atores}
 
-Com objetivos estabelecidos, foi feita uma modelagem da arquitetura do patch-hub com o uso de atores. A modelagem adota os princípios SOLID como guias. Os atores serão categorizados em 2 grupos considerando o tipo de interação que eles são responsáveis: externas ou internas.
+Com objetivos estabelecidos, foi feita uma modelagem da arquitetura do patch-hub com o uso de atores que pode ser vista na figura \ref{fig:patch-hub-actors}. A modelagem adota os princípios SOLID como guias. Os atores serão categorizados em 2 grupos considerando o tipo de interação que eles são responsáveis: externas ou internas.
 
 O primeiro grupo é formado pelos atores responsáveis por interações com componentes externos ao sistema, como, por exemplo, o sistema de arquivos, a internet ou o terminal. Este grupo será chamado de atores de integração pois permitem a integração do programa com outros sistemas, gerando, assim, efeitos colaterais no mundo real.
 
@@ -148,10 +184,10 @@ Por dependerem apenas de outros atores, testes unitários se tornam triviais uma
 \begin{figure}[H]
     \centering
     \includegraphics[width=\textwidth]{figuras/patch-hub-actors.png}
-    \caption{Diagrama de atores do patch-hub}
+    \caption{Diagrama de atores do patch-hub\protect\footnotemark}
     \label{fig:patch-hub-actors}
+    \footnotetext{As setas indicando dependências ao ator Log foram omitidas para não poluir a figura.}
 \end{figure}
-
 
 \subsection{Atores de Integração}
 
@@ -171,7 +207,7 @@ Essas capacidades não fazem parte da lógica de negócio do patch-hub, mas serv
 
 O ator Sistema de Arquivos é responsável por gerenciar as operações de leitura, escrita, remoção e listagem de arquivos e diretórios. Ele é responsável por garantir que as operações sejam realizadas de forma segura, garantindo que o sistema de arquivos seja consistente e que os arquivos e diretórios sejam gerenciados corretamente.
 
-\textit{Implementação:} \href{https://github.com/nahharris/ph-actors-tcc/blob/master/src/fs.rs}{\texttt{src/fs.rs}}
+\textbf{Implementação:} \href{https://github.com/nahharris/ph-actors-tcc/blob/master/src/fs.rs}{\texttt{src/fs.rs}}
 
 \textbf{Mensagens:}
 
@@ -189,9 +225,9 @@ O ator Sistema de Arquivos é responsável por gerenciar as operações de leitu
 
 O ator Rede é responsável por gerenciar as operações de requisição HTTP. Ele é o mecanismo base que vai permitir a integração do sistema com a \emph{API} web do lore.kernel.org.
 
-\textit{Implementação:} \href{https://github.com/nahharris/ph-actors-tcc/blob/master/src/net.rs}{\texttt{src/net.rs}}
+\textbf{Implementação:} \href{https://github.com/nahharris/ph-actors-tcc/blob/master/src/net.rs}{\texttt{src/net.rs}}
 
-\textbf{Depende:}
+\textbf{Dependências:}
 
 \begin{itemize}
     \item \textbf{Configurações}: Para obter configurações de timeout e outras configurações de rede
@@ -212,7 +248,7 @@ O ator Rede é responsável por gerenciar as operações de requisição HTTP. E
 
 O ator Variáveis de Ambiente é responsável por gerenciar as operações de definição, remoção e recuperação de variáveis de ambiente.
 
-\textit{Implementação:} \href{https://github.com/nahharris/ph-actors-tcc/blob/master/src/env.rs}{\texttt{src/env.rs}}
+\textbf{Implementação:} \href{https://github.com/nahharris/ph-actors-tcc/blob/master/src/env.rs}{\texttt{src/env.rs}}
 
 \textbf{Mensagens:}
 
@@ -226,9 +262,9 @@ O ator Variáveis de Ambiente é responsável por gerenciar as operações de de
 
 O ator Terminal gerencia o \emph{loop} de eventos da interface de usuário baseada na biblioteca Cursive. Ele mantém uma fila FIFO interna de eventos de \emph{UI} (teclas pressionadas, seleções, etc.) além de ser responsável por desenhar no terminal. Ele também expõe uma \emph{API} baseada em mensagens para atualizar a interface e recuperar os eventos de \emph{UI} ocorridos.
 
-\textit{Implementação:} \href{https://github.com/nahharris/ph-actors-tcc/blob/master/src/terminal.rs}{\texttt{src/terminal.rs}}
+\textbf{Implementação:} \href{https://github.com/nahharris/ph-actors-tcc/blob/master/src/terminal.rs}{\texttt{src/terminal.rs}}
 
-\textbf{Depende:}
+\textbf{Dependências:}
 
 \begin{itemize}
     \item \textbf{Log}: Para registrar eventos do terminal para posterior análise
@@ -249,9 +285,9 @@ O método \texttt{spawn()} do ator Terminal retorna uma tupla contendo a interfa
 
 O ator Shell é responsável por executar comandos integrando o patch-hub ao shell do sistema hospedeiro. Através dele é possível expandir as funcionalidades do patch-hub com o uso de ferramentas externas.
 
-\textit{Implementação:} \href{https://github.com/nahharris/ph-actors-tcc/blob/master/src/shell.rs}{\texttt{src/shell.rs}}
+\textbf{Implementação:} \href{https://github.com/nahharris/ph-actors-tcc/blob/master/src/shell.rs}{\texttt{src/shell.rs}}
 
-\textbf{Depende:}
+\textbf{Dependências:}
 
 \begin{itemize}
     \item \textbf{Log}: Para registrar operações de execução de comandos para posterior análise
@@ -279,9 +315,9 @@ As demais capacidades foram catalogadas. Dessa vez são capacidades de alto nív
 
 Fornece um serviço de \emph{logging} centralizado e \emph{thread-safe}. Ele recebe mensagens de log de outros atores e as escreve em um arquivo de log designado, fornecendo diferentes níveis de log para \emph{debugging} e monitoramento.
 
-\textit{Implementação:} \href{https://github.com/nahharris/ph-actors-tcc/blob/master/src/log.rs}{\texttt{src/log.rs}}
+\textbf{Implementação:} \href{https://github.com/nahharris/ph-actors-tcc/blob/master/src/log.rs}{\texttt{src/log.rs}}
 
-\textbf{Depende:}
+\textbf{Dependências:}
 
 \begin{itemize}
     \item \textbf{Sistema de Arquivos}: Para persistir logs em um arquivo
@@ -299,9 +335,9 @@ Fornece um serviço de \emph{logging} centralizado e \emph{thread-safe}. Ele rec
 
 Responsável por carregar configurações de um arquivo de configuração, fornecê-las a outros atores sob demanda e persistir mudanças.
 
-\textit{Implementação:} \href{https://github.com/nahharris/ph-actors-tcc/blob/master/src/app/config.rs}{\texttt{src/app/config.rs}}
+\textbf{Implementação:} \href{https://github.com/nahharris/ph-actors-tcc/blob/master/src/app/config.rs}{\texttt{src/app/config.rs}}
 
-\textbf{Depende:}
+\textbf{Dependências:}
 
 \begin{itemize}
     \item \textbf{Sistema de Arquivos}: Para salvar e carregar o arquivo de configuração
@@ -327,9 +363,9 @@ Responsável por carregar configurações de um arquivo de configuração, forne
 
 Gerencia toda a comunicação com a \emph{API} externa do Lore patchwork. Ele abstrai os detalhes das requisições HTTP e \emph{parsing} de dados, fornecendo uma interface limpa e tipada para buscar dados como listas de discussão, séries de \emph{patches} e \emph{patches} individuais. Ele atua como um tradutor entre as estruturas de dados internas da aplicação e as respostas brutas da \emph{API}. Ele não realiza nenhum \emph{cache} por si só.
 
-\textit{Implementação:} \href{https://github.com/nahharris/ph-actors-tcc/blob/master/src/api/lore.rs}{\texttt{src/api/lore.rs}}
+\textbf{Implementação:} \href{https://github.com/nahharris/ph-actors-tcc/blob/master/src/api/lore.rs}{\texttt{src/api/lore.rs}}
 
-\textbf{Depende:}
+\textbf{Dependências:}
 
 \begin{itemize}
     \item \textbf{Rede}: Para executar as requisições HTTP subjacentes
@@ -350,9 +386,9 @@ Gerencia toda a comunicação com a \emph{API} externa do Lore patchwork. Ele ab
 
 O ator UI gerencia a lógica de navegação e estado da interface, coordenando a comunicação entre os caches e o Terminal. Ele mantém o estado de navegação (lista atual, página, seleção) e decide quais telas mostrar com base nas ações do usuário.
 
-\textit{Implementação:} \href{https://github.com/nahharris/ph-actors-tcc/blob/master/src/app/ui.rs}{\texttt{src/app/ui.rs}}
+\textbf{Implementação:} \href{https://github.com/nahharris/ph-actors-tcc/blob/master/src/app/ui.rs}{\texttt{src/app/ui.rs}}
 
-\textbf{Depende:}
+\textbf{Dependências:}
 
 \begin{itemize}
     \item \textbf{Terminal}: Para atualizar a interface visual
@@ -381,9 +417,9 @@ O ator UI gerencia a lógica de navegação e estado da interface, coordenando a
 
 O ator Render é responsável por processar conteúdo bruto de patches e convertê-los em uma representação visual formatada. Ele suporta múltiplos backends de renderização, incluindo ferramentas externas como \texttt{bat} ou \texttt{delta}.
 
-\textit{Implementação:} \href{https://github.com/nahharris/ph-actors-tcc/blob/master/src/render.rs}{\texttt{src/render.rs}}
+\textbf{Implementação:} \href{https://github.com/nahharris/ph-actors-tcc/blob/master/src/render.rs}{\texttt{src/render.rs}}
 
-\textbf{Depende:}
+\textbf{Dependências:}
 
 \begin{itemize}
     \item \textbf{Shell}: Para executar programas externos de renderização
@@ -398,7 +434,7 @@ O ator Render é responsável por processar conteúdo bruto de patches e convert
 
 \subsubsection{Cache}
 
-\textit{Implementação:} \href{https://github.com/nahharris/ph-actors-tcc/blob/master/src/app/cache.rs}{\texttt{src/app/cache.rs}}
+\textbf{Implementação:} \href{https://github.com/nahharris/ph-actors-tcc/blob/master/src/app/cache.rs}{\texttt{src/app/cache.rs}}
 
 A fim de agilizar o acesso a dados diminuindo a quantidade de operações que dependam de chamadas de \emph{API} ou do sistema de arquivos, será feito o uso de técnicas de \emph{caching}.
 
@@ -408,9 +444,9 @@ Para cada domínio de dados, será criado um ator específico que se encarregar�
 
 Armazena em \emph{cache} a lista de todas as listas de discussão disponíveis da \emph{API} do Lore. Ele busca a lista completa, ordena alfabeticamente e a persiste no sistema de arquivos para acelerar inicializações subsequentes da aplicação. Ele gerencia validação de \emph{cache} para atualizar periodicamente a lista.
 
-\textit{Implementação:} \href{https://github.com/nahharris/ph-actors-tcc/blob/master/src/app/cache/mailing_list.rs}{\texttt{src/app/cache/mailing\_list.rs}}
+\textbf{Implementação:} \href{https://github.com/nahharris/ph-actors-tcc/blob/master/src/app/cache/mailing_list.rs}{\texttt{src/app/cache/mailing\_list.rs}}
 
-\textbf{Depende:}
+\textbf{Dependências:}
 
 \begin{itemize}
     \item \textbf{Lore API}: Para buscar os dados da lista de discussão
@@ -435,9 +471,9 @@ Armazena em \emph{cache} a lista de todas as listas de discussão disponíveis d
 
 Fornece \emph{cache} por lista de discussão de metadados de \emph{patches} (como autor, assunto e data). Ele busca \emph{feeds} de \emph{patches} sob demanda, suporta paginação e persiste os metadados no sistema de arquivos. Ele usa uma estratégia de validação inteligente para buscar apenas \emph{patches} novos quando um \emph{feed} foi atualizado no servidor.
 
-\textit{Implementação:} \href{https://github.com/nahharris/ph-actors-tcc/blob/master/src/app/cache/feed.rs}{\texttt{src/app/cache/feed.rs}}
+\textbf{Implementação:} \href{https://github.com/nahharris/ph-actors-tcc/blob/master/src/app/cache/feed.rs}{\texttt{src/app/cache/feed.rs}}
 
-\textbf{Depende:}
+\textbf{Dependências:}
 
 \begin{itemize}
     \item \textbf{Lore API}: Para buscar metadados de patches
@@ -464,9 +500,9 @@ Fornece \emph{cache} por lista de discussão de metadados de \emph{patches} (com
 
 Armazena em \emph{cache} o conteúdo bruto de \emph{patches} individuais (formato \texttt{.mbox}). Como o conteúdo do \emph{patch} é imutável, uma vez que um \emph{patch} é buscado e armazenado em \emph{cache}, ele é considerado válido para sempre. Este ator armazena cada \emph{patch} em um arquivo separado no disco e usa um \emph{buffer} LRU (\emph{Least Recently Used}) em memória para fornecer acesso rápido a \emph{patches} visualizados recentemente.
 
-\textit{Implementação:} \href{https://github.com/nahharris/ph-actors-tcc/blob/master/src/app/cache/patch.rs}{\texttt{src/app/cache/patch.rs}}
+\textbf{Implementação:} \href{https://github.com/nahharris/ph-actors-tcc/blob/master/src/app/cache/patch.rs}{\texttt{src/app/cache/patch.rs}}
 
-\textbf{Depende:}
+\textbf{Dependências:}
 
 \begin{itemize}
     \item \textbf{Lore API}: Para buscar o conteúdo bruto do patch
@@ -487,9 +523,9 @@ Armazena em \emph{cache} o conteúdo bruto de \emph{patches} individuais (format
 
 O ator App atua como entidade central da aplicação, gerenciando o ciclo de vida e estado da aplicação. Ele é responsável pela inicialização da aplicação, processamento de eventos de UI do Terminal e encerramento gracioso quando apropriado.
 
-\textit{Implementação:} \href{https://github.com/nahharris/ph-actors-tcc/blob/master/src/app.rs}{\texttt{src/app.rs}}
+\textbf{Implementação:} \href{https://github.com/nahharris/ph-actors-tcc/blob/master/src/app.rs}{\texttt{src/app.rs}}
 
-\textbf{Depende:}
+\textbf{Dependências:}
 
 \begin{itemize}
     \item \textbf{Mailing List Cache}: Para gerenciar o cache de listas de discussão

@@ -1,6 +1,12 @@
 \chapter{Conclusão}
 
-O principal resultado deste trabalho demonstra que a adequação de padrões arquiteturais pode ser surpreendentemente flexível. Mesmo utilizando um padrão aparentemente inapropriado para o contexto, foi possível extrair valor significativo da abordagem ao reimaginar tanto o problema quanto o padrão, permitindo que ambos se encaixassem de forma interessante. Naturalmente, esse processo de adaptação demandou planejamento cuidadoso e múltiplas iterações.
+Esse trabalho realiza uma experimentação aplicando o Modelo de Atores em um contexto distante do seu contexto natural. O objetivo é entender se é possível extrair valor deste padrão arquitetural dadas as circunstâncias adversas e qual o nível de esforço necessário para isso. O principal resultado deste trabalho demonstra é:
+
+\begin{highlight-box}{Resultado}
+    A adequação de padrões arquiteturais pode ser surpreendentemente flexível.
+\end{highlight-box}
+
+Mesmo utilizando um padrão aparentemente inapropriado para o contexto, foi possível extrair valor significativo da abordagem ao reimaginar tanto o problema quanto o padrão, permitindo que ambos se encaixassem de forma interessante. Naturalmente, esse processo de adaptação demandou planejamento cuidadoso e múltiplas iterações.
 
 Conclui-se que, embora os padrões arquiteturais possuam domínios naturais de aplicação, eles não estão rigidamente limitados a esses contextos. A exploração criativa de padrões em domínios distantes de sua origem pode resultar em soluções bem-sucedidas, desde que haja disposição para adaptar e reimaginar as abordagens estabelecidas.
 
@@ -8,7 +14,7 @@ Conclui-se que, embora os padrões arquiteturais possuam domínios naturais de a
 
 Por fim, ficam sugestões para trabalhos futuros considerando pontos da proposta que não foram implementados e que podem ser melhorados.
 
-\subsection{Completar a implementação}
+\subsection{Completar a Implementação}
 
 Como já foi mencionado, a reescrita do patch-hub não é uma implementação completa. Portanto, um trabalho futuro a ser desenvolvido seria concluir a implementação do sistema.
 
@@ -22,7 +28,7 @@ As principais funcionalidades que faltam são:
     \item \textbf{Popups:} O sistema de \emph{popups} como um todo não foi trabalhado.
 \end{itemize}
 
-\subsection{Explorar mais combinações}
+\subsection{Explorar Mais Combinações}
 
 Um segundo trabalho futuro seria seguir o mesmo espírito explorador deste trabalho. A ideia seria procurar um padrão arquitetural de propósito específico e aplicar a um domínio diferente.
 
@@ -54,3 +60,10 @@ Nas implementações conhecidas do Modelo de Atores, em geral existe um tipo de 
 Usando a reescrita do patch-hub como exemplo, o ator App poderia ser elevado à categoria de supervisor. Caso um ator como o Net viesse a sofrer uma falha fatal, o supervisor poderia recriá-lo e reinjetá-lo no ator LoreApi, assim permitindo que o LoreApi e todo resto da aplicação continuem funcionando normalmente.
 
 Portanto, a proposta apresentada poderia ser enriquecida com a adição de um ator supervisor, além de mecanismos para permitir a injeção de dependências após a inicialização.
+
+\begin{comment}\todo[inline]{Te enganei, este é na verdade meu último comentário.
+
+Acho que você podia implementar um ator que fizesse já o build e o deploy (a integração com o kw toda, na verdade)...
+
+Brincadeira! Só um comentário para parabenizá-la pelo ótimo trabalho! Nessa passada com calma fiquei mais orgulhoso ainda do trabalho que você fez :)}
+\end{comment}
