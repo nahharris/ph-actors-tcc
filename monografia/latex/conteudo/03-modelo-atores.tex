@@ -59,9 +59,9 @@ Esta linguagem dinâmica continua ganhando reconhecimento, sendo eleita como a s
 
 \subsection{A Linguagem de Programação Elixir}
 
-A filosofia de design do Elixir difere fundamentalmente das linguagens de programação orientadas a objetos. Ao invés de classes instanciadas em objetos, Elixir usa módulos que geram atores por design. Esta abordagem torna o Modelo de Atores o paradigma central da linguagem.
+A filosofia de design do Elixir difere fundamentalmente das linguagens de programação orientadas a objetos. Ao invés de classes instanciadas em objetos, Elixir usa funções que geram atores por design. Esta abordagem torna o Modelo de Atores o paradigma central da linguagem.
 
-Os atores no Elixir são representados por \textbf{processos Erlang} (daqui em diante referidos simplesmente como processos). Estes processos leves são criados usando a função \texttt{spawn}, que recebe três parâmetros: um módulo, um nome de função daquele módulo e uma lista de argumentos. Quando chamada, \texttt{spawn} executa a função especificada em um processo dedicado a ele e retorna um \emph{Process Identifier} (PID) que serve como o endereço do ator.
+Os atores no Elixir são representados por \textbf{processos Erlang} (daqui em diante referidos simplesmente como processos). Estes processos leves são criados usando a função \texttt{spawn}, que recebe três parâmetros: um módulo, o nome de uma função que está no módulo e uma lista de argumentos. Quando chamada, \texttt{spawn} executa a função especificada em um processo dedicado a ele e retorna um \emph{Process Identifier} (PID) que serve como o endereço do ator.
 
 A comunicação entre atores acontece através de passagem de mensagens usando duas funções: \texttt{send} para despachar mensagens para um processo usando seu PID como referência, e \texttt{receive} para lidar com mensagens recebidas dentro de um processo. Este mecanismo de passagem de mensagens assíncrono forma a base das capacidades concorrentes e distribuídas do Elixir.
 
