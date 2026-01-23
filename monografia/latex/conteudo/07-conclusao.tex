@@ -47,7 +47,7 @@ Para o primeiro caso, o Log depende do Fs para persistir as mensagens em arquivo
 
 Infelizmente, a ``solução'' adotada foi a de abrir mão do registro de erros de operações de arquivos no ator Fs diretamente. Ao invés disso, ele apenas retorna valores do tipo \texttt{Result<T, FsError>} para quem solicitar algum serviço e esse, por sua vez, seria responsável por registrar o erro caso ocorra.
 
-No segundo caso, existe um ciclo de dependência maior. O App depende do ator Ui para exibir as informações na tela. Por sua vez, o Ui depende do Terminal para efetivamente desenhar na tela. Por fim, o Terminal depende do App para poder enviar eventos de teclado para que o App possa processar.
+No segundo caso, existe um ciclo de dependência maior. O App depende do ator UI para exibir as informações na tela. Por sua vez, o UI depende do Terminal para efetivamente desenhar na tela. Por fim, o Terminal depende do App para poder enviar eventos de teclado para que o App possa processar.
 
 Nesse segundo caso, a solução adotada foi inverter o sentido de uma dependência. Ao invés do Terminal enviar eventos para o App, o App solicita eventos ao Terminal através de \emph{polling}. O Terminal fica encarregado de manter uma fila armazenando os eventos até que o App os solicite.
 

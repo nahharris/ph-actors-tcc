@@ -1,6 +1,6 @@
 use std::fmt::{Display, Formatter, Error};
 
-// Display é um trait usado para formatação de string com {}
+// Display: trait usado para formatação de string com {}
 impl Display for Coordinate {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), Error> {
         match self {

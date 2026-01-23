@@ -273,7 +273,7 @@ No contexto do exemplo dado, a \emph{struct} a ser criada no arquivo \texttt{app
 \end{program}
 
 
-O \texttt{Core} deve ser instanciado com a invocação do seu construtor, nesse momento as dependências do ator deverão ser injetadas como argumentos do construtor. O construtor será chamado \texttt{new} caso não possa falhar, caso contrário será chamado de \texttt{build}. Por exemplo, a inicialização de um ator pode depender do valor de uma variável de ambiente que talvez não exista, e isso leva a uma falha.
+O \texttt{Core} deve ser instanciado com a invocação do seu construtor, nesse momento as dependências do ator deverão ser injetadas como argumentos do construtor. O construtor será chamado \texttt{new} caso não possa falhar, como no exemplo do programa \ref{prog:rust-core-constructor}. Caso contrário, será chamado de \texttt{build}. Por exemplo, a inicialização de um ator pode depender do valor de uma variável de ambiente que talvez não exista, e isso leva a uma falha.
 
 \begin{program}
   \lstinputlisting[
